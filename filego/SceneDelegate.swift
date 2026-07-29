@@ -16,11 +16,31 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         willConnectTo session: UISceneSession,
         options connectionOptions: UIScene.ConnectionOptions
     ) {
-        guard let windowScene = scene as? UIWindowScene else { return }
+        guard
+            let windowScene = scene as? UIWindowScene,
+            let environment = (UIApplication.shared.delegate as? AppDelegate)?.environment
+        else { return }
 
         let window = UIWindow(windowScene: windowScene)
-        window.rootViewController = UINavigationController(rootViewController: ViewController())
+        window.tintColor = AppColor.accent
+        let rootViewController = RootViewController(environment: environment)
+        window.rootViewController = rootViewController
         window.makeKeyAndVisible()
         self.window = window
+
+        if let url = connectionOptions.urlContexts.first?.url {
+            DispatchQueue.main.async {
+                rootViewController.handleIncomingFile(url)
+            }
+        }
+    }
+
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        guard let url = URLContexts.first?.url else { return }
+        rootViewController?.handleIncomingFile(url)
+    }
+
+    private var rootViewController: RootViewController? {
+        window?.rootViewController as? RootViewController
     }
 }

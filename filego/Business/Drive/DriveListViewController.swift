@@ -1,0 +1,630 @@
+import PhotosUI
+import UIKit
+import UniformTypeIdentifiers
+
+@MainActor
+final class DriveListViewController: UIViewController {
+    let folderId: String
+    private let folderName: String
+    private let rootId: String
+    private let environment: AppEnvironment
+    private let router: Router
+    private let viewModel: DriveListViewModel
+    private let breadcrumbBar = BreadcrumbBar()
+    private let emptyLabel = UILabel()
+    private let addFolderButton = UIButton(type: .system)
+    private let fileActivityIndicator = UIActivityIndicatorView(style: .medium)
+    private var collectionView: UICollectionView!
+    private var dataSource: UICollectionViewDiffableDataSource<String, String>!
+    private var openFileTask: Task<Void, Never>?
+    private var isGrid: Bool {
+        didSet { environment.keyValueStore.set(isGrid, forKey: "drive.grid") }
+    }
+
+    init(
+        environment: AppEnvironment,
+        router: Router,
+        folderId: String,
+        folderName: String,
+        rootId: String
+    ) {
+        self.environment = environment
+        self.router = router
+        self.folderId = folderId
+        self.folderName = folderName
+        self.rootId = rootId
+        self.viewModel = DriveListViewModel(
+            folderId: folderId,
+            session: environment.sessionManager,
+            preferences: environment.keyValueStore
+        )
+        self.isGrid = environment.keyValueStore.value(forKey: "drive.grid") ?? false
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    deinit {
+        openFileTask?.cancel()
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        title = folderName
+        view.backgroundColor = AppColor.background
+        configureNavigation()
+        configureCollectionView()
+        configureBreadcrumbs()
+        configureAddFolderButton()
+        configureFileActivityIndicator()
+        reload()
+    }
+
+    private func configureNavigation() {
+        navigationItem.largeTitleDisplayMode = .never
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithTransparentBackground()
+        navigationItem.standardAppearance = appearance
+        navigationItem.scrollEdgeAppearance = appearance
+        navigationItem.compactAppearance = appearance
+
+        if folderId == rootId {
+            navigationItem.leftBarButtonItem = UIBarButtonItem(
+                image: UIImage(systemName: "person.crop.circle"),
+                style: .plain,
+                target: self,
+                action: #selector(showMe)
+            )
+            navigationItem.leftBarButtonItem?.accessibilityLabel = R.Strings.tabMe.localizedString()
+        }
+        navigationItem.rightBarButtonItems = [
+            UIBarButtonItem(
+                image: UIImage(systemName: isGrid ? "list.bullet" : "square.grid.2x2"),
+                style: .plain,
+                target: self,
+                action: #selector(toggleLayout)
+            ),
+            UIBarButtonItem(
+                title: nil,
+                image: UIImage(systemName: "arrow.up.arrow.down"),
+                primaryAction: nil,
+                menu: sortMenu()
+            )
+        ]
+    }
+
+    private func sortMenu() -> UIMenu {
+        let choices: [(NodeSort, String)] = [
+            (.name, R.Strings.driveSortName.localizedString()),
+            (.updated, R.Strings.driveSortDate.localizedString()),
+            (.size, R.Strings.driveSortSize.localizedString())
+        ]
+        let sortActions = choices.map { sort, title in
+            UIAction(title: title, state: viewModel.sort == sort ? .on : .off) { [weak self] _ in
+                self?.changeSort(sort)
+            }
+        }
+        let orderAction = UIAction(
+            title: viewModel.order == .ascending
+                ? R.Strings.driveOrderDescending.localizedString()
+                : R.Strings.driveOrderAscending.localizedString(),
+            image: UIImage(systemName: "arrow.up.arrow.down")
+        ) { [weak self] _ in self?.toggleOrder() }
+        return UIMenu(children: [UIMenu(options: .displayInline, children: sortActions), orderAction])
+    }
+
+    private func configureBreadcrumbs() {
+        breadcrumbBar.isHidden = folderId == rootId
+        breadcrumbBar.translatesAutoresizingMaskIntoConstraints = false
+        breadcrumbBar.onSelect = { [weak self] node in self?.openBreadcrumb(node) }
+        view.addSubview(breadcrumbBar)
+        NSLayoutConstraint.activate([
+            breadcrumbBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            breadcrumbBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            breadcrumbBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            breadcrumbBar.heightAnchor.constraint(equalToConstant: folderId == rootId ? 0 : 36)
+        ])
+    }
+
+    private func configureCollectionView() {
+        collectionView = UICollectionView(frame: .zero, collectionViewLayout: makeLayout())
+        collectionView.backgroundColor = AppColor.background
+        collectionView.alwaysBounceVertical = true
+        collectionView.contentInset.bottom = 88
+        collectionView.verticalScrollIndicatorInsets.bottom = 88
+        collectionView.delegate = self
+        collectionView.translatesAutoresizingMaskIntoConstraints = false
+        collectionView.register(DriveNodeCell.self, forCellWithReuseIdentifier: "node")
+        collectionView.refreshControl = UIRefreshControl()
+        collectionView.refreshControl?.addTarget(self, action: #selector(refresh), for: .valueChanged)
+        view.addSubview(collectionView)
+        NSLayoutConstraint.activate([
+            collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            collectionView.topAnchor.constraint(
+                equalTo: view.safeAreaLayoutGuide.topAnchor,
+                constant: folderId == rootId ? 0 : 36
+            ),
+            collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+
+        emptyLabel.text = R.Strings.driveEmpty.localizedString()
+        emptyLabel.font = AppTypography.body
+        emptyLabel.textColor = AppColor.textSecondary
+        emptyLabel.textAlignment = .center
+        collectionView.backgroundView = emptyLabel
+
+        dataSource = UICollectionViewDiffableDataSource<String, String>(
+            collectionView: collectionView
+        ) { [weak self] collectionView, indexPath, id in
+            guard let self,
+                  let node = viewModel.nodes.first(where: { $0.id == id }),
+                  let cell = collectionView.dequeueReusableCell(
+                    withReuseIdentifier: "node", for: indexPath
+                  ) as? DriveNodeCell else { return nil }
+            cell.configure(with: node, menu: actions(for: node), grid: isGrid)
+            return cell
+        }
+    }
+
+    private func configureAddFolderButton() {
+        var configuration = UIButton.Configuration.filled()
+        configuration.image = UIImage(
+            systemName: "plus",
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: 22, weight: .semibold)
+        )
+        configuration.baseBackgroundColor = AppColor.accent
+        configuration.baseForegroundColor = .white
+        configuration.cornerStyle = .capsule
+        addFolderButton.configuration = configuration
+        addFolderButton.accessibilityLabel = R.Strings.driveAdd.localizedString()
+        addFolderButton.menu = UIMenu(children: [
+            UIMenu(options: .displayInline, children: [
+                UIAction(
+                    title: R.Strings.driveNewFolder.localizedString(),
+                    image: UIImage(systemName: "folder.badge.plus")
+                ) { [weak self] _ in self?.addFolder() }
+            ]),
+            UIMenu(options: .displayInline, children: [
+                UIAction(
+                    title: R.Strings.driveImportTakePhoto.localizedString(),
+                    image: UIImage(systemName: "camera")
+                ) { [weak self] _ in self?.openCamera() },
+                UIAction(
+                    title: R.Strings.driveImportPhoto.localizedString(),
+                    image: UIImage(systemName: "photo")
+                ) { [weak self] _ in self?.openPhotos() },
+                UIAction(
+                    title: R.Strings.driveImportFile.localizedString(),
+                    image: UIImage(systemName: "doc")
+                ) { [weak self] _ in self?.openFileImporter() }
+            ])
+        ])
+        addFolderButton.showsMenuAsPrimaryAction = true
+        addFolderButton.layer.shadowColor = UIColor.black.cgColor
+        addFolderButton.layer.shadowOpacity = 0.18
+        addFolderButton.layer.shadowRadius = 8
+        addFolderButton.layer.shadowOffset = CGSize(width: 0, height: 4)
+        addFolderButton.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(addFolderButton)
+
+        NSLayoutConstraint.activate([
+            addFolderButton.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -20),
+            addFolderButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            addFolderButton.widthAnchor.constraint(equalToConstant: 56),
+            addFolderButton.heightAnchor.constraint(equalToConstant: 56)
+        ])
+    }
+
+    private func configureFileActivityIndicator() {
+        fileActivityIndicator.hidesWhenStopped = true
+        fileActivityIndicator.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.92)
+        fileActivityIndicator.layer.cornerRadius = 12
+        fileActivityIndicator.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(fileActivityIndicator)
+        NSLayoutConstraint.activate([
+            fileActivityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            fileActivityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            fileActivityIndicator.widthAnchor.constraint(equalToConstant: 52),
+            fileActivityIndicator.heightAnchor.constraint(equalToConstant: 52)
+        ])
+    }
+
+    private func makeLayout() -> UICollectionViewLayout {
+        if isGrid {
+            let item = NSCollectionLayoutItem(layoutSize: .init(
+                widthDimension: .fractionalWidth(0.5),
+                heightDimension: .absolute(132)
+            ))
+            item.contentInsets = .init(top: 6, leading: 6, bottom: 6, trailing: 6)
+            let group = NSCollectionLayoutGroup.horizontal(
+                layoutSize: .init(widthDimension: .fractionalWidth(1), heightDimension: .absolute(132)),
+                subitems: [item, item]
+            )
+            let section = NSCollectionLayoutSection(group: group)
+            section.contentInsets = .init(top: 6, leading: 10, bottom: 16, trailing: 10)
+            return UICollectionViewCompositionalLayout(section: section)
+        }
+        var configuration = UICollectionLayoutListConfiguration(appearance: .plain)
+        configuration.showsSeparators = false
+        configuration.backgroundColor = .clear
+        return UICollectionViewCompositionalLayout.list(using: configuration)
+    }
+
+    private func applySnapshot() {
+        var snapshot = NSDiffableDataSourceSnapshot<String, String>()
+        snapshot.appendSections(["main"])
+        snapshot.appendItems(viewModel.nodes.map(\.id))
+        dataSource.apply(snapshot, animatingDifferences: true)
+        emptyLabel.isHidden = !viewModel.nodes.isEmpty
+        breadcrumbBar.configure(nodes: viewModel.ancestors)
+    }
+
+    private func reload() {
+        Task {
+            do {
+                _ = try await viewModel.reload()
+                applySnapshot()
+            } catch {
+                showError(error)
+            }
+            collectionView.refreshControl?.endRefreshing()
+        }
+    }
+
+    @objc private func refresh() { reload() }
+
+    @objc private func showMe() {
+        router.push(MeViewController(environment: environment))
+    }
+
+    @objc private func toggleLayout() {
+        isGrid.toggle()
+        collectionView.setCollectionViewLayout(makeLayout(), animated: true)
+        configureNavigation()
+        collectionView.reloadData()
+    }
+
+    private func changeSort(_ sort: NodeSort) {
+        viewModel.sort = sort
+        configureNavigation()
+        reload()
+    }
+
+    private func toggleOrder() {
+        viewModel.order = viewModel.order == .ascending ? .descending : .ascending
+        configureNavigation()
+        reload()
+    }
+
+    private func openFileImporter() {
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
+        picker.allowsMultipleSelection = false
+        picker.delegate = self
+        present(picker, animated: true)
+    }
+
+    private func openPhotos() {
+        var configuration = PHPickerConfiguration()
+        configuration.filter = .any(of: [.images, .videos])
+        configuration.selectionLimit = 1
+        let picker = PHPickerViewController(configuration: configuration)
+        picker.delegate = self
+        present(picker, animated: true)
+    }
+
+    private func openCamera() {
+        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+            showError(NSError(
+                domain: "FileGo.Camera",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: R.Strings.driveImportCameraUnavailable.localizedString()]
+            ))
+            return
+        }
+        CameraPermissionManager.shared.requestPermission { [weak self] result in
+            switch result {
+            case .granted: self?.presentCamera()
+            case .justDenied: break
+            case .previouslyDenied: self?.presentCameraDeniedAlert()
+            }
+        }
+    }
+
+    private func presentCamera() {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.mediaTypes = [UTType.image.identifier, UTType.movie.identifier]
+        picker.videoQuality = .typeHigh
+        picker.delegate = self
+        present(picker, animated: true)
+    }
+
+    private func presentCameraDeniedAlert() {
+        let alert = UIAlertController(
+            title: R.Strings.driveImportCameraDenied.localizedString(),
+            message: R.Strings.driveImportCameraDeniedMessage.localizedString(),
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: R.Strings.commonCancel.localizedString(), style: .cancel))
+        alert.addAction(UIAlertAction(
+            title: R.Strings.driveImportOpenSettings.localizedString(),
+            style: .default
+        ) { _ in CameraPermissionManager.shared.openSystemSettings() })
+        present(alert, animated: true)
+    }
+
+    private func importFile(at url: URL) {
+        let progress = FileImportProgressViewController(fileName: url.lastPathComponent)
+        present(progress, animated: true) { [weak self, weak progress] in
+            guard let self, let progress else { return }
+            Task {
+                do {
+                    _ = try await FileUploadService.upload(
+                        fileURL: url,
+                        parentId: self.folderId,
+                        session: self.environment.sessionManager
+                    ) { [weak progress] fraction in
+                        progress?.updateProgress(fraction)
+                    }
+                    self.cleanupTemporaryImport(url)
+                    progress.dismiss(animated: true) { [weak self] in self?.reload() }
+                } catch {
+                    self.cleanupTemporaryImport(url)
+                    progress.dismiss(animated: true) { [weak self] in self?.showError(error) }
+                }
+            }
+        }
+    }
+
+    func importExternalFile(at url: URL) -> Bool {
+        guard presentedViewController == nil else { return false }
+        importFile(at: url)
+        return true
+    }
+
+    nonisolated private static func writeTemporaryImport(
+        data: Data,
+        extension fileExtension: String
+    ) throws -> URL {
+        let ext = fileExtension.isEmpty ? "bin" : fileExtension
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("filego-import-\(UUID().uuidString).\(ext)")
+        try data.write(to: url, options: .atomic)
+        return url
+    }
+
+    nonisolated private static func copyTemporaryImport(
+        from source: URL,
+        extension fileExtension: String
+    ) throws -> URL {
+        let ext = fileExtension.isEmpty ? "bin" : fileExtension
+        let destination = FileManager.default.temporaryDirectory
+            .appendingPathComponent("filego-import-\(UUID().uuidString).\(ext)")
+        try FileManager.default.copyItem(at: source, to: destination)
+        return destination
+    }
+
+    private func cleanupTemporaryImport(_ url: URL) {
+        guard url.lastPathComponent.hasPrefix("filego-import-") || url.path.contains("/Inbox/") else {
+            return
+        }
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    private func addFolder() {
+        prompt(title: R.Strings.driveNewFolder.localizedString(), value: nil) { [weak self] name in
+            guard let self else { return }
+            Task {
+                do {
+                    try await self.viewModel.createFolder(name: name)
+                    self.applySnapshot()
+                } catch { self.showError(error) }
+            }
+        }
+    }
+
+    private func open(_ node: DriveNode) {
+        if node.isFolder {
+            router.push(DriveListViewController(
+                environment: environment,
+                router: router,
+                folderId: node.id,
+                folderName: node.name,
+                rootId: rootId
+            ))
+            return
+        }
+
+        openFileTask?.cancel()
+        fileActivityIndicator.startAnimating()
+        collectionView.isUserInteractionEnabled = false
+        openFileTask = Task { [weak self] in
+            do {
+                let url = try await FileDownloadService.download(node: node)
+                guard !Task.isCancelled else {
+                    try? FileManager.default.removeItem(at: url.deletingLastPathComponent())
+                    return
+                }
+                self?.router.push(FilePreviewController(fileURL: url))
+            } catch is CancellationError {
+                // 页面销毁或用户发起了另一次打开，不展示错误。
+            } catch {
+                self?.showError(error)
+            }
+            self?.fileActivityIndicator.stopAnimating()
+            self?.collectionView.isUserInteractionEnabled = true
+        }
+    }
+
+    private func openBreadcrumb(_ node: DriveNode) {
+        guard node.id != folderId else { return }
+        if let existing = router.navigationController?.viewControllers
+            .compactMap({ $0 as? DriveListViewController })
+            .first(where: { $0.folderId == node.id }) {
+            router.popTo(existing)
+        }
+    }
+
+    private func actions(for node: DriveNode) -> UIMenu {
+        let star = UIAction(
+            title: node.starred ? R.Strings.driveUnstar.localizedString() : R.Strings.driveStar.localizedString(),
+            image: UIImage(systemName: node.starred ? "star.slash" : "star")
+        ) { [weak self] _ in self?.setStar(node, starred: !node.starred) }
+        let rename = UIAction(
+            title: R.Strings.driveRename.localizedString(), image: UIImage(systemName: "pencil")
+        ) { [weak self] _ in self?.rename(node) }
+        let move = UIAction(
+            title: R.Strings.driveMove.localizedString(), image: UIImage(systemName: "folder")
+        ) { [weak self] _ in self?.pickFolder(for: node, copy: false) }
+        var children = [star, rename, move]
+        if !node.isFolder {
+            children.append(UIAction(
+                title: R.Strings.driveCopy.localizedString(), image: UIImage(systemName: "doc.on.doc")
+            ) { [weak self] _ in self?.pickFolder(for: node, copy: true) })
+        }
+        return UIMenu(children: children)
+    }
+
+    private func setStar(_ node: DriveNode, starred: Bool) {
+        Task {
+            do { try await viewModel.setStarred(node, starred: starred); applySnapshot() }
+            catch { showError(error) }
+        }
+    }
+
+    private func rename(_ node: DriveNode) {
+        prompt(title: R.Strings.driveRename.localizedString(), value: node.name) { [weak self] name in
+            guard let self else { return }
+            Task {
+                do { try await self.viewModel.rename(node, to: name); self.applySnapshot() }
+                catch { self.showError(error) }
+            }
+        }
+    }
+
+    private func pickFolder(for node: DriveNode, copy: Bool) {
+        let picker = FolderPickerNavigationController.make(
+            environment: environment,
+            rootId: rootId,
+            excludedNodeId: copy ? nil : node.id
+        ) { [weak self] targetId in
+            guard let self else { return }
+            dismiss(animated: true)
+            Task {
+                do {
+                    if copy { try await self.viewModel.copy(node, to: targetId) }
+                    else { try await self.viewModel.move(node, to: targetId) }
+                    self.applySnapshot()
+                } catch { self.showError(error) }
+            }
+        }
+        present(picker, animated: true)
+    }
+
+    private func prompt(title: String, value: String?, completion: @escaping (String) -> Void) {
+        let alert = UIAlertController(title: title, message: nil, preferredStyle: .alert)
+        alert.addTextField { $0.text = value }
+        alert.addAction(UIAlertAction(title: R.Strings.commonCancel.localizedString(), style: .cancel))
+        alert.addAction(UIAlertAction(title: R.Strings.commonOk.localizedString(), style: .default) { _ in
+            guard let name = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !name.isEmpty else { return }
+            completion(name)
+        })
+        present(alert, animated: true)
+    }
+
+    private func showError(_ error: Error) {
+        let alert = UIAlertController(
+            title: R.Strings.commonError.localizedString(),
+            message: error.localizedDescription,
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: R.Strings.commonOk.localizedString(), style: .default))
+        present(alert, animated: true)
+    }
+}
+
+extension DriveListViewController: UICollectionViewDelegate {
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        collectionView.deselectItem(at: indexPath, animated: true)
+        guard viewModel.nodes.indices.contains(indexPath.item) else { return }
+        open(viewModel.nodes[indexPath.item])
+    }
+
+    func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+        Task {
+            do {
+                if try await viewModel.loadNextPageIfNeeded(near: indexPath.item) { applySnapshot() }
+            } catch { showError(error) }
+        }
+    }
+}
+
+extension DriveListViewController: UIDocumentPickerDelegate {
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        guard let url = urls.first else { return }
+        controller.dismiss(animated: true) { [weak self] in self?.importFile(at: url) }
+    }
+}
+
+extension DriveListViewController: PHPickerViewControllerDelegate {
+    func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+        guard let provider = results.first?.itemProvider else {
+            picker.dismiss(animated: true)
+            return
+        }
+        let typeIdentifier = provider.registeredTypeIdentifiers.first ?? UTType.data.identifier
+        let fileExtension = UTType(typeIdentifier)?.preferredFilenameExtension ?? "bin"
+        provider.loadFileRepresentation(forTypeIdentifier: typeIdentifier) { [weak self, weak picker] sourceURL, error in
+            let copied = Result<URL, Error> {
+                guard let sourceURL else {
+                    throw error ?? CocoaError(.fileReadUnknown)
+                }
+                // PHPicker 的临时 URL 只保证在本回调返回前有效，必须在这里同步复制。
+                return try Self.copyTemporaryImport(from: sourceURL, extension: fileExtension)
+            }
+            Task { @MainActor [weak self, weak picker] in
+                guard let self, let picker else { return }
+                picker.dismiss(animated: true) {
+                    switch copied {
+                    case .success(let url): self.importFile(at: url)
+                    case .failure(let error): self.showError(error)
+                    }
+                }
+            }
+        }
+    }
+}
+
+extension DriveListViewController: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+    func imagePickerController(
+        _ picker: UIImagePickerController,
+        didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
+    ) {
+        if let mediaURL = info[.mediaURL] as? URL {
+            do {
+                let url = try Self.copyTemporaryImport(from: mediaURL, extension: mediaURL.pathExtension)
+                picker.dismiss(animated: true) { [weak self] in self?.importFile(at: url) }
+            } catch {
+                picker.dismiss(animated: true) { [weak self] in self?.showError(error) }
+            }
+            return
+        }
+        guard let image = info[.originalImage] as? UIImage,
+              let data = image.jpegData(compressionQuality: 0.9) else {
+            picker.dismiss(animated: true)
+            return
+        }
+        do {
+            let url = try Self.writeTemporaryImport(data: data, extension: "jpg")
+            picker.dismiss(animated: true) { [weak self] in self?.importFile(at: url) }
+        } catch {
+            picker.dismiss(animated: true) { [weak self] in self?.showError(error) }
+        }
+    }
+
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        picker.dismiss(animated: true)
+    }
+}

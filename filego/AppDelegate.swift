@@ -10,11 +10,19 @@ import UIKit
 @main
 final class AppDelegate: UIResponder, UIApplicationDelegate {
 
+    private(set) var environment: AppEnvironment!
+
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        true
+        AppLogger.info("Application did finish launching")
+        // 必须在 AppEnvironment 之前：把历史明文令牌搬进 Keychain，并恢复
+        // KeyValueStore 的用户域，否则首屏读到的偏好会落在 default 域里。
+        SessionManager.bootstrap()
+        environment = AppEnvironment()
+        _ = AppLifecycleObserver.shared
+        return true
     }
 
     func application(

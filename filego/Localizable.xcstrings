@@ -1,0 +1,390 @@
+{
+  "sourceLanguage": "zh-Hans",
+  "strings": {
+    "app.name": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FileGo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FileGo"
+          }
+        }
+      }
+    },
+    "common.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消"
+          }
+        }
+      }
+    },
+    "common.error": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Error"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"出错了"}}}},
+    "common.ok": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"OK"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"确定"}}}},
+    "drive.add": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Add"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"添加"}}}},
+    "drive.copy": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Make a copy"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"创建副本"}}}},
+    "drive.empty": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"This folder is empty"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"这个文件夹是空的"}}}},
+    "drive.folder": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Folder"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"文件夹"}}}},
+    "drive.import.cameraDenied": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Camera Access Required"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"需要相机权限"}}}},
+    "drive.import.cameraDeniedMessage": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Allow camera access in Settings to take photos or videos for upload."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"请在系统设置中允许相机权限，以拍摄照片或视频并上传。"}}}},
+    "drive.import.cameraUnavailable": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Camera is unavailable on this device"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"当前设备无法使用相机"}}}},
+    "drive.import.file": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Import File"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"导入文件"}}}},
+    "drive.import.openSettings": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Open Settings"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"打开设置"}}}},
+    "drive.import.photo": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Photos and Videos"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"照片和视频"}}}},
+    "drive.import.preparing": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Preparing file…"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"正在准备文件…"}}}},
+    "drive.import.takePhoto": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Take Photo or Video"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"拍照或录像"}}}},
+    "drive.import.title": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Import to FileGo"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"导入到 FileGo"}}}},
+    "drive.import.uploading": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Uploading"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"正在上传"}}}},
+    "drive.move": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Move"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"移动"}}}},
+    "drive.moveHere": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Move here"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"移动到这里"}}}},
+    "drive.newFolder": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"New folder"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"新建文件夹"}}}},
+    "drive.orderAscending": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Ascending"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"升序"}}}},
+    "drive.orderDescending": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Descending"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"降序"}}}},
+    "drive.rename": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Rename"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"重命名"}}}},
+    "drive.sortDate": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Date modified"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"修改时间"}}}},
+    "drive.sortName": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Name"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"名称"}}}},
+    "drive.sortSize": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Size"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"大小"}}}},
+    "drive.star": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Add to starred"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"添加星标"}}}},
+    "drive.unstar": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Remove star"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"取消星标"}}}},
+    "debug.http.empty": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No requests yet"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无请求记录"
+          }
+        }
+      }
+    },
+    "debug.http.title": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HTTP History"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HTTP 请求历史"
+          }
+        }
+      }
+    },
+    "login.dev.button": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dev sign in (skip Apple)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开发登录（跳过 Apple）"
+          }
+        }
+      }
+    },
+    "login.error.failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple sign-in failed. Check your network and try again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple 登录失败，请检查网络后重试"
+          }
+        }
+      }
+    },
+    "login.error.noAppleAccount": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in to an Apple Account in Settings first, then try again"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先在系统「设置 › Apple 账户」中登录 Apple 账户，再使用此方式登录"
+          }
+        }
+      }
+    },
+    "login.error.noToken": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not obtain Apple credential"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未能获取 Apple 登录凭证"
+          }
+        }
+      }
+    },
+    "login.error.notHandled": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The system could not handle the sign-in request. Please try again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "系统未能处理此次登录请求，请稍后重试"
+          }
+        }
+      }
+    },
+    "login.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your personal cloud storage"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的私人云存储空间"
+          }
+        }
+      }
+    },
+    "me.counts": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d files · %d folders · %d in trash"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d 个文件 · %d 个文件夹 · 回收站 %d 项"
+          }
+        }
+      }
+    },
+    "me.loadFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed to load"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加载失败"
+          }
+        }
+      }
+    },
+    "me.signOut": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign out"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "退出登录"
+          }
+        }
+      }
+    },
+    "me.signOut.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign out of FileGo?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "确定要退出登录吗？"
+          }
+        }
+      }
+    },
+    "me.storage.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ of %@ used"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已使用 %@ / %@"
+          }
+        }
+      }
+    },
+    "me.storage.reserved": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ reserved by uploads"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上传中占用 %@"
+          }
+        }
+      }
+    },
+    "me.storage.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Storage"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "存储空间"
+          }
+        }
+      }
+    },
+    "tab.files": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Files"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文件"
+          }
+        }
+      }
+    },
+    "tab.me": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Me"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我的"
+          }
+        }
+      }
+    },
+    "tab.transfers": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transfers"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "传输"
+          }
+        }
+      }
+    },
+    "transfer.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No transfers yet"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无传输任务"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}
