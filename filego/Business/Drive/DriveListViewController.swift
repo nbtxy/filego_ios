@@ -9,6 +9,7 @@ final class DriveListViewController: UIViewController {
     private let rootId: String
     private let environment: AppEnvironment
     private let router: Router
+    private let onShowMe: (() -> Void)?
     private let viewModel: DriveListViewModel
     private let breadcrumbBar = BreadcrumbBar()
     private let emptyLabel = UILabel()
@@ -45,13 +46,15 @@ final class DriveListViewController: UIViewController {
         router: Router,
         folderId: String,
         folderName: String,
-        rootId: String
+        rootId: String,
+        onShowMe: (() -> Void)? = nil
     ) {
         self.environment = environment
         self.router = router
         self.folderId = folderId
         self.folderName = folderName
         self.rootId = rootId
+        self.onShowMe = onShowMe
         self.viewModel = DriveListViewModel(
             folderId: folderId,
             session: environment.sessionManager,
@@ -373,7 +376,11 @@ final class DriveListViewController: UIViewController {
     @objc private func refresh() { reload() }
 
     @objc private func showMe() {
-        router.push(MeViewController(environment: environment))
+        if let onShowMe {
+            onShowMe()
+        } else {
+            router.push(MeViewController(environment: environment))
+        }
     }
 
     @objc private func showSearch() {
@@ -586,7 +593,8 @@ final class DriveListViewController: UIViewController {
                 router: router,
                 folderId: node.id,
                 folderName: node.name,
-                rootId: rootId
+                rootId: rootId,
+                onShowMe: onShowMe
             ))
             return
         }
@@ -596,7 +604,10 @@ final class DriveListViewController: UIViewController {
         collectionView.isUserInteractionEnabled = false
         openFileTask = Task { [weak self] in
             do {
-                let file = try await FileDownloadService.download(node: node)
+                guard let userID = self?.environment.sessionManager.currentUserID else {
+                    throw FileGoAPIError.unauthorized
+                }
+                let file = try await FileDownloadService.download(node: node, userID: userID)
                 guard !Task.isCancelled else {
                     file.discard()
                     return

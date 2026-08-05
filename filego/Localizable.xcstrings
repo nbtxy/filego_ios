@@ -29,6 +29,13 @@
         }
       }
     },
+    "cache.clear": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Clear Cache"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"清除缓存"}}}},
+    "cache.clear.confirm": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Clear local cache?"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"清除本地缓存？"}}}},
+    "cache.clear.confirmMessage": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Cached files will be downloaded again the next time you open them."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"清除后，再次打开文件时需要重新下载。"}}}},
+    "cache.hint": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Opened files are cached locally for faster access. The oldest files are removed automatically when the cache exceeds 1 GB."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"打开过的文件会缓存在本地以便快速访问；缓存超过 1 GB 时会自动清理最久未使用的文件。"}}}},
+    "cache.title": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Local Cache"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"本地缓存"}}}},
+    "cache.usage": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Cache usage"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"缓存占用"}}}},
+    "cache.usageValue": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"%@ · %lld files"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"%@ · %lld 个文件"}}}},
     "common.cancel": {
       "extractionState": "manual",
       "localizations": {
@@ -84,6 +91,19 @@
     "drive.view": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"View"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"视图方式"}}}},
     "drive.viewGrid": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Grid"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"网格显示"}}}},
     "drive.viewList": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"List"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"列表显示"}}}},
+    "debug.panel.apply": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Apply"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"应用"}}}},
+    "debug.panel.current": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Current server"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"当前服务器"}}}},
+    "debug.panel.custom": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Custom address"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"自定义地址"}}}},
+    "debug.panel.default": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Using the default address"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"正在使用默认地址"}}}},
+    "debug.panel.invalid": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Invalid address"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"地址无效"}}}},
+    "debug.panel.local": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Local development"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"本地开发"}}}},
+    "debug.panel.override": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Using a custom override"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"正在使用自定义覆盖"}}}},
+    "debug.panel.production": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Production"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"生产环境"}}}},
+    "debug.panel.reset": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Restore default address"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"恢复默认地址"}}}},
+    "debug.panel.server": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Server presets"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"服务器预设"}}}},
+    "debug.panel.switchHint": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Changing the server will sign you out."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"切换服务器后需要重新登录。"}}}},
+    "debug.panel.title": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Debug Panel"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"调试面板"}}}},
+    "debug.panel.tools": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Tools"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"工具"}}}},
     "debug.http.empty": {
       "extractionState": "stale",
       "localizations": {

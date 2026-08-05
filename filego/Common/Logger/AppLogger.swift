@@ -1,6 +1,6 @@
 import OSLog
 
-enum AppLogger {
+nonisolated enum AppLogger {
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.nbtxy.filego",
         category: "FileGo"

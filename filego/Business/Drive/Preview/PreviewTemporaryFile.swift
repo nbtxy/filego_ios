@@ -6,7 +6,7 @@ import Foundation
 /// 每次下载独占一个 UUID 目录。本类被释放时删除整个父目录，
 /// 由持有它的预览 VC 决定何时结束——避免临时目录泄漏。
 final class PreviewTemporaryFile {
-    static let rootDirectory = FileManager.default.temporaryDirectory
+    nonisolated static let rootDirectory = FileManager.default.temporaryDirectory
         .appendingPathComponent("FileGoPreview", isDirectory: true)
 
     let url: URL

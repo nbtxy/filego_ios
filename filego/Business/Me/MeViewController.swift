@@ -5,7 +5,11 @@ import UIKit
 private nonisolated enum Row: Hashable {
     case account
     case storage
+    case cache
     case trash
+    #if DEBUG
+    case debugPanel
+    #endif
     case signOut
     case failure
 }
@@ -16,16 +20,22 @@ private nonisolated enum Row: Hashable {
 @MainActor
 final class MeViewController: UIViewController {
     private let environment: AppEnvironment
+    private let onNavigate: ((UIViewController) -> Void)?
 
     private var collectionView: UICollectionView!
     private var dataSource: UICollectionViewDiffableDataSource<Int, Row>!
     private let activityIndicator = UIActivityIndicatorView(style: .medium)
 
     private var profile: AccountProfile?
+    private var cacheStatistics = FileCacheManager.Statistics(bytes: 0, fileCount: 0)
     private var loadErrorMessage: String?
 
-    init(environment: AppEnvironment) {
+    init(
+        environment: AppEnvironment,
+        onNavigate: ((UIViewController) -> Void)? = nil
+    ) {
         self.environment = environment
+        self.onNavigate = onNavigate
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -35,19 +45,10 @@ final class MeViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = R.Strings.tabMe.localizedString()
         // 分组列表要有灰底才衬得出白色卡片，这里不用 AppColor.background。
         view.backgroundColor = .systemGroupedBackground
         configureCollectionView()
         configureActivityIndicator()
-        #if DEBUG
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
-            image: UIImage(systemName: "network"),
-            style: .plain,
-            target: self,
-            action: #selector(showHTTPHistory)
-        )
-        #endif
         reload()
     }
 
@@ -122,6 +123,13 @@ final class MeViewController: UIViewController {
             cell.contentConfiguration = content
             cell.accessories = [.disclosureIndicator()]
 
+        case .cache:
+            var content = UIListContentConfiguration.valueCell()
+            content.text = R.Strings.cacheTitle.localizedString()
+            content.secondaryText = ByteFormatting.string(cacheStatistics.bytes)
+            cell.contentConfiguration = content
+            cell.accessories = [.disclosureIndicator()]
+
         case .trash:
             var content = UIListContentConfiguration.valueCell()
             content.text = R.Strings.trashTitle.localizedString()
@@ -130,6 +138,16 @@ final class MeViewController: UIViewController {
             }
             cell.contentConfiguration = content
             cell.accessories = [.disclosureIndicator()]
+
+        #if DEBUG
+        case .debugPanel:
+            var content = UIListContentConfiguration.valueCell()
+            content.image = UIImage(systemName: "ladybug")
+            content.text = R.Strings.debugPanelTitle.localizedString()
+            content.secondaryText = BackendConfig.baseURL.host ?? BackendConfig.baseURL.absoluteString
+            cell.contentConfiguration = content
+            cell.accessories = [.disclosureIndicator()]
+        #endif
 
         case .signOut:
             var content = UIListContentConfiguration.cell()
@@ -154,6 +172,7 @@ final class MeViewController: UIViewController {
     private func reload() {
         activityIndicator.startAnimating()
         Task {
+            async let loadedCacheStatistics = loadCacheStatistics()
             do {
                 profile = try await environment.accountService.loadProfile()
                 loadErrorMessage = nil
@@ -162,24 +181,47 @@ final class MeViewController: UIViewController {
                 profile = nil
                 loadErrorMessage = error.localizedDescription
             }
+            cacheStatistics = await loadedCacheStatistics
             activityIndicator.stopAnimating()
             applySnapshot()
         }
+    }
+
+    private func loadCacheStatistics() async -> FileCacheManager.Statistics {
+        guard let userID = environment.sessionManager.currentUserID else {
+            return .init(bytes: 0, fileCount: 0)
+        }
+        return await FileCacheManager.shared.statistics(
+            userID: userID,
+            baseURL: BackendConfig.baseURL
+        )
+    }
+
+    /// 抽屉每次打开时刷新摘要，覆盖二级页修改账号或清空回收站后的变化。
+    func refresh() {
+        guard isViewLoaded else { return }
+        reload()
     }
 
     private func applySnapshot() {
         var snapshot = NSDiffableDataSourceSnapshot<Int, Row>()
         if profile == nil {
             // 拉取失败时只留错误提示和退出登录，避免点进空白的二级页。
-            snapshot.appendSections([0, 1])
+            snapshot.appendSections([0])
             snapshot.appendItems([.failure], toSection: 0)
-            snapshot.appendItems([.signOut], toSection: 1)
         } else {
-            snapshot.appendSections([0, 1, 2])
-            snapshot.appendItems([.account, .storage], toSection: 0)
+            snapshot.appendSections([0, 1])
+            snapshot.appendItems([.account, .storage, .cache], toSection: 0)
             snapshot.appendItems([.trash], toSection: 1)
-            snapshot.appendItems([.signOut], toSection: 2)
         }
+        #if DEBUG
+        let debugSection = snapshot.sectionIdentifiers.count
+        snapshot.appendSections([debugSection])
+        snapshot.appendItems([.debugPanel], toSection: debugSection)
+        #endif
+        let signOutSection = snapshot.sectionIdentifiers.count
+        snapshot.appendSections([signOutSection])
+        snapshot.appendItems([.signOut], toSection: signOutSection)
         dataSource.applySnapshotUsingReloadData(snapshot)
     }
 
@@ -189,25 +231,34 @@ final class MeViewController: UIViewController {
         switch row {
         case .account:
             guard let profile else { return }
-            navigationController?.pushViewController(
-                AccountDetailViewController(environment: environment, profile: profile),
-                animated: true
+            navigate(
+                AccountDetailViewController(environment: environment, profile: profile)
             )
         case .storage:
             guard let profile else { return }
-            navigationController?.pushViewController(
-                StorageDetailViewController(environment: environment, profile: profile),
-                animated: true
+            navigate(
+                StorageDetailViewController(environment: environment, profile: profile)
             )
+        case .cache:
+            navigate(CacheSettingsViewController(environment: environment))
         case .trash:
-            navigationController?.pushViewController(
-                TrashViewController(environment: environment),
-                animated: true
-            )
+            navigate(TrashViewController(environment: environment))
+        #if DEBUG
+        case .debugPanel:
+            navigate(DebugPanelViewController(environment: environment))
+        #endif
         case .signOut:
             confirmSignOut()
         case .failure:
             reload()
+        }
+    }
+
+    private func navigate(_ viewController: UIViewController) {
+        if let onNavigate {
+            onNavigate(viewController)
+        } else {
+            navigationController?.pushViewController(viewController, animated: true)
         }
     }
 
@@ -233,12 +284,6 @@ final class MeViewController: UIViewController {
         })
         present(alert, animated: true)
     }
-
-    #if DEBUG
-    @objc private func showHTTPHistory() {
-        navigationController?.pushViewController(HTTPHistoryViewController(), animated: true)
-    }
-    #endif
 }
 
 extension MeViewController: UICollectionViewDelegate {

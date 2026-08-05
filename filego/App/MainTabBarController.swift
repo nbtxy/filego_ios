@@ -5,6 +5,7 @@ import UIKit
 final class MainNavigationController: UINavigationController {
     private let environment: AppEnvironment
     private var retainedRouter: Router?
+    var onOpenDrawer: (() -> Void)?
 
     init(environment: AppEnvironment) {
         self.environment = environment
@@ -29,7 +30,8 @@ final class MainNavigationController: UINavigationController {
             router: router,
             folderId: rootId,
             folderName: R.Strings.tabFiles.localizedString(),
-            rootId: rootId
+            rootId: rootId,
+            onShowMe: { [weak self] in self?.onOpenDrawer?() }
         ), animated: false)
     }
 

@@ -78,6 +78,11 @@ actor SessionManager {
         await clearLocalSession()
     }
 
+    /// 后端环境切换时只清本地会话。不能向新地址发送旧环境的 refresh token。
+    func invalidateLocalSession() async {
+        await clearLocalSession()
+    }
+
     // MARK: - 认证请求
 
     /// 带 401 自动刷新重放的请求。业务层统一走这里，不要直接用 NetworkProvider。
@@ -154,12 +159,19 @@ actor SessionManager {
     }
 
     private func clearLocalSession() async {
+        let userID = await MainActor.run {
+            KeyValueStore.shared.globalValue(forKey: Self.userIDKey) as String?
+        }
         await MainActor.run {
             AuthTokenStorage.clear()
             KeyValueStore.shared.setGlobal(Optional<String>.none, forKey: Self.userIDKey)
             KeyValueStore.shared.clearCurrentUser()
         }
         await postNotification(.fileGoSessionDidSignOut)
+        // 先切回登录页，再清理磁盘，避免大缓存让用户感觉“退出登录”卡住。
+        if let userID {
+            await FileCacheManager.shared.removeAll(userID: userID)
+        }
     }
 
     private func postNotification(_ name: Notification.Name) async {

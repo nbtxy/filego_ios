@@ -55,13 +55,13 @@ final class RootViewController: UIViewController {
         let signedIn = environment.sessionManager.isSignedIn
         // 已经是目标形态就不要重建，避免通知重复触发时闪一下
         switch current {
-        case is MainNavigationController where signedIn: return
+        case is DrawerContainerViewController where signedIn: return
         case is LoginViewController where !signedIn: return
         default: break
         }
 
         let next: UIViewController = signedIn
-            ? MainNavigationController(environment: environment)
+            ? DrawerContainerViewController(environment: environment)
             : LoginViewController(environment: environment)
         transition(to: next, animated: animated)
     }
@@ -75,8 +75,8 @@ final class RootViewController: UIViewController {
     private func processPendingIncomingFileIfPossible() {
         guard environment.sessionManager.isSignedIn,
               let url = pendingIncomingURL,
-              let navigationController = current as? MainNavigationController else { return }
-        if navigationController.importExternalFile(at: url) {
+              let drawer = current as? DrawerContainerViewController else { return }
+        if drawer.importExternalFile(at: url) {
             pendingIncomingURL = nil
         } else {
             // 另一个系统面板仍在关闭时保留 URL，稍后再试，不能静默丢掉“打开方式”请求。
@@ -101,7 +101,7 @@ final class RootViewController: UIViewController {
         ])
         next.didMove(toParent: self)
 
-        if next is MainNavigationController {
+        if next is DrawerContainerViewController {
             DispatchQueue.main.async { [weak self] in
                 self?.processPendingIncomingFileIfPossible()
             }
