@@ -77,23 +77,30 @@ final class DriveListViewController: UIViewController {
             )
             navigationItem.leftBarButtonItem?.accessibilityLabel = R.Strings.tabMe.localizedString()
         }
-        navigationItem.rightBarButtonItems = [
-            UIBarButtonItem(
-                image: UIImage(systemName: isGrid ? "list.bullet" : "square.grid.2x2"),
-                style: .plain,
-                target: self,
-                action: #selector(toggleLayout)
-            ),
-            UIBarButtonItem(
-                title: nil,
-                image: UIImage(systemName: "arrow.up.arrow.down"),
-                primaryAction: nil,
-                menu: sortMenu()
-            )
-        ]
+        let displayOptionsButton = UIBarButtonItem(
+            title: nil,
+            image: UIImage(systemName: "slider.horizontal.3"),
+            primaryAction: nil,
+            menu: displayOptionsMenu()
+        )
+        displayOptionsButton.accessibilityLabel = R.Strings.driveDisplayOptions.localizedString()
+        navigationItem.rightBarButtonItem = displayOptionsButton
     }
 
-    private func sortMenu() -> UIMenu {
+    private func displayOptionsMenu() -> UIMenu {
+        let viewActions = [
+            UIAction(
+                title: R.Strings.driveViewList.localizedString(),
+                image: UIImage(systemName: "list.bullet"),
+                state: isGrid ? .off : .on
+            ) { [weak self] _ in self?.changeLayout(isGrid: false) },
+            UIAction(
+                title: R.Strings.driveViewGrid.localizedString(),
+                image: UIImage(systemName: "square.grid.2x2"),
+                state: isGrid ? .on : .off
+            ) { [weak self] _ in self?.changeLayout(isGrid: true) }
+        ]
+
         let choices: [(NodeSort, String)] = [
             (.name, R.Strings.driveSortName.localizedString()),
             (.updated, R.Strings.driveSortDate.localizedString()),
@@ -104,13 +111,37 @@ final class DriveListViewController: UIViewController {
                 self?.changeSort(sort)
             }
         }
-        let orderAction = UIAction(
-            title: viewModel.order == .ascending
-                ? R.Strings.driveOrderDescending.localizedString()
-                : R.Strings.driveOrderAscending.localizedString(),
-            image: UIImage(systemName: "arrow.up.arrow.down")
-        ) { [weak self] _ in self?.toggleOrder() }
-        return UIMenu(children: [UIMenu(options: .displayInline, children: sortActions), orderAction])
+
+        let orderActions = [
+            UIAction(
+                title: R.Strings.driveOrderAscending.localizedString(),
+                image: UIImage(systemName: "arrow.up"),
+                state: viewModel.order == .ascending ? .on : .off
+            ) { [weak self] _ in self?.changeOrder(.ascending) },
+            UIAction(
+                title: R.Strings.driveOrderDescending.localizedString(),
+                image: UIImage(systemName: "arrow.down"),
+                state: viewModel.order == .descending ? .on : .off
+            ) { [weak self] _ in self?.changeOrder(.descending) }
+        ]
+
+        return UIMenu(children: [
+            UIMenu(
+                title: R.Strings.driveView.localizedString(),
+                options: .displayInline,
+                children: viewActions
+            ),
+            UIMenu(
+                title: R.Strings.driveSort.localizedString(),
+                options: .displayInline,
+                children: sortActions
+            ),
+            UIMenu(
+                title: R.Strings.driveOrder.localizedString(),
+                options: .displayInline,
+                children: orderActions
+            )
+        ])
     }
 
     private func configureBreadcrumbs() {
@@ -304,8 +335,9 @@ final class DriveListViewController: UIViewController {
         router.push(MeViewController(environment: environment))
     }
 
-    @objc private func toggleLayout() {
-        isGrid.toggle()
+    private func changeLayout(isGrid: Bool) {
+        guard self.isGrid != isGrid else { return }
+        self.isGrid = isGrid
         collectionView.setCollectionViewLayout(makeLayout(), animated: true)
         configureNavigation()
         collectionView.reloadData()
@@ -317,8 +349,9 @@ final class DriveListViewController: UIViewController {
         reload()
     }
 
-    private func toggleOrder() {
-        viewModel.order = viewModel.order == .ascending ? .descending : .ascending
+    private func changeOrder(_ order: SortOrder) {
+        guard viewModel.order != order else { return }
+        viewModel.order = order
         configureNavigation()
         reload()
     }
