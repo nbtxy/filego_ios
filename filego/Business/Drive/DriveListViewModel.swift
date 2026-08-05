@@ -29,7 +29,11 @@ final class DriveListViewModel {
 
     @discardableResult
     func reload() async throws -> [DriveNode] {
-        guard !isLoading else { return nodes }
+        guard !isLoading else {
+            // TODO: [star] 排查用，定位后删除。命中这里说明本次 reload 被跳过、返回的是旧数据。
+            AppLogger.warning("[star] reload 被 isLoading 跳过，返回旧数据（count=\(nodes.count)）")
+            return nodes
+        }
         isLoading = true
         defer { isLoading = false }
         let loadedPage: NodeListPage = try await session.request(
@@ -72,16 +76,28 @@ final class DriveListViewModel {
     }
 
     func setStarred(_ node: DriveNode, starred: Bool) async throws {
-        let _: DriveNode = try await session.request(
+        let updated: DriveNode = try await session.request(
             NodeAPI.update(id: node.id, name: nil, parentId: nil, starred: starred)
         )
+        // TODO: [star] 排查用，定位后删除。这里只打印，不使用返回值，保持原有行为。
+        AppLogger.info("[star] PATCH resp id=\(updated.id) starred=\(updated.starred)")
         _ = try await reload()
+        let after = nodes.first(where: { $0.id == node.id })
+        AppLogger.info(
+            "[star] after reload id=\(node.id) starred=\(after.map { String($0.starred) } ?? "缺失")"
+        )
     }
 
     func move(_ node: DriveNode, to parentId: String) async throws {
         let _: DriveNode = try await session.request(
             NodeAPI.update(id: node.id, name: nil, parentId: parentId, starred: nil)
         )
+        _ = try await reload()
+    }
+
+    /// 移入回收站。可在回收站还原，30 天后由服务端 Cron 永久删除。
+    func moveToTrash(_ node: DriveNode) async throws {
+        let _: DriveNode = try await session.request(NodeAPI.trash(id: node.id))
         _ = try await reload()
     }
 

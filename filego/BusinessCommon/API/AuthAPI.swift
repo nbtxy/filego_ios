@@ -53,10 +53,31 @@ extension AuthAPI: FileGoTarget {
 /// 账号信息接口。
 enum AccountAPI {
     case me
+    case updateDisplayName(String)
+    /// 注销账号。服务端会硬删该用户的全部数据，不可恢复。
+    case delete
 }
 
 extension AccountAPI: FileGoTarget {
     var path: String { "/me" }
-    var method: Moya.Method { .get }
-    var task: Task { .requestPlain }
+
+    var method: Moya.Method {
+        switch self {
+        case .me: return .get
+        case .updateDisplayName: return .patch
+        case .delete: return .delete
+        }
+    }
+
+    var task: Task {
+        switch self {
+        case .me, .delete:
+            return .requestPlain
+        case let .updateDisplayName(displayName):
+            return .requestParameters(
+                parameters: ["displayName": displayName],
+                encoding: JSONEncoding.default
+            )
+        }
+    }
 }

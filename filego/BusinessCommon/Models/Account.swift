@@ -39,6 +39,19 @@ struct StorageUsage: Decodable {
     /// 在途上传已预留的字节数，见规划 §2.3
     let reservedBytes: Int64
     let availableBytes: Int64
+    /// 按类型的占用明细。旧版服务端可能不返回，缺失时按 0 处理。
+    let breakdown: Breakdown?
+
+    /// 回收站里的文件仍然占配额（见规划 §2），所以这里要能单独展示、引导用户去清空。
+    struct Breakdown: Decodable {
+        let images: Int64
+        let videos: Int64
+        let audio: Int64
+        let documents: Int64
+        let trash: Int64
+    }
+
+    var trashBytes: Int64 { breakdown?.trash ?? 0 }
 
     /// 进度条用。分母为 0 时返回 0，避免除零。
     var usedFraction: Double {
@@ -61,6 +74,7 @@ struct StorageUsage: Decodable {
         quotaBytes: 0,
         usedBytes: 0,
         reservedBytes: 0,
-        availableBytes: 0
+        availableBytes: 0,
+        breakdown: nil
     )
 }

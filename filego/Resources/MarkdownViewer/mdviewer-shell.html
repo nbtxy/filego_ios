@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--
+  script-src 'none' 是刻意为之：marked / DOMPurify / highlight.js / bootstrap 全部通过
+  WKUserScript 注入到 WKContentWorld.defaultClient 隔离世界，不受页面 CSP 约束。
+  因此任何从 md 正文里逃过 DOMPurify 的 <script> 都无法执行。
+  __IMG_SRC__ 由 MarkdownPreviewController 替换为 "data:" 或 "data: https:"。
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; img-src __IMG_SRC__; font-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; object-src 'none'">
+<style>__STYLES__</style>
+<style>
+:root { --mdviewer-accent: __ACCENT_LIGHT__; --mdviewer-base-font: __BASE_FONT_PX__px; }
+@media (prefers-color-scheme: dark) {
+  :root { --mdviewer-accent: __ACCENT_DARK__; }
+}
+</style>
+</head>
+<body>
+<article id="content" class="markdown-body"></article>
+</body>
+</html>

@@ -9,6 +9,8 @@ enum NodeAPI {
     case createFolder(parentId: String, name: String)
     case update(id: String, name: String?, parentId: String?, starred: Bool?)
     case copy(id: String, parentId: String)
+    /// 移入回收站。服务端只写 trashed_at，可还原，30 天后由 Cron 永久删除。
+    case trash(id: String)
 }
 
 extension NodeAPI: FileGoTarget {
@@ -20,6 +22,7 @@ extension NodeAPI: FileGoTarget {
         case let .ancestors(id): return "/nodes/\(id)/ancestors"
         case let .update(id, _, _, _): return "/nodes/\(id)"
         case let .copy(id, _): return "/nodes/\(id)/copy"
+        case let .trash(id): return "/nodes/\(id)"
         }
     }
 
@@ -28,6 +31,7 @@ extension NodeAPI: FileGoTarget {
         case .list, .detail, .ancestors: return .get
         case .createFolder, .copy: return .post
         case .update: return .patch
+        case .trash: return .delete
         }
     }
 
@@ -41,7 +45,7 @@ extension NodeAPI: FileGoTarget {
             ]
             if let cursor { parameters["cursor"] = cursor }
             return .requestParameters(parameters: parameters, encoding: URLEncoding.queryString)
-        case .detail, .ancestors:
+        case .detail, .ancestors, .trash:
             return .requestPlain
         case let .createFolder(parentId, name):
             return .requestParameters(

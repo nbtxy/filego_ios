@@ -1,0 +1,92 @@
+/* FileGo 侧的样式覆盖，加载顺序在 github-markdown-css 与 highlight.js 主题之后。 */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+  overflow-x: hidden;
+  background-color: transparent;
+}
+
+.markdown-body {
+  box-sizing: border-box;
+  padding: 16px;
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+  font-size: var(--mdviewer-base-font);
+  background-color: transparent;
+  /* 超长单词与超长 URL 强制换行，避免 body 横向溢出。 */
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* 用 App 品牌色接管链接色（github-markdown-css 的链接走 --fgColor-accent）。 */
+.markdown-body {
+  --fgColor-accent: var(--mdviewer-accent);
+  --color-accent-fg: var(--mdviewer-accent);
+}
+
+/* 代码块横向滚动限制在自身容器内。github-markdown-css 已给 table 做了同样处理。 */
+.markdown-body pre {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.markdown-body pre code.hljs {
+  padding: 0;
+  background: transparent;
+}
+
+/* 任务列表复选框只读，但保持可见对齐。 */
+.markdown-body input[type="checkbox"] {
+  margin-right: 0.4em;
+  vertical-align: middle;
+}
+
+/* 无法加载的图片（相对路径、被 CSP 拦截的远程图、404）降级为占位块。 */
+.mdviewer-broken-image {
+  display: block;
+  box-sizing: border-box;
+  margin: 8px 0;
+  padding: 12px 14px;
+  border: 1px dashed var(--borderColor-default, #d0d7de);
+  border-radius: 6px;
+  color: var(--fgColor-muted, #59636e);
+  font-size: 0.875em;
+  line-height: 1.5;
+}
+
+.mdviewer-broken-image .mdviewer-broken-image-alt {
+  display: block;
+  color: var(--fgColor-default, #1f2328);
+  word-break: break-all;
+}
+
+.mdviewer-broken-image .mdviewer-broken-image-src {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--fontStack-monospace, ui-monospace, Menlo, monospace);
+  font-size: 0.9em;
+  word-break: break-all;
+}
+
+/* 源码模式：整篇按等宽字体原样展示。 */
+.markdown-body.mdviewer-raw pre {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* github-markdown-css 给 `.markdown-body pre code` 设了 white-space: pre，
+   不在 code 上再覆盖一次的话，源码模式的长行会横向溢出而不是换行。 */
+.markdown-body.mdviewer-raw pre code {
+  font-size: 0.9em;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

@@ -8,7 +8,7 @@ enum FileDownloadService {
     }
 
     @MainActor
-    static func download(node: DriveNode) async throws -> URL {
+    static func download(node: DriveNode) async throws -> PreviewTemporaryFile {
         guard let token = AuthTokenStorage.token else { throw FileGoAPIError.unauthorized }
         let remoteURL = BackendConfig.baseURL
             .appendingPathComponent("nodes")
@@ -24,12 +24,11 @@ enum FileDownloadService {
             throw Failure.invalidResponse
         }
 
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("FileGoPreview", isDirectory: true)
+        let directory = PreviewTemporaryFile.rootDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let destination = directory.appendingPathComponent(node.name)
         try FileManager.default.moveItem(at: temporaryURL, to: destination)
-        return destination
+        return PreviewTemporaryFile(url: destination)
     }
 }

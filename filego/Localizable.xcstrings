@@ -1,6 +1,17 @@
 {
   "sourceLanguage": "zh-Hans",
   "strings": {
+    "account.createdAt": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Joined"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"注册时间"}}}},
+    "account.delete": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Delete account"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"注销账号"}}}},
+    "account.delete.confirm.action": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Delete permanently"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"永久注销"}}}},
+    "account.delete.confirm.message": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"All your files, everything in the trash and your account details will be permanently deleted. This can't be undone."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"你的所有文件、回收站内容与账号信息将被永久删除，且无法恢复。"}}}},
+    "account.delete.confirm.title": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Delete your account?"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"确定要注销账号吗？"}}}},
+    "account.delete.failed": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Couldn't delete your account"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"注销失败"}}}},
+    "account.email": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Email"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"邮箱"}}}},
+    "account.name": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Name"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"名字"}}}},
+    "account.name.edit": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Change name"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"修改名字"}}}},
+    "account.name.placeholder": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Enter your name"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"请输入名字"}}}},
+    "account.title": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Account"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"账号"}}}},
     "app.name": {
       "extractionState": "stale",
       "localizations": {
@@ -37,6 +48,7 @@
     },
     "common.error": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Error"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"出错了"}}}},
     "common.ok": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"OK"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"确定"}}}},
+    "common.save": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Save"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"保存"}}}},
     "drive.add": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Add"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"添加"}}}},
     "drive.copy": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Make a copy"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"创建副本"}}}},
     "drive.empty": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"This folder is empty"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"这个文件夹是空的"}}}},
@@ -61,6 +73,7 @@
     "drive.sortName": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Name"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"名称"}}}},
     "drive.sortSize": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Size"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"大小"}}}},
     "drive.star": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Add to starred"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"添加星标"}}}},
+    "drive.trash": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Move to Trash"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"移到回收站"}}}},
     "drive.unstar": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Remove star"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"取消星标"}}}},
     "debug.http.empty": {
       "extractionState": "stale",
@@ -198,6 +211,7 @@
         }
       }
     },
+    "me.account": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Account"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"账号"}}}},
     "me.counts": {
       "extractionState": "manual",
       "localizations": {
@@ -317,6 +331,44 @@
         }
       }
     },
+    "me.storage.trash": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Trash is using %@ — empty it to free up space"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"回收站占用 %@，清空可释放"}}}},
+    "me.storage.value": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"%@ of %@"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"%@ / %@"}}}},
+    "me.trash.count": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Trash (%d)"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"回收站（%d）"}}}},
+    "preview.markdown.assetsMissing": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"The Markdown renderer failed to load."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"Markdown 渲染组件加载失败"}}}},
+    "preview.markdown.loadRemoteImages": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Load Remote Images"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"载入远程图片"}}}},
+    "preview.markdown.openInQuickLook": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Open in Quick Look"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"用 QuickLook 打开"}}}},
+    "preview.markdown.openLink.confirm": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Open"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"打开"}}}},
+    "preview.markdown.openLink.title": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Open this link?"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"要打开这个链接吗？"}}}},
+    "preview.markdown.openWith": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Open With…"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"用其他应用打开…"}}}},
+    "preview.markdown.tooLarge": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"This file is too large to preview as formatted Markdown."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"文件过大，无法按 Markdown 排版预览"}}}},
+    "preview.markdown.undecodable": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"The text encoding of this file is not supported."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"无法识别这个文件的文字编码"}}}},
+    "preview.markdown.viewRendered": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"View Rendered"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"查看预览"}}}},
+    "preview.markdown.viewSource": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"View Source"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"查看源码"}}}},
+    "storage.available": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"%@ available"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"可用 %@"}}}},
+    "storage.category.audio": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Audio"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"音频"}}}},
+    "storage.category.documents": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Documents"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"文档"}}}},
+    "storage.category.images": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Photos"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"图片"}}}},
+    "storage.category.reserved": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Uploading"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"上传中"}}}},
+    "storage.category.trash": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Trash"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"回收站"}}}},
+    "storage.category.videos": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Videos"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"视频"}}}},
+    "storage.counts.files": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Files"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"文件"}}}},
+    "storage.counts.folders": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Folders"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"文件夹"}}}},
+    "storage.counts.title": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Items"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"项目数"}}}},
+    "storage.counts.trashed": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Items in trash"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"回收站项目"}}}},
+    "storage.detail.title": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Details"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"存储明细"}}}},
+    "storage.overview.title": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Overview"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"总览"}}}},
+    "storage.title": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Storage"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"存储空间"}}}},
+    "storage.used": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"%@ of %@ used"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"已使用 %@ / %@"}}}},
+    "trash.daysLeft": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Deletes in %d days"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"还有 %d 天自动删除"}}}},
+    "trash.deleteConfirm": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Permanently delete “%@”? This cannot be undone."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"永久删除「%@」？此操作无法撤销。"}}}},
+    "trash.deleteForever": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Delete forever"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"永久删除"}}}},
+    "trash.empty": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Trash is empty"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"回收站是空的"}}}},
+    "trash.emptyAll": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Empty"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"清空"}}}},
+    "trash.emptyAllConfirm": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Permanently delete everything in Trash? This cannot be undone."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"永久删除回收站里的全部项目？此操作无法撤销。"}}}},
+    "trash.expiringSoon": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Deletes soon"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"即将自动删除"}}}},
+    "trash.notice": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Items in Trash are permanently deleted after 30 days. They still count toward your storage until then."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"回收站中的项目 30 天后自动永久删除。在此之前仍然占用存储空间。"}}}},
+    "trash.restore": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Restore"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"还原"}}}},
+    "trash.title": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Trash"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"回收站"}}}},
     "tab.files": {
       "extractionState": "manual",
       "localizations": {

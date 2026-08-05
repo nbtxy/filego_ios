@@ -101,7 +101,35 @@ final class DriveNodeCell: UICollectionViewCell {
         moreButton.menu = nil
     }
 
-    func configure(with node: DriveNode, menu: UIMenu, grid: Bool) {
+    // TODO: [star] 排查用，定位后删除。用来看 configure 设完之后，
+    // 到真正布局时 isHidden / alpha 有没有被别人改回去。
+    private var debugNodeID = ""
+    private var debugWantsStar = false
+
+    /// 供 applySnapshot 完成回调枚举 visibleCells 时读取真实上屏状态。
+    var debugStarState: String {
+        let id = debugNodeID.isEmpty ? "?" : String(debugNodeID.prefix(6))
+        let flag = starView.isHidden == debugWantsStar ? "⚠️" : ""
+        return "\(id)want=\(debugWantsStar ? 1 : 0)hidden=\(starView.isHidden ? 1 : 0)"
+            + "a=\(starView.alpha)w=\(Int(starView.frame.width))"
+            + "c=\(UInt(bitPattern: ObjectIdentifier(self).hashValue) % 10000)\(flag)"
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        guard !debugNodeID.isEmpty else { return }
+        let mismatch = starView.isHidden == debugWantsStar
+        AppLogger.info(
+            "[star] layoutSubviews id=\(debugNodeID) wantStar=\(debugWantsStar)"
+            + " isHidden=\(starView.isHidden) alpha=\(starView.alpha)"
+            + " frame=\(NSCoder.string(for: starView.frame))"
+            + " stackHidden=\(starView.superview?.isHidden ?? false)"
+            + (mismatch ? " ⚠️不一致" : "")
+        )
+    }
+
+    /// `detailOverride` 用于回收站：副标题换成「还有 N 天自动删除」，比文件尺寸更有用。
+    func configure(with node: DriveNode, menu: UIMenu, grid: Bool, detailOverride: String? = nil) {
         iconView.image = UIImage(
             systemName: symbol(for: node),
             withConfiguration: UIImage.SymbolConfiguration(pointSize: 16, weight: .regular)
@@ -109,7 +137,17 @@ final class DriveNodeCell: UICollectionViewCell {
         iconView.tintColor = node.isFolder ? AppColor.accent : AppColor.textSecondary
         nameLabel.text = node.name
         starView.isHidden = !node.starred
-        if node.isFolder {
+        // TODO: [star] 排查用，定位后删除
+        debugNodeID = node.id
+        debugWantsStar = node.starred
+        AppLogger.info(
+            "[star] cell.configure id=\(node.id) name=\(node.name) starred=\(node.starred)"
+            + " → isHidden=\(starView.isHidden) cell=\(UInt(bitPattern: ObjectIdentifier(self).hashValue) % 10000)"
+            + " window=\(window != nil)"
+        )
+        if let detailOverride {
+            detailLabel.text = detailOverride
+        } else if node.isFolder {
             detailLabel.text = R.Strings.driveFolder.localizedString()
         } else {
             let size = ByteCountFormatter.string(fromByteCount: node.size, countStyle: .file)
@@ -127,15 +165,6 @@ final class DriveNodeCell: UICollectionViewCell {
     }
 
     private func symbol(for node: DriveNode) -> String {
-        guard !node.isFolder else { return "folder.fill" }
-        switch URL(fileURLWithPath: node.name).pathExtension.lowercased() {
-        case "jpg", "jpeg", "png", "gif", "heic", "webp": return "photo"
-        case "mp3", "m4a", "wav", "aac", "flac": return "music.note"
-        case "mp4", "mov", "m4v", "avi", "mkv": return "film"
-        case "pdf": return "doc.richtext"
-        case "md", "markdown", "txt", "rtf": return "doc.text"
-        case "zip", "rar", "7z", "tar", "gz": return "archivebox"
-        default: return "doc"
-        }
+        FileKind(node: node).symbolName
     }
 }

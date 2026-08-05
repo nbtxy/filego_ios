@@ -22,6 +22,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         SessionManager.bootstrap()
         environment = AppEnvironment()
         _ = AppLifecycleObserver.shared
+        PreviewTemporaryFile.purgeOrphans()
         return true
     }
 

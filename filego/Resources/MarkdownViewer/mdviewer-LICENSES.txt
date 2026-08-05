@@ -1,0 +1,33 @@
+本目录内的第三方资源均为 vendored（直接签入仓库），来源与许可证如下。
+升级时请从 npm 重新取包并保持 mdviewer- 前缀命名。
+
+--------------------------------------------------------------------------
+mdviewer-marked.min.js
+  marked 12.0.2 — https://github.com/markedjs/marked
+  MIT License, Copyright (c) 2018+ MarkedJS / 2011-2018 Christopher Jeffrey
+  npm: marked@12
+
+--------------------------------------------------------------------------
+mdviewer-purify.min.js
+  DOMPurify 3.x — https://github.com/cure53/DOMPurify
+  Apache-2.0 OR MPL-2.0, Copyright (c) Mario Heiderich
+  npm: dompurify@3  (dist/purify.min.js)
+
+--------------------------------------------------------------------------
+mdviewer-highlight.min.js
+  highlight.js 11.11.1 (common 语言子集浏览器构建)
+  https://github.com/highlightjs/highlight.js
+  BSD-3-Clause, Copyright (c) 2006, Ivan Sagalaev
+  npm: @highlightjs/cdn-assets@11  (highlight.min.js)
+
+--------------------------------------------------------------------------
+mdviewer-highlight.css
+  由 @highlightjs/cdn-assets 的 styles/github.min.css 与 styles/github-dark.min.css
+  拼接而成，后者包在 @media (prefers-color-scheme: dark) 里。
+  BSD-3-Clause，同上。
+
+--------------------------------------------------------------------------
+mdviewer-github-markdown.css
+  github-markdown-css 5.9.0 — https://github.com/sindresorhus/github-markdown-css
+  MIT License, Copyright (c) Sindre Sorhus
+  npm: github-markdown-css@5  (github-markdown.css，自带亮/暗双主题)

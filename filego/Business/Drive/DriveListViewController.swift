@@ -254,8 +254,34 @@ final class DriveListViewController: UIViewController {
     private func applySnapshot() {
         var snapshot = NSDiffableDataSourceSnapshot<String, String>()
         snapshot.appendSections(["main"])
-        snapshot.appendItems(viewModel.nodes.map(\.id))
-        dataSource.apply(snapshot, animatingDifferences: true)
+        let ids = viewModel.nodes.map(\.id)
+        snapshot.appendItems(ids)
+        // id 不变但内容变了（加星、重命名）时 diff 为空，需显式 reconfigure 才会重建 cell。
+        let previousIDs = dataSource.snapshot().itemIdentifiers
+        let existing = Set(previousIDs)
+        let reconfigured = ids.filter(existing.contains)
+        // 纯内容更新（加星、重命名）时不能开动画：apply 的交叉淡入会在 cell 上留下一张旧内容的
+        // 快照，即使 starView 已经 isHidden，旧快照里的星号仍然盖在上面，直到 cell 被重建
+        // （切换列表/宫格触发 reloadData）才消失。只有增删移这类结构变化才需要动画。
+        let isStructuralChange = previousIDs != ids
+        // TODO: [star] 排查用，定位后删除
+        AppLogger.info(
+            "[star] applySnapshot old=\(existing.count) new=\(ids.count)"
+            + " reconfigure=\(reconfigured.count) animate=\(isStructuralChange)"
+        )
+        snapshot.reconfigureItems(reconfigured)
+        // TODO: [star] 排查用，定位后删除。动画结束后回读真实上屏状态：
+        // visibleCells 的条数、每个 cell 期望值 vs 实际 isHidden，⚠️ 表示对不上。
+        dataSource.apply(snapshot, animatingDifferences: isStructuralChange) { [weak self] in
+            guard let self else { return }
+            let dump = collectionView.visibleCells
+                .compactMap { $0 as? DriveNodeCell }
+                .map(\.debugStarState)
+                .joined(separator: " | ")
+            AppLogger.info(
+                "[star] afterApply visible=\(collectionView.visibleCells.count) \(dump)"
+            )
+        }
         emptyLabel.isHidden = !viewModel.nodes.isEmpty
         breadcrumbBar.configure(nodes: viewModel.ancestors)
     }
@@ -441,12 +467,12 @@ final class DriveListViewController: UIViewController {
         collectionView.isUserInteractionEnabled = false
         openFileTask = Task { [weak self] in
             do {
-                let url = try await FileDownloadService.download(node: node)
+                let file = try await FileDownloadService.download(node: node)
                 guard !Task.isCancelled else {
-                    try? FileManager.default.removeItem(at: url.deletingLastPathComponent())
+                    file.discard()
                     return
                 }
-                self?.router.push(FilePreviewController(fileURL: url))
+                self?.router.push(PreviewCoordinator.makeViewController(for: node, file: file))
             } catch is CancellationError {
                 // 页面销毁或用户发起了另一次打开，不展示错误。
             } catch {
@@ -483,10 +509,31 @@ final class DriveListViewController: UIViewController {
                 title: R.Strings.driveCopy.localizedString(), image: UIImage(systemName: "doc.on.doc")
             ) { [weak self] _ in self?.pickFolder(for: node, copy: true) })
         }
-        return UIMenu(children: children)
+        // 移入回收站是可还原的，不做二次确认。
+        let trash = UIAction(
+            title: R.Strings.driveTrash.localizedString(),
+            image: UIImage(systemName: "trash"),
+            attributes: .destructive
+        ) { [weak self] _ in self?.moveToTrash(node) }
+        return UIMenu(children: [
+            UIMenu(options: .displayInline, children: children),
+            UIMenu(options: .displayInline, children: [trash])
+        ])
+    }
+
+    private func moveToTrash(_ node: DriveNode) {
+        Task {
+            do { try await viewModel.moveToTrash(node); applySnapshot() }
+            catch { showError(error) }
+        }
     }
 
     private func setStar(_ node: DriveNode, starred: Bool) {
+        // TODO: [star] 排查用，定位后删除。menuStarred 是菜单闭包捕获的旧值，
+        // 若它和界面上显示的菜单标题对不上，说明 cell 没被重建。
+        AppLogger.info(
+            "[star] setStar id=\(node.id) name=\(node.name) menuStarred=\(node.starred) → send starred=\(starred)"
+        )
         Task {
             do { try await viewModel.setStarred(node, starred: starred); applySnapshot() }
             catch { showError(error) }
