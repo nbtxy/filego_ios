@@ -4,6 +4,7 @@ import Moya
 
 enum NodeAPI {
     case list(parentId: String, sort: NodeSort, order: SortOrder, cursor: String?)
+    case search(parentId: String, query: String)
     case detail(id: String)
     case ancestors(id: String)
     case createFolder(parentId: String, name: String)
@@ -17,6 +18,7 @@ extension NodeAPI: FileGoTarget {
     var path: String {
         switch self {
         case .list: return "/nodes"
+        case .search: return "/search"
         case .createFolder: return "/nodes/folder"
         case let .detail(id): return "/nodes/\(id)"
         case let .ancestors(id): return "/nodes/\(id)/ancestors"
@@ -28,7 +30,7 @@ extension NodeAPI: FileGoTarget {
 
     var method: Moya.Method {
         switch self {
-        case .list, .detail, .ancestors: return .get
+        case .list, .search, .detail, .ancestors: return .get
         case .createFolder, .copy: return .post
         case .update: return .patch
         case .trash: return .delete
@@ -45,6 +47,11 @@ extension NodeAPI: FileGoTarget {
             ]
             if let cursor { parameters["cursor"] = cursor }
             return .requestParameters(parameters: parameters, encoding: URLEncoding.queryString)
+        case let .search(parentId, query):
+            return .requestParameters(
+                parameters: ["parent_id": parentId, "q": query, "limit": 200],
+                encoding: URLEncoding.queryString
+            )
         case .detail, .ancestors, .trash:
             return .requestPlain
         case let .createFolder(parentId, name):

@@ -6,11 +6,13 @@ enum FileUploadService {
     enum Failure: Error, LocalizedError {
         case cannotReadFile
         case invalidResponse
+        case directUploadUnavailable
 
         var errorDescription: String? {
             switch self {
             case .cannotReadFile: return "无法读取所选文件"
             case .invalidResponse: return "服务器未确认文件上传"
+            case .directUploadUnavailable: return "服务端未开启对象存储直传，无法上传大文件"
             }
         }
     }
@@ -20,7 +22,7 @@ enum FileUploadService {
         fileURL: URL,
         parentId: String,
         session: SessionManager,
-        onProgress: @escaping @MainActor (Double) -> Void
+        onProgress: @escaping @MainActor @Sendable (Double) -> Void
     ) async throws -> DriveNode {
         let accessing = fileURL.startAccessingSecurityScopedResource()
         defer { if accessing { fileURL.stopAccessingSecurityScopedResource() } }
@@ -44,28 +46,32 @@ enum FileUploadService {
         guard let sessionId = initialized.sessionId else { throw Failure.invalidResponse }
 
         do {
-            guard let token = AuthTokenStorage.token else { throw FileGoAPIError.unauthorized }
-            let url = initialized.uploadUrl.flatMap(URL.init(string:))
-                ?? BackendConfig.baseURL
-                    .appendingPathComponent("uploads")
-                    .appendingPathComponent(sessionId)
-                    .appendingPathComponent("content")
-            var request = URLRequest(url: url)
-            request.httpMethod = "PUT"
-            if initialized.uploadUrl == nil {
-                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            }
-            request.setValue(mime, forHTTPHeaderField: "Content-Type")
-            request.setValue(String(metadata.size), forHTTPHeaderField: "Content-Length")
-
-            let delegate = UploadProgressDelegate(onProgress: onProgress)
-            let (_, response) = try await URLSession.shared.upload(
-                for: request,
-                fromFile: fileURL,
-                delegate: delegate
-            )
-            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-                throw Failure.invalidResponse
+            if initialized.mode == "multipart" {
+                // ≥5 MiB 走分片：服务端已经建好 R2 multipart，整文件 PUT 到 /content
+                // 会被拒（而且会写坏那个会话），必须逐片直传。
+                guard let chunkSize = initialized.chunkSize, chunkSize > 0 else {
+                    throw Failure.invalidResponse
+                }
+                let tracker = UploadProgressTracker(totalBytes: metadata.size, report: onProgress)
+                let uploader = try MultipartUploader(
+                    fileURL: fileURL,
+                    sessionId: sessionId,
+                    totalSize: metadata.size,
+                    chunkSize: chunkSize,
+                    initialParts: initialized.parts ?? [],
+                    session: session,
+                    tracker: tracker
+                )
+                try await uploader.run()
+            } else {
+                try await uploadWholeFile(
+                    fileURL: fileURL,
+                    sessionId: sessionId,
+                    uploadUrl: initialized.uploadUrl,
+                    size: metadata.size,
+                    mime: mime,
+                    onProgress: onProgress
+                )
             }
             onProgress(1)
             let completed: UploadCompleteResponse = try await session.request(
@@ -77,6 +83,43 @@ enum FileUploadService {
                 UploadAPI.abort(sessionId: sessionId)
             )
             throw error
+        }
+    }
+
+    /// single 模式（<5 MiB）：一次 PUT 传完。有预签名就直传 R2，没有就经 Worker
+    /// 中转——这点大小对 Worker 没压力，而且本地开发没配 R2 密钥时只有这条路能走。
+    @MainActor
+    private static func uploadWholeFile(
+        fileURL: URL,
+        sessionId: String,
+        uploadUrl: String?,
+        size: Int64,
+        mime: String,
+        onProgress: @escaping @MainActor @Sendable (Double) -> Void
+    ) async throws {
+        guard let token = AuthTokenStorage.token else { throw FileGoAPIError.unauthorized }
+        let url = uploadUrl.flatMap(URL.init(string:))
+            ?? BackendConfig.baseURL
+                .appendingPathComponent("uploads")
+                .appendingPathComponent(sessionId)
+                .appendingPathComponent("content")
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        // 预签名 URL 走 query 签名，多带一个 Authorization 头会让 R2 改走 header 校验并 403
+        if uploadUrl == nil {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.setValue(mime, forHTTPHeaderField: "Content-Type")
+        request.setValue(String(size), forHTTPHeaderField: "Content-Length")
+
+        let delegate = UploadProgressDelegate(onProgress: onProgress)
+        let (_, response) = try await URLSession.shared.upload(
+            for: request,
+            fromFile: fileURL,
+            delegate: delegate
+        )
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw Failure.invalidResponse
         }
     }
 

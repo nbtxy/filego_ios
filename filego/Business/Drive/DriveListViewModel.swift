@@ -61,6 +61,13 @@ final class DriveListViewModel {
         return true
     }
 
+    func searchRecursively(query: String) async throws -> [DriveNode] {
+        let result: NodeSearchResult = try await session.request(
+            NodeAPI.search(parentId: folderId, query: query)
+        )
+        return result.nodes
+    }
+
     func createFolder(name: String) async throws {
         let _: DriveNode = try await session.request(
             NodeAPI.createFolder(parentId: folderId, name: name)

@@ -50,6 +50,10 @@ struct NodeListPage: Decodable {
     let nextCursor: String?
 }
 
+struct NodeSearchResult: Decodable {
+    let nodes: [DriveNode]
+}
+
 struct NodeAncestors: Decodable {
     let nodes: [DriveNode]
 }

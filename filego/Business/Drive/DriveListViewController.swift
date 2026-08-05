@@ -17,8 +17,27 @@ final class DriveListViewController: UIViewController {
     private var collectionView: UICollectionView!
     private var dataSource: UICollectionViewDiffableDataSource<String, String>!
     private var openFileTask: Task<Void, Never>?
+    private var searchTask: Task<Void, Never>?
+    private var isSearching = false
+    private var isSearchLoading = false
+    private var searchQuery = ""
+    private var searchResults: [DriveNode] = []
+    private lazy var searchBar: UISearchBar = {
+        let searchBar = UISearchBar()
+        searchBar.delegate = self
+        searchBar.placeholder = R.Strings.driveSearchPlaceholder.localizedString()
+        searchBar.searchBarStyle = .minimal
+        searchBar.showsCancelButton = true
+        return searchBar
+    }()
     private var isGrid: Bool {
         didSet { environment.keyValueStore.set(isGrid, forKey: "drive.grid") }
+    }
+
+    private var visibleNodes: [DriveNode] {
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return viewModel.nodes }
+        return searchResults
     }
 
     init(
@@ -46,6 +65,7 @@ final class DriveListViewController: UIViewController {
 
     deinit {
         openFileTask?.cancel()
+        searchTask?.cancel()
     }
 
     override func viewDidLoad() {
@@ -68,6 +88,16 @@ final class DriveListViewController: UIViewController {
         navigationItem.scrollEdgeAppearance = appearance
         navigationItem.compactAppearance = appearance
 
+        if isSearching {
+            navigationItem.hidesBackButton = true
+            navigationItem.leftBarButtonItem = nil
+            navigationItem.rightBarButtonItems = nil
+            navigationItem.titleView = searchBar
+            return
+        }
+
+        navigationItem.hidesBackButton = false
+        navigationItem.titleView = nil
         if folderId == rootId {
             navigationItem.leftBarButtonItem = UIBarButtonItem(
                 image: UIImage(systemName: "person.crop.circle"),
@@ -84,7 +114,14 @@ final class DriveListViewController: UIViewController {
             menu: displayOptionsMenu()
         )
         displayOptionsButton.accessibilityLabel = R.Strings.driveDisplayOptions.localizedString()
-        navigationItem.rightBarButtonItem = displayOptionsButton
+        let searchButton = UIBarButtonItem(
+            image: UIImage(systemName: "magnifyingglass"),
+            style: .plain,
+            target: self,
+            action: #selector(showSearch)
+        )
+        searchButton.accessibilityLabel = R.Strings.driveSearch.localizedString()
+        navigationItem.rightBarButtonItems = [displayOptionsButton, searchButton]
     }
 
     private func displayOptionsMenu() -> UIMenu {
@@ -189,7 +226,7 @@ final class DriveListViewController: UIViewController {
             collectionView: collectionView
         ) { [weak self] collectionView, indexPath, id in
             guard let self,
-                  let node = viewModel.nodes.first(where: { $0.id == id }),
+                  let node = visibleNodes.first(where: { $0.id == id }),
                   let cell = collectionView.dequeueReusableCell(
                     withReuseIdentifier: "node", for: indexPath
                   ) as? DriveNodeCell else { return nil }
@@ -285,7 +322,8 @@ final class DriveListViewController: UIViewController {
     private func applySnapshot() {
         var snapshot = NSDiffableDataSourceSnapshot<String, String>()
         snapshot.appendSections(["main"])
-        let ids = viewModel.nodes.map(\.id)
+        let nodes = visibleNodes
+        let ids = nodes.map(\.id)
         snapshot.appendItems(ids)
         // id 不变但内容变了（加星、重命名）时 diff 为空，需显式 reconfigure 才会重建 cell。
         let previousIDs = dataSource.snapshot().itemIdentifiers
@@ -313,7 +351,10 @@ final class DriveListViewController: UIViewController {
                 "[star] afterApply visible=\(collectionView.visibleCells.count) \(dump)"
             )
         }
-        emptyLabel.isHidden = !viewModel.nodes.isEmpty
+        emptyLabel.text = searchQuery.isEmpty
+            ? R.Strings.driveEmpty.localizedString()
+            : R.Strings.driveSearchEmpty.localizedString()
+        emptyLabel.isHidden = isSearchLoading || !nodes.isEmpty
         breadcrumbBar.configure(nodes: viewModel.ancestors)
     }
 
@@ -333,6 +374,61 @@ final class DriveListViewController: UIViewController {
 
     @objc private func showMe() {
         router.push(MeViewController(environment: environment))
+    }
+
+    @objc private func showSearch() {
+        isSearching = true
+        addFolderButton.isHidden = true
+        configureNavigation()
+        DispatchQueue.main.async { [weak self] in
+            self?.searchBar.becomeFirstResponder()
+        }
+    }
+
+    private func dismissSearch() {
+        searchTask?.cancel()
+        searchBar.resignFirstResponder()
+        searchBar.text = nil
+        searchQuery = ""
+        searchResults = []
+        isSearchLoading = false
+        isSearching = false
+        addFolderButton.isHidden = false
+        configureNavigation()
+        applySnapshot()
+    }
+
+    private func scheduleSearch(for text: String) {
+        searchTask?.cancel()
+        let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        searchQuery = query
+        searchResults = []
+        guard !query.isEmpty else {
+            isSearchLoading = false
+            applySnapshot()
+            return
+        }
+
+        isSearchLoading = true
+        applySnapshot()
+        searchTask = Task { [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: 300_000_000)
+                guard let self, !Task.isCancelled else { return }
+                let nodes = try await viewModel.searchRecursively(query: query)
+                guard !Task.isCancelled, searchQuery == query else { return }
+                searchResults = nodes
+                isSearchLoading = false
+                applySnapshot()
+            } catch is CancellationError {
+                // 用户仍在输入或已退出搜索，无需展示错误。
+            } catch {
+                guard let self, searchQuery == query else { return }
+                isSearchLoading = false
+                applySnapshot()
+                showError(error)
+            }
+        }
     }
 
     private func changeLayout(isGrid: Bool) {
@@ -628,16 +724,32 @@ final class DriveListViewController: UIViewController {
 extension DriveListViewController: UICollectionViewDelegate {
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         collectionView.deselectItem(at: indexPath, animated: true)
-        guard viewModel.nodes.indices.contains(indexPath.item) else { return }
-        open(viewModel.nodes[indexPath.item])
+        guard let id = dataSource.itemIdentifier(for: indexPath),
+              let node = visibleNodes.first(where: { $0.id == id }) else { return }
+        open(node)
     }
 
     func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+        guard searchQuery.isEmpty else { return }
         Task {
             do {
                 if try await viewModel.loadNextPageIfNeeded(near: indexPath.item) { applySnapshot() }
             } catch { showError(error) }
         }
+    }
+}
+
+extension DriveListViewController: UISearchBarDelegate {
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        scheduleSearch(for: searchText)
+    }
+
+    func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
+        dismissSearch()
+    }
+
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.resignFirstResponder()
     }
 }
 
