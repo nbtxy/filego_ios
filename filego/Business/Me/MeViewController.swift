@@ -3,6 +3,7 @@ import UIKit
 /// diffable 的条目标识必须是 Sendable。本模块 `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`，
 /// 不显式写 `nonisolated` 的话 Hashable conformance 会带上主线程隔离，泛型约束就对不上。
 private nonisolated enum Row: Hashable {
+    case pro
     case account
     case storage
     case cache
@@ -104,6 +105,23 @@ final class MeViewController: UIViewController {
 
     private func configure(_ cell: UICollectionViewListCell, for row: Row) {
         switch row {
+        case .pro:
+            var content = UIListContentConfiguration.valueCell()
+            content.image = UIImage(systemName: "crown.fill")
+            content.imageProperties.tintColor = AppColor.accent
+            let plan = profile?.plan
+            if plan?.isPro == true {
+                content.text = R.Strings.proEntryActive.localizedString()
+                content.secondaryText = plan?.expiresAt.map {
+                    R.Strings.proEntryExpires.formatted(Self.dateFormatter.string(from: $0))
+                }
+            } else {
+                content.text = R.Strings.proEntryUpgrade.localizedString()
+                content.secondaryText = R.Strings.proEntryFree.localizedString()
+            }
+            cell.contentConfiguration = content
+            cell.accessories = [.disclosureIndicator()]
+
         case .account:
             var content = UIListContentConfiguration.valueCell()
             content.text = R.Strings.meAccount.localizedString()
@@ -182,6 +200,8 @@ final class MeViewController: UIViewController {
                 loadErrorMessage = error.localizedDescription
             }
             cacheStatistics = await loadedCacheStatistics
+            // 上传前的本地预检要用最新的用量快照，见 StorageSnapshotStore。
+            environment.storageSnapshot.update(profile?.storage)
             activityIndicator.stopAnimating()
             applySnapshot()
         }
@@ -210,9 +230,11 @@ final class MeViewController: UIViewController {
             snapshot.appendSections([0])
             snapshot.appendItems([.failure], toSection: 0)
         } else {
-            snapshot.appendSections([0, 1])
-            snapshot.appendItems([.account, .storage, .cache], toSection: 0)
-            snapshot.appendItems([.trash], toSection: 1)
+            // Pro 独占第一节：insetGrouped 下自然渲染成顶部单独一张卡。
+            snapshot.appendSections([0, 1, 2])
+            snapshot.appendItems([.pro], toSection: 0)
+            snapshot.appendItems([.account, .storage, .cache], toSection: 1)
+            snapshot.appendItems([.trash], toSection: 2)
         }
         #if DEBUG
         let debugSection = snapshot.sectionIdentifiers.count
@@ -229,6 +251,8 @@ final class MeViewController: UIViewController {
 
     private func didSelect(_ row: Row) {
         switch row {
+        case .pro:
+            navigate(ProUpgradeViewController(environment: environment))
         case .account:
             guard let profile else { return }
             navigate(
@@ -284,6 +308,13 @@ final class MeViewController: UIViewController {
         })
         present(alert, animated: true)
     }
+
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter
+    }()
 }
 
 extension MeViewController: UICollectionViewDelegate {

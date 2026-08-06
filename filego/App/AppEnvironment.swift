@@ -8,35 +8,41 @@ final class AppEnvironment {
     let networkProvider: NetworkProvider
     let sessionManager: SessionManager
     let accountService: AccountService
+    let billingService: BillingService
+    let storeKitService: StoreKitService
+    let storageSnapshot: StorageSnapshotStore
 
-    init() {
-        let services = ServiceContainer.shared
-        let keyValueStore = KeyValueStore.shared
-        let networkProvider = NetworkProvider()
-        let sessionManager = SessionManager(networkProvider: networkProvider)
-
-        self.services = services
-        self.keyValueStore = keyValueStore
-        self.networkProvider = networkProvider
-        self.sessionManager = sessionManager
-        self.accountService = AccountService(session: sessionManager)
-
-        services.register(networkProvider, as: NetworkProvider.self)
-        services.register(sessionManager, as: SessionManager.self)
+    convenience init() {
+        self.init(
+            services: ServiceContainer.shared,
+            keyValueStore: KeyValueStore.shared,
+            networkProvider: NetworkProvider()
+        )
     }
 
+    /// 唯一的真实构造路径。
+    ///
+    /// 以前这里有两个逐字重复的 initializer，加依赖时改一个漏一个就会在用到另一个的
+    /// 地方崩——现在无参那个走 convenience 转发过来，只有这一处需要维护。
     init(
         services: ServiceContainer,
         keyValueStore: KeyValueStore,
         networkProvider: NetworkProvider
     ) {
         let sessionManager = SessionManager(networkProvider: networkProvider)
+        let billingService = BillingService(session: sessionManager)
 
         self.services = services
         self.keyValueStore = keyValueStore
         self.networkProvider = networkProvider
         self.sessionManager = sessionManager
         self.accountService = AccountService(session: sessionManager)
+        self.billingService = billingService
+        self.storeKitService = StoreKitService(
+            billing: billingService,
+            session: sessionManager
+        )
+        self.storageSnapshot = StorageSnapshotStore()
 
         services.register(networkProvider, as: NetworkProvider.self)
         services.register(sessionManager, as: SessionManager.self)

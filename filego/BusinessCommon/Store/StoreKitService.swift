@@ -1,0 +1,237 @@
+import Foundation
+import StoreKit
+
+/// StoreKit 2 集成：加载商品、购买、恢复购买、把交易上报给服务端核验。
+///
+/// 与服务端的分工：本类只负责「和 StoreKit / 后端打交道」，**不自己判定权益**。
+/// 是不是 Pro 一律以服务端 `/billing/status` 为准——本地 `Transaction` 只能证明
+/// 「Apple 那边有这笔交易」，证明不了「这笔交易属于当前 FileGo 账号」。
+@MainActor
+final class StoreKitService {
+    enum ProductID {
+        /// 与服务端 src/lib/plans.ts 的 PRO_PRODUCT_ID 保持一致。
+        static let proMonthly = "com.nbtxy.filego.pro.monthly"
+        static let all: [String] = [proMonthly]
+    }
+
+    enum PurchaseOutcome {
+        case success
+        case userCancelled
+        /// 等家长批准 / 银行确认。交易稍后会从 `Transaction.updates` 进来。
+        case pending
+        case failed(String)
+    }
+
+    private(set) var products: [Product] = []
+    private(set) var isLoadingProducts = false
+
+    /// 最近一次已知的服务端档位。购买 / 恢复后刷新，供「我的」页与付费墙展示。
+    private(set) var status: BillingStatus = .free
+
+    private let billing: BillingService
+    private let session: SessionManager
+    private var updatesTask: Task<Void, Never>?
+
+    init(billing: BillingService, session: SessionManager) {
+        self.billing = billing
+        self.session = session
+    }
+
+    var proProduct: Product? { products.first { $0.id == ProductID.proMonthly } }
+
+    // MARK: - 生命周期
+
+    /// App 启动 / 登录后调用：启监听器 + 拉商品 + 用现有 entitlements 校准一次。
+    ///
+    /// 监听器要**先**启动：`Transaction.updates` 会补投所有未 finish 的交易，
+    /// 包括上次因为断网没能上报成功的那些。晚启动就等于晚补偿。
+    func bootstrap() async {
+        startObservingTransactions()
+        async let productsLoaded: Void = loadProducts()
+        async let synced: Void = syncCurrentEntitlements()
+        _ = await (productsLoaded, synced)
+        await refreshStatus()
+    }
+
+    /// 登出时必须调用。
+    ///
+    /// 不调的话 `Transaction.updates` 任务会跨账号泄漏——A 退出、B 登录的窗口里，
+    /// A 的 Apple 事件会带着 B 的令牌上报，把 A 的订阅绑到 B 头上。
+    /// `products` 也要清：它是 A 当时按 A 的地区拉的，币种可能与新账号不一致。
+    func shutdown() {
+        updatesTask?.cancel()
+        updatesTask = nil
+        products = []
+        status = .free
+    }
+
+    func loadProducts() async {
+        guard products.isEmpty else { return }
+        isLoadingProducts = true
+        defer { isLoadingProducts = false }
+        do {
+            products = try await Product.products(for: ProductID.all)
+            if products.isEmpty {
+                // 最常见的原因是 Paid Applications Agreement 没生效，
+                // 其次是商品还没过审 / 当前地区不售卖。付费墙要据此给出提示而不是白屏。
+                AppLogger.warning("内购商品为空——检查 Paid Applications Agreement 与商品状态")
+            }
+        } catch {
+            AppLogger.error("加载内购商品失败", error: error)
+        }
+    }
+
+    /// 拉一次服务端档位。失败静默：档位展示是 nice-to-have，不该阻塞主流程。
+    func refreshStatus() async {
+        do {
+            status = try await billing.loadStatus()
+        } catch {
+            AppLogger.warning("刷新订阅状态失败：\(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - 购买
+
+    func purchase(_ product: Product) async -> PurchaseOutcome {
+        do {
+            let result = try await product.purchase(options: appAccountTokenOption())
+            switch result {
+            case let .success(verification):
+                guard case let .verified(transaction) = verification else {
+                    if case let .unverified(_, error) = verification {
+                        AppLogger.error("购买凭证未通过 StoreKit 校验", error: error)
+                    }
+                    return .failed(R.Strings.proPurchaseFailed.localizedString())
+                }
+                return await report(transaction)
+
+            case .userCancelled:
+                return .userCancelled
+
+            case .pending:
+                // 家长批准 / 银行确认。批准后会从 Transaction.updates 进来。
+                return .pending
+
+            @unknown default:
+                return .failed(R.Strings.proPurchaseFailed.localizedString())
+            }
+        } catch {
+            AppLogger.error("购买失败", error: error)
+            return .failed(error.localizedDescription)
+        }
+    }
+
+    /// 设置页「恢复购买」。Apple 审核硬要求项，不能只靠 `Transaction.updates` 自动恢复。
+    ///
+    /// 与 bootstrap 的静默同步不同，这里是用户主动触发，所以业务错要吐出去——
+    /// 「该订阅已绑定到其他账号」必须让用户看到，否则只会得到一句莫名其妙的
+    /// 「没找到可恢复的购买」。
+    func restorePurchases() async -> PurchaseOutcome {
+        do {
+            try await AppStore.sync()
+        } catch {
+            AppLogger.error("恢复购买失败", error: error)
+            return .failed(error.localizedDescription)
+        }
+
+        var lastBusinessError: String?
+        for await result in Transaction.currentEntitlements {
+            guard case let .verified(transaction) = result else { continue }
+            if let expiry = transaction.expirationDate, expiry <= Date() { continue }
+            do {
+                try await upload(transaction)
+            } catch let FileGoAPIError.business(_, message) {
+                // 保留最后一条业务错，给用户一个有意义的解释而不是「没找到可恢复的购买」。
+                lastBusinessError = message.isEmpty ? nil : message
+            } catch {
+                // 瞬时错静默：Transaction.updates 会重投。
+                AppLogger.warning("恢复购买上报暂时失败：\(error.localizedDescription)")
+            }
+        }
+
+        await refreshStatus()
+        if status.isPro { return .success }
+        return .failed(lastBusinessError ?? R.Strings.proRestoreNone.localizedString())
+    }
+
+    // MARK: - 私有
+
+    /// 启动期补投、后台续期、退款、家长批准等都会从这里进来。
+    private func startObservingTransactions() {
+        updatesTask?.cancel()
+        updatesTask = Task { [weak self] in
+            for await update in Transaction.updates {
+                guard let self else { return }
+                guard case let .verified(transaction) = update else { continue }
+                _ = await self.report(transaction)
+            }
+        }
+    }
+
+    /// 把当前所有未过期订阅同步给服务端，启动期校准用。
+    ///
+    /// 典型场景：用户注销后用新账号登录，服务端是 free 但 Apple 端仍有有效订阅。
+    /// 这里的业务错只记日志不弹 UI——bootstrap 是后台行为，用户没有主动意图，
+    /// 弹错只会让人困惑。需要用户感知时走 `restorePurchases`。
+    private func syncCurrentEntitlements() async {
+        for await result in Transaction.currentEntitlements {
+            guard case let .verified(transaction) = result else { continue }
+            // 沙盒（偶尔生产也会）会在 currentEntitlements 里漏过已过期的旧交易，
+            // 上报只会被服务端拒掉，先滤掉。
+            if let expiry = transaction.expirationDate, expiry <= Date() { continue }
+            do {
+                try await upload(transaction)
+            } catch {
+                AppLogger.warning("启动期同步订阅失败：\(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// 上报 + 按结果决定要不要 `finish()`。
+    ///
+    /// **finish 决策**（错了会真的伤到用户）：
+    /// - 业务错（如「已绑定到其他账号」）是**永久性**失败，服务端每次都会返回同样的错。
+    ///   必须 finish，否则每次启动 `Transaction.updates` 都会重投同一笔，无限循环。
+    /// - 网络 / 5xx 是**瞬时**失败。**不能** finish——留在队列里，下次启动或恢复网络后重投。
+    ///   这是「用户付了钱但上报失败」唯一的补偿机制。
+    private func report(_ transaction: StoreKit.Transaction) async -> PurchaseOutcome {
+        do {
+            try await upload(transaction)
+            await transaction.finish()
+            await refreshStatus()
+            return .success
+        } catch let FileGoAPIError.business(code, message) {
+            await transaction.finish()
+            AppLogger.error("服务端拒绝了这笔交易 code=\(code) message=\(message)")
+            return .failed(message.isEmpty ? R.Strings.proPurchaseFailed.localizedString() : message)
+        } catch {
+            // 不 finish：留给 Transaction.updates 重投。
+            AppLogger.warning("交易上报暂时失败，稍后自动重试：\(error.localizedDescription)")
+            return .failed(R.Strings.proPurchasePendingSync.localizedString())
+        }
+    }
+
+    /// **顺序死规矩：先上报成功，再 finish。**
+    /// 反过来一旦网络失败，交易就从 `Transaction.updates` 里消失了，
+    /// 用户付了钱却永远拿不到权益，且没有任何自动补偿路径。
+    private func upload(_ transaction: StoreKit.Transaction) async throws {
+        try await billing.verify(
+            transactionId: String(transaction.id),
+            originalTransactionId: String(transaction.originalID)
+        )
+    }
+
+    /// 把当前 FileGo user id 透传给 Apple 作为 `appAccountToken`。
+    ///
+    /// Apple 会在 JWS 和所有后续续费 / 退款通知里原样带回，服务端落到
+    /// `subscriptions.app_account_token`。用途是客服反查「这份订阅当初是哪个账号买的」。
+    /// FileGo 的 user id 本身就是 UUID（服务端 crypto.randomUUID()），必然解析成功；
+    /// 万一不是就跳过，购买照常进行，只是少了这个反查锚点。
+    private func appAccountTokenOption() -> Set<Product.PurchaseOption> {
+        guard let userId = session.currentUserID, let uuid = UUID(uuidString: userId) else {
+            AppLogger.warning("appAccountToken 跳过：user id 不是 UUID")
+            return []
+        }
+        return [.appAccountToken(uuid)]
+    }
+}

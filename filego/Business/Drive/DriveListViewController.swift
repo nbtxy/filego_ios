@@ -517,6 +517,19 @@ final class DriveListViewController: UIViewController {
     }
 
     private func importFile(at url: URL) {
+        // 本地快速失败：FileUploadService 会先把整个文件跑一遍 SHA-256 才调 /uploads/init，
+        // 免费档只有 20 MB，选个大视频要白算一遍完整哈希才被拒。这里先按最近一次
+        // 用量快照挡掉明显放不下的。
+        //
+        // **只用于快速失败，绝不用于放行**——快照可能过期（别的设备刚传了东西、
+        // Pro 刚过期），服务端那条原子条件 UPDATE 才是唯一权威。
+        if let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+           !environment.storageSnapshot.likelyFits(Int64(size)) {
+            cleanupTemporaryImport(url)
+            showQuotaExceeded()
+            return
+        }
+
         let progress = FileImportProgressViewController(fileName: url.lastPathComponent)
         present(progress, animated: true) { [weak self, weak progress] in
             guard let self, let progress else { return }
@@ -722,12 +735,43 @@ final class DriveListViewController: UIViewController {
     }
 
     private func showError(_ error: Error) {
+        // 配额超限单独处理：所有上传路径的错误都汇到这里，在这一处拦就够了。
+        // 给用户一条出路，而不是一句无从下手的「存储空间不足」。
+        if case let FileGoAPIError.business(code, _) = error, code == 40301 {
+            showQuotaExceeded()
+            return
+        }
         let alert = UIAlertController(
             title: R.Strings.commonError.localizedString(),
             message: error.localizedDescription,
             preferredStyle: .alert
         )
         alert.addAction(UIAlertAction(title: R.Strings.commonOk.localizedString(), style: .default))
+        present(alert, animated: true)
+    }
+
+    private func showQuotaExceeded() {
+        // 两档容量取服务端下发的值，与付费墙同源，不在端上写死。
+        let status = environment.storeKitService.status
+        let alert = UIAlertController(
+            title: R.Strings.quotaExceededTitle.localizedString(),
+            message: R.Strings.quotaExceededMessage.formatted(
+                ByteFormatting.string(status.freeQuotaBytes),
+                ByteFormatting.string(status.proQuotaBytes)
+            ),
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: R.Strings.commonCancel.localizedString(), style: .cancel))
+        alert.addAction(UIAlertAction(
+            title: R.Strings.quotaExceededUpgrade.localizedString(),
+            style: .default
+        ) { [weak self] _ in
+            guard let self else { return }
+            self.navigationController?.pushViewController(
+                ProUpgradeViewController(environment: self.environment),
+                animated: true
+            )
+        })
         present(alert, animated: true)
     }
 }

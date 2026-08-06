@@ -29,6 +29,9 @@ final class RootViewController: UIViewController {
         view.backgroundColor = AppColor.background
         observeSessionChanges()
         showCurrentSessionState(animated: false)
+        // 冷启动时已登录的话也要起监听器：Transaction.updates 会补投上次因断网
+        // 没能上报成功的交易，起得越晚补偿越晚。
+        syncStoreKitWithSession()
     }
 
     private func observeSessionChanges() {
@@ -49,6 +52,21 @@ final class RootViewController: UIViewController {
     @objc private func sessionDidChange() {
         showCurrentSessionState(animated: true)
         processPendingIncomingFileIfPossible()
+        syncStoreKitWithSession()
+    }
+
+    /// StoreKit 的生命周期必须跟着登录态走。
+    ///
+    /// 登出时**必须** shutdown：否则 `Transaction.updates` 的监听任务会跨账号泄漏——
+    /// A 退出、B 登录的窗口里，A 的 Apple 事件会带着 B 的令牌上报，把订阅绑错人。
+    private func syncStoreKitWithSession() {
+        let store = environment.storeKitService
+        if environment.sessionManager.isSignedIn {
+            Task { await store.bootstrap() }
+        } else {
+            store.shutdown()
+            environment.storageSnapshot.clear()
+        }
     }
 
     private func showCurrentSessionState(animated: Bool) {
