@@ -17,6 +17,7 @@ final class LoginViewController: UIViewController {
 
     #if DEBUG
     private let devButton = UIButton(type: .system)
+    private let debugPanelButton = UIButton(type: .system)
     #endif
 
     init(environment: AppEnvironment) {
@@ -97,6 +98,11 @@ final class LoginViewController: UIViewController {
         devButton.titleLabel?.font = AppTypography.body
         devButton.addTarget(self, action: #selector(didTapDevSignIn), for: .touchUpInside)
         actionStack.addArrangedSubview(devButton)
+
+        debugPanelButton.setTitle(R.Strings.debugPanelTitle.localizedString(), for: .normal)
+        debugPanelButton.titleLabel?.font = AppTypography.caption
+        debugPanelButton.addTarget(self, action: #selector(didTapDebugPanel), for: .touchUpInside)
+        actionStack.addArrangedSubview(debugPanelButton)
         #endif
 
         [stack, actionStack, activityIndicator, errorLabel].forEach {
@@ -162,6 +168,11 @@ final class LoginViewController: UIViewController {
             setBusy(false)
         }
     }
+
+    @objc private func didTapDebugPanel() {
+        let panel = DebugPanelViewController(environment: environment)
+        present(UINavigationController(rootViewController: panel), animated: true)
+    }
     #endif
 
     private func setBusy(_ busy: Bool) {
@@ -169,6 +180,7 @@ final class LoginViewController: UIViewController {
         appleButton.isEnabled = !busy
         #if DEBUG
         devButton.isEnabled = !busy
+        debugPanelButton.isEnabled = !busy
         #endif
         if busy { errorLabel.isHidden = true }
     }

@@ -104,6 +104,7 @@ final class DebugPanelViewController: UITableViewController {
             navigationController?.pushViewController(HTTPHistoryViewController(), animated: true)
         case .reset:
             BackendConfig.reset()
+            tableView.reloadData()
             invalidateSession()
         }
     }
@@ -148,6 +149,7 @@ final class DebugPanelViewController: UITableViewController {
     private func apply(_ value: String) {
         do {
             try BackendConfig.apply(baseURL: value)
+            tableView.reloadData()
             invalidateSession()
         } catch {
             let alert = UIAlertController(

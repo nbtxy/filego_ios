@@ -3,7 +3,7 @@ import Foundation
 enum BackendConfig {
     private static let storageKey = "filego.debug.api-base-url"
 
-    static let productionBaseURL = URL(string: "https://nbtxy.com/api/v1")!
+    static let productionBaseURL = URL(string: "https://filego.deeptrans.pro/api/v1")!
 
     static var defaultBaseURL: URL {
         #if DEBUG
