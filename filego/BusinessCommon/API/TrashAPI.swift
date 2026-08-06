@@ -11,7 +11,7 @@ enum TrashAPI {
     case emptyAll
 }
 
-extension TrashAPI: FileGoTarget {
+nonisolated extension TrashAPI: FileGoTarget {
     var path: String {
         switch self {
         case .list, .emptyAll: return "/trash"

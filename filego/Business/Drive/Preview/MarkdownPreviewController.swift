@@ -40,18 +40,14 @@ final class MarkdownPreviewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = AppColor.background
         navigationItem.largeTitleDisplayMode = .never
+        registerForTraitChanges([UITraitPreferredContentSizeCategory.self]) {
+            (controller: MarkdownPreviewController, _) in
+            // 亮暗切换由 WebView 的 prefers-color-scheme 自动跟随，不用重载；
+            // 但正文字号是渲染时按 Dynamic Type 算死的，字号档位变了需要重新装配页面。
+            controller.reloadPage()
+        }
         setupStateViews()
         loadDocument()
-    }
-
-    override func traitCollectionDidChange(_ previous: UITraitCollection?) {
-        super.traitCollectionDidChange(previous)
-        // 亮暗切换由 WebView 的 prefers-color-scheme 自动跟随，不用重载；
-        // 但正文字号是渲染时按 Dynamic Type 算死的，字号档位变了才需要重新装配页面。
-        guard previous?.preferredContentSizeCategory != traitCollection.preferredContentSizeCategory else {
-            return
-        }
-        reloadPage()
     }
 
     // MARK: - 加载

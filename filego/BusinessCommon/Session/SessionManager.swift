@@ -36,8 +36,10 @@ actor SessionManager {
         KeyValueStore.shared.globalValue(forKey: Self.userIDKey)
     }
 
-    /// App 启动时调一次：迁移历史明文令牌，并恢复 KeyValueStore 的用户域。
+    /// App 启动时调一次：处理全新安装、迁移历史明文令牌，并恢复 KeyValueStore 的用户域。
     @MainActor static func bootstrap() {
+        // 顺序不能换：迁移会写 migrationFlagKey，跑在前面会让全新安装看起来像老用户升级。
+        AuthTokenStorage.clearOnFreshInstallIfNeeded()
         AuthTokenStorage.migrateFromUserDefaultsIfNeeded()
         if let userID: String = KeyValueStore.shared.globalValue(forKey: userIDKey) {
             KeyValueStore.shared.setCurrentUser(userID)

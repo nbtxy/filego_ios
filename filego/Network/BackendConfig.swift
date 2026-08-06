@@ -1,6 +1,9 @@
 import Foundation
 
-enum BackendConfig {
+/// 后端地址。`nonisolated`：FileGoTarget.baseURL 要从 actor 上下文读它
+/// （SessionManager 就是个 actor），绑主线程会让所有 API 的遵循跟着被推成
+/// 主 actor 隔离。底下的 KeyValueStore 是 @unchecked Sendable，本就允许跨线程读。
+nonisolated enum BackendConfig {
     private static let storageKey = "filego.debug.api-base-url"
 
     static let productionBaseURL = URL(string: "https://filego.deeptrans.pro/api/v1")!

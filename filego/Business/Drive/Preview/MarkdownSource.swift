@@ -4,7 +4,10 @@ import Foundation
 ///
 /// 编码是这里的主要难点：网盘里的 md 不保证是 UTF-8，国内常见 GB18030/GBK 编码的中文文档，
 /// 直接按 UTF-8 解会得到乱码——这是「渲染效果不对」的第二大成因。
-enum MarkdownSource {
+/// `nonisolated`：读文件 + 猜编码是纯计算，调用方就是要把它甩到主线程之外跑
+/// （见 MarkdownPreviewController 的 `Task.detached`）——大文件在主线程解码会卡界面。
+/// 本 target 开了 SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor，不写就绑主线程了。
+nonisolated enum MarkdownSource {
     /// 超过这个大小就不进 WebView 渲染，降级到 QuickLook 纯文本。
     /// marked + highlight.js 在主线程解析数 MB 文本会明显卡顿。
     static let maximumByteCount = 2 * 1024 * 1024

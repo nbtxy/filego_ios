@@ -1361,23 +1361,6 @@
         }
       }
     },
-    "login.dev.button": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dev sign in (skip Apple)"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "开发登录（跳过 Apple）"
-          }
-        }
-      }
-    },
     "login.error.failed": {
       "extractionState": "manual",
       "localizations": {

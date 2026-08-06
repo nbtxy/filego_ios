@@ -28,4 +28,11 @@ struct BillingService {
             as: BillingStatus.self
         )
     }
+
+    /// 仅本地联调：直接开通 Pro。服务端没开 ALLOW_DEV_BILLING 时会返回
+    /// 40401（当作接口不存在），调用方按普通业务错处理即可。
+    @discardableResult
+    func devGrant(days: Int = 30) async throws -> BillingStatus {
+        try await session.request(BillingAPI.devGrant(days: days), as: BillingStatus.self)
+    }
 }

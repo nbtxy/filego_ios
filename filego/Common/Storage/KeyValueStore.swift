@@ -1,7 +1,11 @@
 import Foundation
 
 /// 支持全局域和用户域的线程安全 UserDefaults 封装。
-final class KeyValueStore: @unchecked Sendable {
+///
+/// `nonisolated`：本类靠内部的并发队列自己保证线程安全（`@unchecked Sendable` 就是
+/// 在声明这件事），不需要也不应该绑主线程——BackendConfig 会在 nonisolated 上下文
+/// 里读它，详见 Network/FileGoTarget.swift 的说明。
+nonisolated final class KeyValueStore: @unchecked Sendable {
     static let shared = KeyValueStore()
 
     private let queue = DispatchQueue(

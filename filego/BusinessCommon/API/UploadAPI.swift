@@ -66,7 +66,7 @@ enum UploadAPI {
     case abort(sessionId: String)
 }
 
-extension UploadAPI: FileGoTarget {
+nonisolated extension UploadAPI: FileGoTarget {
     var path: String {
         switch self {
         case .initialize: return "/uploads/init"

@@ -16,7 +16,7 @@ enum NodeAPI {
     case trash(id: String)
 }
 
-extension NodeAPI: FileGoTarget {
+nonisolated extension NodeAPI: FileGoTarget {
     var path: String {
         switch self {
         case .list: return "/nodes"

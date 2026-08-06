@@ -1,8 +1,7 @@
 import AuthenticationServices
 import UIKit
 
-/// 登录页。Sign in with Apple 为正式入口；DEBUG 下额外给一个开发登录按钮，
-/// 避免联调被 Apple 开发者账号与 capability 配置卡住。
+/// 登录页。Sign in with Apple 是唯一入口。
 final class LoginViewController: UIViewController {
     private let environment: AppEnvironment
     private lazy var appleSignInService = AppleSignInService { [weak self] in
@@ -16,7 +15,6 @@ final class LoginViewController: UIViewController {
     private let errorLabel = UILabel()
 
     #if DEBUG
-    private let devButton = UIButton(type: .system)
     private let debugPanelButton = UIButton(type: .system)
     #endif
 
@@ -29,30 +27,10 @@ final class LoginViewController: UIViewController {
         fatalError("init(coder:) has not been implemented")
     }
 
-    #if DEBUG
-    /// 传 `-FileGoAutoDevLogin` 启动参数时自动走一次开发登录。
-    /// 用途是让「登录后」的状态可以被自动化脚本复现，不必人工点按钮：
-    ///   xcrun simctl launch <udid> com.nbtxy.filego -FileGoAutoDevLogin
-    private static let autoDevLoginArgument = "-FileGoAutoDevLogin"
-    private var didAttemptAutoLogin = false
-    #endif
-
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = AppColor.background
         setUpViews()
-    }
-
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        #if DEBUG
-        guard !didAttemptAutoLogin,
-              ProcessInfo.processInfo.arguments.contains(Self.autoDevLoginArgument)
-        else { return }
-        didAttemptAutoLogin = true
-        AppLogger.info("检测到 \(Self.autoDevLoginArgument)，自动执行开发登录")
-        didTapDevSignIn()
-        #endif
     }
 
     private func setUpViews() {
@@ -94,11 +72,6 @@ final class LoginViewController: UIViewController {
         actionStack.spacing = AppSpacing.medium
 
         #if DEBUG
-        devButton.setTitle(R.Strings.loginDevButton.localizedString(), for: .normal)
-        devButton.titleLabel?.font = AppTypography.body
-        devButton.addTarget(self, action: #selector(didTapDevSignIn), for: .touchUpInside)
-        actionStack.addArrangedSubview(devButton)
-
         debugPanelButton.setTitle(R.Strings.debugPanelTitle.localizedString(), for: .normal)
         debugPanelButton.titleLabel?.font = AppTypography.caption
         debugPanelButton.addTarget(self, action: #selector(didTapDebugPanel), for: .touchUpInside)
@@ -156,19 +129,6 @@ final class LoginViewController: UIViewController {
     }
 
     #if DEBUG
-    @objc private func didTapDevSignIn() {
-        setBusy(true)
-        Task {
-            do {
-                _ = try await environment.accountService.signInAsDeveloper(handle: "tester")
-                // 登录成功后由 RootViewController 监听通知切换根界面，这里不需要自己跳转
-            } catch {
-                showError(error.localizedDescription)
-            }
-            setBusy(false)
-        }
-    }
-
     @objc private func didTapDebugPanel() {
         let panel = DebugPanelViewController(environment: environment)
         present(UINavigationController(rootViewController: panel), animated: true)
@@ -179,7 +139,6 @@ final class LoginViewController: UIViewController {
         busy ? activityIndicator.startAnimating() : activityIndicator.stopAnimating()
         appleButton.isEnabled = !busy
         #if DEBUG
-        devButton.isEnabled = !busy
         debugPanelButton.isEnabled = !busy
         #endif
         if busy { errorLabel.isHidden = true }

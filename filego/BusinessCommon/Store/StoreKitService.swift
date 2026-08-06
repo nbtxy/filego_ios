@@ -208,9 +208,16 @@ final class StoreKitService {
     /// 用户的购买就永久丢失且无从恢复。
     private func report(_ transaction: StoreKit.Transaction) async -> PurchaseOutcome {
         do {
-            try await upload(transaction)
+            let reported = try await upload(transaction)
             await transaction.finish()
             await refreshStatus()
+            // 服务端没报错不等于开通成功——它判定的档位才算数。正常情况下
+            // /billing/verify 已经把非 Pro 的判定拒成业务错了，这里是双保险，
+            // 顺带覆盖 devGrant 那条路径。宁可说“稍后同步”也不能谎报成功。
+            guard reported == nil || reported?.isPro == true || status.isPro else {
+                AppLogger.warning("交易已核验但服务端档位不是 Pro，按待同步处理")
+                return .failed(R.Strings.proPurchasePendingSync.localizedString())
+            }
             return .success
         } catch let FileGoAPIError.business(code, message) where code == BusinessCode.transactionInvalid {
             await transaction.finish()
@@ -230,8 +237,24 @@ final class StoreKitService {
     /// **顺序死规矩：先上报成功，再 finish。**
     /// 反过来一旦网络失败，交易就从 `Transaction.updates` 里消失了，
     /// 用户付了钱却永远拿不到权益，且没有任何自动补偿路径。
-    private func upload(_ transaction: StoreKit.Transaction) async throws {
-        try await billing.verify(
+    ///
+    /// 返回服务端判定后的档位，供调用方确认是不是真的开通了。
+    /// RELEASE 构建下的本地 StoreKit 交易拿不到档位，返回 nil。
+    @discardableResult
+    private func upload(_ transaction: StoreKit.Transaction) async throws -> BillingStatus? {
+        // Xcode 本地 StoreKit 配置文件造的交易完全发生在本机，Apple 服务器不知情，
+        // 交易号也只是 0、1 这种小整数（真实的是 15-16 位）。上报过去只会被
+        // App Store Server API 以 4000006 Invalid transaction id 拒掉。
+        // 这里直接短路，本地联调改走 dev-grant。
+        if transaction.environment == .xcode {
+            AppLogger.info("本地 StoreKit 交易，跳过服务端核验")
+            #if DEBUG
+            return try await billing.devGrant()
+            #else
+            return nil
+            #endif
+        }
+        return try await billing.verify(
             transactionId: String(transaction.id),
             originalTransactionId: String(transaction.originalID)
         )
