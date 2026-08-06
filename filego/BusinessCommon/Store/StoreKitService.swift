@@ -187,25 +187,41 @@ final class StoreKitService {
         }
     }
 
+    /// 服务端业务码。与 filego/src/lib/envelope.ts 的 ErrorCode 对齐。
+    private enum BusinessCode {
+        /// 交易本身无效：未知商品、bundleId 不符、已绑定到其他账号。
+        /// 这是**唯一**永久性的失败——重投多少次结果都一样。
+        static let transactionInvalid = 40002
+    }
+
     /// 上报 + 按结果决定要不要 `finish()`。
     ///
-    /// **finish 决策**（错了会真的伤到用户）：
-    /// - 业务错（如「已绑定到其他账号」）是**永久性**失败，服务端每次都会返回同样的错。
-    ///   必须 finish，否则每次启动 `Transaction.updates` 都会重投同一笔，无限循环。
-    /// - 网络 / 5xx 是**瞬时**失败。**不能** finish——留在队列里，下次启动或恢复网络后重投。
-    ///   这是「用户付了钱但上报失败」唯一的补偿机制。
+    /// **finish 决策 —— 错了会真的让用户付了钱拿不到东西：**
+    ///
+    /// 只有 `40002` 是永久性失败（交易本身无效），必须 finish，否则每次启动
+    /// `Transaction.updates` 都会重投同一笔，无限循环。
+    ///
+    /// 其余一律**不** finish，留在队列里等下次重投。这里必须按业务码精确判断，
+    /// 不能笼统地"凡 business 错就 finish"——服务端的 50000（密钥没配好）、
+    /// 50001（Apple 暂时不可达）都会走 `FileGoAPIError.business` 这个分支，
+    /// 而它们都是运维一改配置就好的临时故障。把这类交易 finish 掉，
+    /// 用户的购买就永久丢失且无从恢复。
     private func report(_ transaction: StoreKit.Transaction) async -> PurchaseOutcome {
         do {
             try await upload(transaction)
             await transaction.finish()
             await refreshStatus()
             return .success
-        } catch let FileGoAPIError.business(code, message) {
+        } catch let FileGoAPIError.business(code, message) where code == BusinessCode.transactionInvalid {
             await transaction.finish()
-            AppLogger.error("服务端拒绝了这笔交易 code=\(code) message=\(message)")
+            AppLogger.error("交易被服务端判定为无效，不再重试 code=\(code) message=\(message)")
             return .failed(message.isEmpty ? R.Strings.proPurchaseFailed.localizedString() : message)
+        } catch let FileGoAPIError.business(code, message) {
+            // 服务端故障（50000 / 50001 等）。不 finish，留给 Transaction.updates 重投。
+            AppLogger.error("服务端暂时无法处理这笔交易，稍后自动重试 code=\(code) message=\(message)")
+            return .failed(R.Strings.proPurchasePendingSync.localizedString())
         } catch {
-            // 不 finish：留给 Transaction.updates 重投。
+            // 网络错误同理，不 finish。
             AppLogger.warning("交易上报暂时失败，稍后自动重试：\(error.localizedDescription)")
             return .failed(R.Strings.proPurchasePendingSync.localizedString())
         }

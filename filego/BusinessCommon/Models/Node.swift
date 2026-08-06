@@ -58,6 +58,13 @@ struct NodeAncestors: Decodable {
     let nodes: [DriveNode]
 }
 
+struct ImportAddressResult: Decodable {
+    let importAddress: URL
+    let expiresAt: Date
+    let folder: DriveNode
+    let maxFileSize: Int64
+}
+
 enum NodeSort: String, CaseIterable {
     case name
     case updated

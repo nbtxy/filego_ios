@@ -258,6 +258,12 @@ final class DriveListViewController: UIViewController {
             ]),
             UIMenu(options: .displayInline, children: [
                 UIAction(
+                    title: R.Strings.driveImportAddress.localizedString(),
+                    image: UIImage(systemName: "link.badge.plus")
+                ) { [weak self] _ in self?.createImportAddress() }
+            ]),
+            UIMenu(options: .displayInline, children: [
+                UIAction(
                     title: R.Strings.driveImportTakePhoto.localizedString(),
                     image: UIImage(systemName: "camera")
                 ) { [weak self] _ in self?.openCamera() },
@@ -597,6 +603,98 @@ final class DriveListViewController: UIViewController {
                 } catch { self.showError(error) }
             }
         }
+    }
+
+    private func createImportAddress() {
+        Task {
+            do {
+                let result: ImportAddressResult = try await environment.sessionManager.request(
+                    NodeAPI.createImportAddress(id: folderId)
+                )
+                presentImportAddress(result)
+            } catch {
+                showError(error)
+            }
+        }
+    }
+
+    private func presentImportAddress(_ result: ImportAddressResult) {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        let message = R.Strings.driveImportAddressMessage.formatted(
+            formatter.string(from: result.expiresAt),
+            result.importAddress.absoluteString
+        )
+        let alert = UIAlertController(
+            title: R.Strings.driveImportAddress.localizedString(),
+            message: message,
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(
+            title: R.Strings.driveImportCopyAddress.localizedString(),
+            style: .default
+        ) { _ in
+            UIPasteboard.general.url = result.importAddress
+        })
+        alert.addAction(UIAlertAction(
+            title: R.Strings.driveImportShareAddress.localizedString(),
+            style: .default
+        ) { [weak self] _ in
+            self?.shareImportAddress(result.importAddress)
+        })
+        alert.addAction(UIAlertAction(
+            title: R.Strings.driveImportResetAddress.localizedString(),
+            style: .destructive
+        ) { [weak self] _ in
+            self?.confirmResetImportAddress()
+        })
+        alert.addAction(UIAlertAction(
+            title: R.Strings.commonOk.localizedString(),
+            style: .cancel
+        ))
+        present(alert, animated: true)
+    }
+
+    private func confirmResetImportAddress() {
+        let alert = UIAlertController(
+            title: R.Strings.driveImportResetConfirmTitle.localizedString(),
+            message: R.Strings.driveImportResetConfirmMessage.localizedString(),
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(
+            title: R.Strings.commonCancel.localizedString(),
+            style: .cancel
+        ))
+        alert.addAction(UIAlertAction(
+            title: R.Strings.driveImportResetAddress.localizedString(),
+            style: .destructive
+        ) { [weak self] _ in
+            self?.resetImportAddress()
+        })
+        present(alert, animated: true)
+    }
+
+    private func resetImportAddress() {
+        Task {
+            do {
+                let result: ImportAddressResult = try await environment.sessionManager.request(
+                    NodeAPI.resetImportAddress(id: folderId)
+                )
+                presentImportAddress(result)
+            } catch {
+                showError(error)
+            }
+        }
+    }
+
+    private func shareImportAddress(_ address: URL) {
+        let controller = UIActivityViewController(activityItems: [address], applicationActivities: nil)
+        if let popover = controller.popoverPresentationController {
+            popover.sourceView = addFolderButton
+            popover.sourceRect = addFolderButton.bounds
+        }
+        present(controller, animated: true)
     }
 
     private func open(_ node: DriveNode) {

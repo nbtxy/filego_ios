@@ -8,6 +8,8 @@ enum NodeAPI {
     case detail(id: String)
     case ancestors(id: String)
     case createFolder(parentId: String, name: String)
+    case createImportAddress(id: String)
+    case resetImportAddress(id: String)
     case update(id: String, name: String?, parentId: String?, starred: Bool?)
     case copy(id: String, parentId: String)
     /// 移入回收站。服务端只写 trashed_at，可还原，30 天后由 Cron 永久删除。
@@ -20,6 +22,8 @@ extension NodeAPI: FileGoTarget {
         case .list: return "/nodes"
         case .search: return "/search"
         case .createFolder: return "/nodes/folder"
+        case let .createImportAddress(id): return "/nodes/\(id)/import-address"
+        case let .resetImportAddress(id): return "/nodes/\(id)/import-address/reset"
         case let .detail(id): return "/nodes/\(id)"
         case let .ancestors(id): return "/nodes/\(id)/ancestors"
         case let .update(id, _, _, _): return "/nodes/\(id)"
@@ -31,7 +35,7 @@ extension NodeAPI: FileGoTarget {
     var method: Moya.Method {
         switch self {
         case .list, .search, .detail, .ancestors: return .get
-        case .createFolder, .copy: return .post
+        case .createFolder, .createImportAddress, .resetImportAddress, .copy: return .post
         case .update: return .patch
         case .trash: return .delete
         }
@@ -52,7 +56,7 @@ extension NodeAPI: FileGoTarget {
                 parameters: ["parent_id": parentId, "q": query, "limit": 200],
                 encoding: URLEncoding.queryString
             )
-        case .detail, .ancestors, .trash:
+        case .detail, .ancestors, .createImportAddress, .resetImportAddress, .trash:
             return .requestPlain
         case let .createFolder(parentId, name):
             return .requestParameters(
