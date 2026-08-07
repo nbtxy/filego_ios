@@ -1,0 +1,8 @@
+force(true)
+skip_binary_upload(true)
+skip_screenshots(true)
+submit_for_review(false)
+run_precheck_before_submit(false)
+metadata_path("./fastlane/metadata")
+screenshots_path("./fastlane/screenshots")
+

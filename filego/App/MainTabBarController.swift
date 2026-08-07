@@ -41,4 +41,12 @@ final class MainNavigationController: UINavigationController {
         guard let drive = viewControllers.first as? DriveListViewController else { return false }
         return drive.importExternalFile(at: url)
     }
+
+    #if DEBUG
+    func prepareScreenshot(scene: String) {
+        loadViewIfNeeded()
+        popToRootViewController(animated: false)
+        (viewControllers.first as? DriveListViewController)?.prepareScreenshot(scene: scene)
+    }
+    #endif
 }

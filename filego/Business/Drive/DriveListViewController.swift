@@ -933,6 +933,46 @@ final class DriveListViewController: UIViewController {
         })
         present(alert, animated: true)
     }
+
+    #if DEBUG
+    func prepareScreenshot(scene: String) {
+        switch scene {
+        case "import":
+            createImportAddress()
+        case "add":
+            if #available(iOS 17.4, *) {
+                addFolderButton.performPrimaryAction()
+            } else {
+                addFolderButton.sendActions(for: .touchUpInside)
+            }
+        case "markdown":
+            prepareMarkdownScreenshot(attemptsRemaining: 8)
+        case "trash":
+            navigationController?.pushViewController(
+                TrashViewController(environment: environment), animated: false
+            )
+        case "pro":
+            navigationController?.pushViewController(
+                ProUpgradeViewController(environment: environment), animated: false
+            )
+        default:
+            break
+        }
+    }
+
+    private func prepareMarkdownScreenshot(attemptsRemaining: Int) {
+        if let node = viewModel.nodes.first(where: {
+            $0.name.lowercased().hasSuffix(".md") && $0.size > 0
+        }) {
+            open(node)
+            return
+        }
+        guard attemptsRemaining > 0 else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.prepareMarkdownScreenshot(attemptsRemaining: attemptsRemaining - 1)
+        }
+    }
+    #endif
 }
 
 extension DriveListViewController: UICollectionViewDelegate {

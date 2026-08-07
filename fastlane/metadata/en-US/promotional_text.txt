@@ -1,0 +1,2 @@
+New: the import address now speaks English, so you can send it to anyone, anywhere. Pick a folder, share one link, and files arrive where you want them.
+

@@ -1,0 +1,25 @@
+Someone needs to send you a file. They don't have your app. They don't want another account. They're on a laptop, in another timezone, right now.
+
+FileGo gives you a link. They open it, drop the file, and it lands in the exact folder you chose.
+
+THE IMPORT ADDRESS
+Pick a folder. Tap "Get File Import Address." You get a link that anyone can open in a browser — no app, no sign-up, nothing to install. Files they drop go straight into that folder.
+
+Working from a terminal? The same address takes a curl upload.
+Done collecting? Reset the address and it stops working instantly.
+
+WHAT ELSE IS IN HERE
+• Browse as a list or a grid, with breadcrumbs, search, and sorting by name, date, or size
+• Add files by taking a photo, picking from your library, importing from Files, or using "Open in FileGo" from any other app
+• Star, rename, move, duplicate, and copy a temporary share link that expires in a day
+• Preview without downloading — Markdown renders properly (with a source toggle), HTML opens sandboxed with remote content off by default, and QuickLook handles images, video, audio, PDFs, text, and archives
+• Trash keeps deleted items for 30 days with a countdown on each one, so a mis-tap is never final
+• See exactly what's using your space, broken down by photos, video, audio, and documents
+• Opened files cache on device and clear themselves above 1 GB
+
+PRIVACY
+Sign in with Apple, and that's the only account there is. No ads. No tracking. No analytics SDKs — we didn't ship any. You can delete your account, and everything in it, from inside the app.
+
+FILEGO PRO
+The free plan is 20 MB — fine for documents, tight the moment photos and video show up. Pro takes you to 10 GB.
+

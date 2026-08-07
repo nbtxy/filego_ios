@@ -1,0 +1,14 @@
+.DS_Store
+.bundle/
+*.p8
+.env
+build/
+DerivedData/
+vendor/bundle/
+*.mobileprovision
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/test_output/
+fastlane/metadata-download/
+filego.xcodeproj/xcuserdata/
+filego.xcodeproj/project.xcworkspace/xcuserdata/

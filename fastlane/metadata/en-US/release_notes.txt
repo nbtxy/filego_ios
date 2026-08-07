@@ -1,0 +1,4 @@
+First release.
+
+Pick a folder, get a link, and let anyone send you files — no app and no account on their end. Everything else you'd expect from a file app is here too: search, previews, a 30-day trash, and Sign in with Apple as the only account you'll ever need.
+

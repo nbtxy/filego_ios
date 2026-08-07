@@ -35,7 +35,7 @@ final class FolderPickerViewController: UITableViewController {
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "folder")
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             title: R.Strings.driveMoveHere.localizedString(),
-            style: .prominent,
+            style: .done,
             target: self,
             action: #selector(pickCurrent)
         )

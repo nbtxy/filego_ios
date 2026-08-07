@@ -93,7 +93,12 @@ final class ProUpgradeViewController: UIViewController {
         let headerRegistration = UICollectionView.SupplementaryRegistration<UICollectionViewListCell>(
             elementKind: UICollectionView.elementKindSectionHeader
         ) { header, _, indexPath in
-            var content = UIListContentConfiguration.header()
+            var content: UIListContentConfiguration
+            if #available(iOS 18.0, *) {
+                content = .header()
+            } else {
+                content = .groupedHeader()
+            }
             content.text = indexPath.section == 1
                 ? R.Strings.proBenefitsTitle.localizedString()
                 : nil

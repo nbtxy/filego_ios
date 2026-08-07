@@ -35,10 +35,12 @@ const SUBSCRIPTION_REFERENCE_NAME = "FileGo Pro Monthly";
 // Apple 限长：name ≤ 30 字符，description ≤ 45 字符。
 const GROUP_LOCALIZATIONS = [
   { locale: "zh-Hans", name: "FileGo 会员" },
+  { locale: "zh-Hant", name: "FileGo 會員" },
   { locale: "en-US",   name: "FileGo Membership" },
 ];
 const SUBSCRIPTION_LOCALIZATIONS = [
   { locale: "zh-Hans", name: "Pro 会员",   description: "10 GB 云端空间，照片视频随手存。" },
+  { locale: "zh-Hant", name: "Pro 會員",   description: "10 GB 雲端空間，照片影片隨手存。" },
   { locale: "en-US",   name: "FileGo Pro", description: "10 GB of space for photos and video." },
 ];
 

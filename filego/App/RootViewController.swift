@@ -29,11 +29,26 @@ final class RootViewController: UIViewController {
         view.backgroundColor = AppColor.background
         observeSessionChanges()
         showCurrentSessionState(animated: false)
+        #if DEBUG
+        prepareScreenshotIfRequested()
+        #endif
         Task { await environment.appConfigStore.bootstrap() }
         // 冷启动时已登录的话也要起监听器：Transaction.updates 会补投上次因断网
         // 没能上报成功的交易，起得越晚补偿越晚。
         syncStoreKitWithSession()
     }
+
+    #if DEBUG
+    private func prepareScreenshotIfRequested() {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let flag = arguments.firstIndex(of: "-filegoScreenshot"),
+              arguments.indices.contains(flag + 1) else { return }
+        let scene = arguments[flag + 1]
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            (self?.current as? DrawerContainerViewController)?.prepareScreenshot(scene: scene)
+        }
+    }
+    #endif
 
     private func observeSessionChanges() {
         NotificationCenter.default.addObserver(

@@ -1,0 +1,111 @@
+default_platform(:ios)
+
+PROJECT_ROOT = File.expand_path("..", __dir__)
+
+platform :ios do
+  private_lane :connect_api_key do
+    app_store_connect_api_key(
+      key_id: ENV.fetch("ASC_KEY_ID"),
+      issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+      key_filepath: ENV.fetch("ASC_KEY_FILEPATH"),
+      duration: 1_200,
+      in_house: false
+    )
+  end
+
+  desc "Download the current App Store metadata for comparison"
+  lane :download_metadata do
+    deliver(
+      api_key: connect_api_key,
+      app_identifier: "com.nbtxy.filego",
+      download_metadata: true,
+      metadata_path: File.join(PROJECT_ROOT, "fastlane/metadata-download"),
+      skip_binary_upload: true,
+      skip_screenshots: true
+    )
+  end
+
+  desc "Validate and upload metadata without submitting for review"
+  lane :sync_metadata do
+    sh("node", File.join(PROJECT_ROOT, "Scripts/validate-metadata.mjs"))
+    deliver(
+      api_key: connect_api_key,
+      app_identifier: "com.nbtxy.filego",
+      app_version: "1.0",
+      metadata_path: File.join(PROJECT_ROOT, "fastlane/metadata"),
+      screenshots_path: File.join(PROJECT_ROOT, "fastlane/screenshots"),
+      skip_binary_upload: true,
+      skip_screenshots: true,
+      submit_for_review: false,
+      force: true,
+      run_precheck_before_submit: false
+    )
+  end
+
+  desc "Upload localized App Store screenshots without submitting for review"
+  lane :sync_screenshots do
+    deliver(
+      api_key: connect_api_key,
+      app_identifier: "com.nbtxy.filego",
+      app_version: "1.0",
+      screenshots_path: File.join(PROJECT_ROOT, "fastlane/screenshots"),
+      skip_binary_upload: true,
+      skip_metadata: true,
+      skip_screenshots: false,
+      overwrite_screenshots: true,
+      submit_for_review: false,
+      force: true,
+      run_precheck_before_submit: false
+    )
+  end
+
+  desc "Archive and export an App Store IPA"
+  lane :build do
+    profile_path = get_provisioning_profile(
+      api_key: connect_api_key,
+      app_identifier: "com.nbtxy.filego",
+      team_id: "U26MT4R2WR",
+      adhoc: false,
+      skip_install: false
+    )
+    profile_name = lane_context[SharedValues::SIGH_NAME]
+    UI.user_error!("Could not resolve the App Store provisioning profile") if profile_name.to_s.empty?
+
+    build_app(
+      project: File.join(PROJECT_ROOT, "filego.xcodeproj"),
+      scheme: "filego",
+      configuration: "Release",
+      clean: true,
+      output_directory: File.join(PROJECT_ROOT, "build"),
+      output_name: "filego.ipa",
+      export_method: "app-store",
+      export_options: {
+        signingStyle: "manual",
+        provisioningProfiles: {
+          "com.nbtxy.filego" => profile_name
+        }
+      }
+    )
+    UI.message("Provisioning profile: #{profile_path}")
+  end
+
+  desc "Upload the existing IPA; final review submission remains manual"
+  lane :upload_binary do
+    upload_to_app_store(
+      api_key: connect_api_key,
+      app_identifier: "com.nbtxy.filego",
+      ipa: File.join(PROJECT_ROOT, "build/filego.ipa"),
+      skip_binary_upload: false,
+      skip_metadata: true,
+      skip_screenshots: true,
+      submit_for_review: false,
+      run_precheck_before_submit: false
+    )
+  end
+
+  desc "Build and upload the binary; final review submission remains manual"
+  lane :release do
+    build
+    upload_binary
+  end
+end
