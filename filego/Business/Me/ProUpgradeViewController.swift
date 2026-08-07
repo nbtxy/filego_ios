@@ -21,14 +21,6 @@ private nonisolated enum Row: Hashable {
 ///   - 必须有可点击的使用条款(EULA) 与隐私政策链接
 @MainActor
 final class ProUpgradeViewController: UIViewController {
-    /// TODO: 换成 FileGo 自己的链接。这两个 URL 是 App Store Connect 里
-    /// 「自动续订订阅」的必填项，也必须在本页可点击。
-    /// EULA 没有自定义版本时可以直接用 Apple 的标准条款（下面这条）。
-    private enum Legal {
-        static let terms = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
-        static let privacy = URL(string: "https://www.apple.com/legal/privacy/")!
-    }
-
     private let environment: AppEnvironment
 
     private var collectionView: UICollectionView!
@@ -86,7 +78,12 @@ final class ProUpgradeViewController: UIViewController {
         }
         let legalRegistration = UICollectionView.CellRegistration<ProLegalCell, Row> {
             [weak self] cell, _, _ in
-            cell.configure(terms: Legal.terms, privacy: Legal.privacy)
+            guard let self else { return }
+            cell.configure(
+                userAgreement: environment.appConfigStore.userAgreementURL,
+                privacy: environment.appConfigStore.privacyPolicyURL,
+                termsOfUse: environment.appConfigStore.termsOfUseURL
+            )
             cell.onOpen = { [weak self] url in self?.openLegal(url) }
         }
         let valueRegistration = UICollectionView.CellRegistration<UICollectionViewListCell, Row> {
@@ -220,6 +217,7 @@ final class ProUpgradeViewController: UIViewController {
     private func reload() {
         setBusy(true)
         Task {
+            await environment.appConfigStore.bootstrap()
             await store.loadProducts()
             await store.refreshStatus()
             setBusy(false)
@@ -406,15 +404,18 @@ private final class ProHeroCell: UICollectionViewListCell {
     }()
 }
 
-/// 法务页脚：自动续期说明 + 使用条款 / 隐私政策。App Store Review 3.1.2(a) 硬要求。
+/// 法务页脚：自动续期说明 + 用户协议 / 隐私政策 / Apple 使用条款。
+/// 后两项中的 Apple EULA 与隐私政策入口是 App Store Review 3.1.2(a) 硬要求。
 private final class ProLegalCell: UICollectionViewListCell {
     var onOpen: ((URL) -> Void)?
 
     private let noticeLabel = UILabel()
+    private let userAgreementButton = UIButton(type: .system)
     private let termsButton = UIButton(type: .system)
     private let privacyButton = UIButton(type: .system)
 
-    private var termsURL: URL?
+    private var userAgreementURL: URL?
+    private var termsOfUseURL: URL?
     private var privacyURL: URL?
 
     override init(frame: CGRect) {
@@ -426,9 +427,10 @@ private final class ProLegalCell: UICollectionViewListCell {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func configure(terms: URL, privacy: URL) {
-        termsURL = terms
+    func configure(userAgreement: URL, privacy: URL, termsOfUse: URL) {
+        userAgreementURL = userAgreement
         privacyURL = privacy
+        termsOfUseURL = termsOfUse
     }
 
     private func setUpViews() {
@@ -436,6 +438,14 @@ private final class ProLegalCell: UICollectionViewListCell {
         noticeLabel.textColor = AppColor.textSecondary
         noticeLabel.numberOfLines = 0
         noticeLabel.text = R.Strings.proLegal.localizedString()
+
+        userAgreementButton.setTitle(R.Strings.proUserAgreement.localizedString(), for: .normal)
+        userAgreementButton.titleLabel?.font = AppTypography.caption
+        userAgreementButton.addTarget(
+            self,
+            action: #selector(openUserAgreement),
+            for: .touchUpInside
+        )
 
         termsButton.setTitle(R.Strings.proTerms.localizedString(), for: .normal)
         termsButton.titleLabel?.font = AppTypography.caption
@@ -445,7 +455,12 @@ private final class ProLegalCell: UICollectionViewListCell {
         privacyButton.titleLabel?.font = AppTypography.caption
         privacyButton.addTarget(self, action: #selector(openPrivacy), for: .touchUpInside)
 
-        let links = UIStackView(arrangedSubviews: [termsButton, privacyButton, UIView()])
+        let links = UIStackView(arrangedSubviews: [
+            userAgreementButton,
+            privacyButton,
+            termsButton,
+            UIView()
+        ])
         links.axis = .horizontal
         links.spacing = AppSpacing.medium
 
@@ -464,8 +479,12 @@ private final class ProLegalCell: UICollectionViewListCell {
         ])
     }
 
+    @objc private func openUserAgreement() {
+        if let userAgreementURL { onOpen?(userAgreementURL) }
+    }
+
     @objc private func openTerms() {
-        if let termsURL { onOpen?(termsURL) }
+        if let termsOfUseURL { onOpen?(termsOfUseURL) }
     }
 
     @objc private func openPrivacy() {

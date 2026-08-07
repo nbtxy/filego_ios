@@ -146,6 +146,7 @@ nonisolated enum R {
         static let proSubheadline = "pro.subheadline"
         static let proTerms = "pro.terms"
         static let proTitle = "pro.title"
+        static let proUserAgreement = "pro.userAgreement"
         static let quotaExceededMessage = "quota.exceeded.message"
         static let quotaExceededTitle = "quota.exceeded.title"
         static let quotaExceededUpgrade = "quota.exceeded.upgrade"

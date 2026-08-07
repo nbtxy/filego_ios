@@ -20,14 +20,17 @@ struct DriveNode: Decodable, Hashable {
 
     var isFolder: Bool { kind == .folder }
 
-    /// 回收站保留期。与服务端 Cron（`maintenance.ts`）的 30 天口径保持一致。
-    static let trashRetentionDays = 30
+    /// config 尚未返回时的随包兜底；真正展示值由 AppConfigStore 传入。
+    static let fallbackTrashRetentionDays = 30
 
     /// 距离自动永久删除还剩几天；已到期返回 0。不在回收站里则为 nil。
-    func trashDaysRemaining(now: Date = Date()) -> Int? {
+    func trashDaysRemaining(
+        retentionDays: Int = Self.fallbackTrashRetentionDays,
+        now: Date = Date()
+    ) -> Int? {
         guard let trashedAt else { return nil }
-        let deadline = trashedAt.addingTimeInterval(Double(Self.trashRetentionDays) * 86_400)
-        // 向上取整：刚删掉的文件应该显示「还有 30 天」，而不是被截断成 29。
+        let deadline = trashedAt.addingTimeInterval(Double(retentionDays) * 86_400)
+        // 向上取整：刚删掉的文件应该显示完整保留期，而不是被截断少一天。
         let days = (deadline.timeIntervalSince(now) / 86_400).rounded(.up)
         return max(0, Int(days))
     }

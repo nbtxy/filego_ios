@@ -11,6 +11,7 @@ final class AppEnvironment {
     let billingService: BillingService
     let storeKitService: StoreKitService
     let storageSnapshot: StorageSnapshotStore
+    let appConfigStore: AppConfigStore
 
     convenience init() {
         self.init(
@@ -43,6 +44,10 @@ final class AppEnvironment {
             session: sessionManager
         )
         self.storageSnapshot = StorageSnapshotStore()
+        self.appConfigStore = AppConfigStore(
+            networkProvider: networkProvider,
+            keyValueStore: keyValueStore
+        )
 
         services.register(networkProvider, as: NetworkProvider.self)
         services.register(sessionManager, as: SessionManager.self)

@@ -5,6 +5,7 @@ import UIKit
 @MainActor
 final class TrashViewController: UIViewController {
     private let viewModel: TrashViewModel
+    private let trashRetentionDays: Int
 
     private let noticeLabel = UILabel()
     private let emptyLabel = UILabel()
@@ -14,6 +15,7 @@ final class TrashViewController: UIViewController {
 
     init(environment: AppEnvironment) {
         self.viewModel = TrashViewModel(session: environment.sessionManager)
+        self.trashRetentionDays = environment.appConfigStore.trashRetentionDays
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -43,7 +45,7 @@ final class TrashViewController: UIViewController {
     }
 
     private func configureNotice() {
-        noticeLabel.text = R.Strings.trashNotice.localizedString()
+        noticeLabel.text = R.Strings.trashNotice.formatted(trashRetentionDays)
         noticeLabel.font = AppTypography.caption
         noticeLabel.textColor = AppColor.textSecondary
         noticeLabel.numberOfLines = 0
@@ -110,15 +112,18 @@ final class TrashViewController: UIViewController {
                 with: node,
                 menu: actions(for: node),
                 grid: false,
-                detailOverride: Self.remainingText(for: node)
+                detailOverride: Self.remainingText(
+                    for: node,
+                    retentionDays: trashRetentionDays
+                )
             )
             return cell
         }
     }
 
     /// 「还有 N 天自动删除」。当天到期只说「即将自动删除」，避免出现「还有 0 天」。
-    private static func remainingText(for node: DriveNode) -> String {
-        guard let days = node.trashDaysRemaining(), days > 0 else {
+    private static func remainingText(for node: DriveNode, retentionDays: Int) -> String {
+        guard let days = node.trashDaysRemaining(retentionDays: retentionDays), days > 0 else {
             return R.Strings.trashExpiringSoon.localizedString()
         }
         return R.Strings.trashDaysLeft.formatted(days)

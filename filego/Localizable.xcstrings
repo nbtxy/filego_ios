@@ -2415,6 +2415,23 @@
         }
       }
     },
+    "pro.userAgreement": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "User Agreement"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用户协议"
+          }
+        }
+      }
+    },
     "pro.title": {
       "extractionState": "manual",
       "localizations": {
@@ -2931,13 +2948,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Items in Trash are permanently deleted after 30 days. They still count toward your storage until then."
+            "value": "Items in Trash are permanently deleted after %lld days. They still count toward your storage until then."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "回收站中的项目 30 天后自动永久删除。在此之前仍然占用存储空间。"
+            "value": "回收站中的项目 %lld 天后自动永久删除。在此之前仍然占用存储空间。"
           }
         }
       }

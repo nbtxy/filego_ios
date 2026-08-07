@@ -163,7 +163,10 @@ final class DebugPanelViewController: UITableViewController {
     }
 
     private func invalidateSession() {
-        Task { await environment.sessionManager.invalidateLocalSession() }
+        Task {
+            await environment.sessionManager.invalidateLocalSession()
+            await environment.appConfigStore.refresh()
+        }
     }
 }
 #endif

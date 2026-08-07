@@ -64,6 +64,16 @@ nonisolated final class KeyValueStore: @unchecked Sendable {
         }
     }
 
+    func setGlobalCodable<T: Encodable>(_ value: T, forKey key: String) throws {
+        let data = try JSONEncoder().encode(value)
+        setGlobal(data, forKey: key)
+    }
+
+    func globalCodable<T: Decodable>(forKey key: String, as type: T.Type) throws -> T? {
+        guard let data: Data = globalValue(forKey: key) else { return nil }
+        return try JSONDecoder().decode(type, from: data)
+    }
+
     private var userDefaults: UserDefaults {
         let identifier = currentUserID.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? "default"
         return UserDefaults(suiteName: "com.nbtxy.filego.user.\(identifier)") ?? .standard
