@@ -4,6 +4,7 @@ import Foundation
 enum FileKind {
     case folder
     case markdown
+    case html
     case image
     case audio
     case video
@@ -16,6 +17,8 @@ enum FileKind {
         switch fileExtension.lowercased() {
         case "md", "markdown", "mdown", "mkd", "mkdn", "mdtext":
             self = .markdown
+        case "html", "htm", "xhtml", "xht":
+            self = .html
         case "jpg", "jpeg", "png", "gif", "heic", "webp":
             self = .image
         case "mp3", "m4a", "wav", "aac", "flac":
@@ -49,6 +52,7 @@ enum FileKind {
         switch self {
         case .folder: return "folder.fill"
         case .markdown, .plainText: return "doc.text"
+        case .html: return "chevron.left.forwardslash.chevron.right"
         case .image: return "photo"
         case .audio: return "music.note"
         case .video: return "film"

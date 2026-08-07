@@ -102,17 +102,15 @@ final class AccountDetailViewController: UIViewController {
             cell.accessories = []
 
         case .userId:
-            // ID 比一行 valueCell 的右侧空间长得多，用 subtitle 让它整行铺开。
-            var content = UIListContentConfiguration.subtitleCell()
+            var content = UIListContentConfiguration.valueCell()
             content.text = R.Strings.accountUserId.localizedString()
-            content.secondaryText = user.id
+            content.secondaryText = Self.compactUserID(user.id)
             content.secondaryTextProperties.font = .monospacedSystemFont(
                 ofSize: UIFont.preferredFont(forTextStyle: .footnote).pointSize,
                 weight: .regular
             )
             content.secondaryTextProperties.color = AppColor.textSecondary
             content.secondaryTextProperties.numberOfLines = 1
-            content.secondaryTextProperties.lineBreakMode = .byTruncatingMiddle
             cell.contentConfiguration = content
             // 点一下就复制，右边这个图标是唯一的可复制提示。
             let icon = UIImageView(image: UIImage(systemName: "doc.on.doc"))
@@ -317,6 +315,12 @@ final class AccountDetailViewController: UIViewController {
         formatter.timeStyle = .none
         return formatter
     }()
+
+    /// 账号 ID 通常是 UUID。页面只保留足够辨认的首尾字符，点击时仍复制完整值。
+    private static func compactUserID(_ id: String) -> String {
+        guard id.count > 13 else { return id }
+        return "\(id.prefix(8))…\(id.suffix(4))"
+    }
 }
 
 extension AccountDetailViewController: UICollectionViewDelegate {

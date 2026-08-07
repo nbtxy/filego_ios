@@ -48,7 +48,7 @@ final class NetworkProvider: @unchecked Sendable {
         do {
             envelope = try JSONDecoder.fileGo.decode(EmptyEnvelope.self, from: response.data)
         } catch {
-            throw FileGoAPIError.decoding(error)
+            throw decodingFailure(error, response: response)
         }
         guard envelope.statusCode == 0 else {
             throw FileGoAPIError.business(
@@ -63,22 +63,40 @@ final class NetworkProvider: @unchecked Sendable {
         as type: Payload.Type
     ) throws -> Payload {
         try validateHTTP(response)
+        // 必须先判状态码，再碰 Payload。服务端的业务错误是 HTTP 200 + statusCode!=0，
+        // 且 data 装的是【错误详情】而不是 Payload（配额快照、缺失的分片号、期望/实际
+        // 字节数…）。直接解 APIEnvelope<Payload> 会在 data 上抛 DecodingError，把
+        // 「存储空间不足」这类真正有用的提示统统盖成「服务器响应格式无效」。
+        let status: EmptyEnvelope
+        do {
+            status = try JSONDecoder.fileGo.decode(EmptyEnvelope.self, from: response.data)
+        } catch {
+            throw decodingFailure(error, response: response)
+        }
+        guard status.statusCode == 0 else {
+            throw FileGoAPIError.business(
+                code: status.statusCode,
+                message: status.message ?? ""
+            )
+        }
         let envelope: APIEnvelope<Payload>
         do {
             envelope = try JSONDecoder.fileGo.decode(APIEnvelope<Payload>.self, from: response.data)
         } catch {
-            throw FileGoAPIError.decoding(error)
-        }
-        guard envelope.statusCode == 0 else {
-            throw FileGoAPIError.business(
-                code: envelope.statusCode,
-                message: envelope.message ?? ""
-            )
+            throw decodingFailure(error, response: response)
         }
         guard let payload = envelope.data else {
             throw FileGoAPIError.business(code: envelope.statusCode, message: "响应数据为空")
         }
         return payload
+    }
+
+    /// 解码失败在 Release 上只剩一句「格式无效」，不在这里把状态码和响应体
+    /// 记进日志就彻底断线索了。DEBUG 下 `debugDetail` 还会一并进弹窗。
+    private func decodingFailure(_ error: Error, response: Response) -> FileGoAPIError {
+        let failure = FileGoAPIError.decoding(error, body: response.data)
+        AppLogger.error("响应解码失败 status=\(response.statusCode) | \(failure.debugDetail)")
+        return failure
     }
 
     private func validateHTTP(_ response: Response) throws {
