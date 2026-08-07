@@ -188,6 +188,40 @@
         }
       }
     },
+    "account.userId": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "User ID"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用户 ID"
+          }
+        }
+      }
+    },
+    "account.userId.copied": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "User ID copied"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已复制用户 ID"
+          }
+        }
+      }
+    },
     "app.name": {
       "extractionState": "stale",
       "localizations": {

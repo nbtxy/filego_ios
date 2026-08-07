@@ -4,11 +4,12 @@ import UIKit
 private nonisolated enum Row: Hashable {
     case name
     case email
+    case userId
     case createdAt
     case delete
 }
 
-/// 账号二级页：名字（可改）、邮箱、注册时间，以及注销账号。
+/// 账号二级页：名字（可改）、邮箱、用户 ID（可复制）、注册时间，以及注销账号。
 @MainActor
 final class AccountDetailViewController: UIViewController {
     private let environment: AppEnvironment
@@ -17,6 +18,7 @@ final class AccountDetailViewController: UIViewController {
     private var collectionView: UICollectionView!
     private var dataSource: UICollectionViewDiffableDataSource<Int, Row>!
     private let activityIndicator = UIActivityIndicatorView(style: .medium)
+    private weak var toast: UIView?
 
     init(environment: AppEnvironment, profile: AccountProfile) {
         self.environment = environment
@@ -99,6 +101,29 @@ final class AccountDetailViewController: UIViewController {
             cell.contentConfiguration = content
             cell.accessories = []
 
+        case .userId:
+            // ID 比一行 valueCell 的右侧空间长得多，用 subtitle 让它整行铺开。
+            var content = UIListContentConfiguration.subtitleCell()
+            content.text = R.Strings.accountUserId.localizedString()
+            content.secondaryText = user.id
+            content.secondaryTextProperties.font = .monospacedSystemFont(
+                ofSize: UIFont.preferredFont(forTextStyle: .footnote).pointSize,
+                weight: .regular
+            )
+            content.secondaryTextProperties.color = AppColor.textSecondary
+            content.secondaryTextProperties.numberOfLines = 1
+            content.secondaryTextProperties.lineBreakMode = .byTruncatingMiddle
+            cell.contentConfiguration = content
+            // 点一下就复制，右边这个图标是唯一的可复制提示。
+            let icon = UIImageView(image: UIImage(systemName: "doc.on.doc"))
+            icon.tintColor = AppColor.textSecondary
+            cell.accessories = [
+                .customView(configuration: .init(
+                    customView: icon,
+                    placement: .trailing(displayed: .always)
+                ))
+            ]
+
         case .createdAt:
             var content = UIListContentConfiguration.valueCell()
             content.text = R.Strings.accountCreatedAt.localizedString()
@@ -119,7 +144,7 @@ final class AccountDetailViewController: UIViewController {
     private func applySnapshot() {
         var snapshot = NSDiffableDataSourceSnapshot<Int, Row>()
         snapshot.appendSections([0, 1])
-        snapshot.appendItems([.name, .email, .createdAt], toSection: 0)
+        snapshot.appendItems([.name, .email, .userId, .createdAt], toSection: 0)
         snapshot.appendItems([.delete], toSection: 1)
         dataSource.applySnapshotUsingReloadData(snapshot)
     }
@@ -166,6 +191,62 @@ final class AccountDetailViewController: UIViewController {
                 setBusy(false)
                 presentError(error.localizedDescription)
             }
+        }
+    }
+
+    // MARK: - 复制用户 ID
+
+    private func copyUserID() {
+        UIPasteboard.general.string = user.id
+        HapticManager.notification(.success)
+        presentToast(R.Strings.accountUserIdCopied.localizedString())
+    }
+
+    /// 复制这种一次性反馈不值得弹 alert，浮一条自己消失的提示就够。
+    private func presentToast(_ message: String) {
+        toast?.removeFromSuperview()
+
+        let container = UIVisualEffectView(effect: UIBlurEffect(style: .systemThickMaterial))
+        container.layer.cornerRadius = AppSpacing.medium
+        container.clipsToBounds = true
+        container.alpha = 0
+        container.translatesAutoresizingMaskIntoConstraints = false
+        // 提示只是路过，别挡住底下的点击。
+        container.isUserInteractionEnabled = false
+
+        let label = UILabel()
+        label.text = message
+        label.font = AppTypography.caption
+        label.textColor = AppColor.textPrimary
+        label.numberOfLines = 0
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        container.contentView.addSubview(label)
+
+        view.addSubview(container)
+        toast = container
+        NSLayoutConstraint.activate([
+            label.topAnchor.constraint(equalTo: container.contentView.topAnchor, constant: AppSpacing.small),
+            label.bottomAnchor.constraint(equalTo: container.contentView.bottomAnchor, constant: -AppSpacing.small),
+            label.leadingAnchor.constraint(equalTo: container.contentView.leadingAnchor, constant: AppSpacing.medium),
+            label.trailingAnchor.constraint(equalTo: container.contentView.trailingAnchor, constant: -AppSpacing.medium),
+            container.centerXAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerXAnchor),
+            container.bottomAnchor.constraint(
+                equalTo: view.safeAreaLayoutGuide.bottomAnchor,
+                constant: -AppSpacing.large
+            ),
+            container.leadingAnchor.constraint(
+                greaterThanOrEqualTo: view.safeAreaLayoutGuide.leadingAnchor,
+                constant: AppSpacing.large
+            )
+        ])
+
+        UIView.animate(withDuration: 0.2) { container.alpha = 1 }
+        UIView.animate(withDuration: 0.3, delay: 1.6) {
+            container.alpha = 0
+        } completion: { [weak self] _ in
+            container.removeFromSuperview()
+            if self?.toast === container { self?.toast = nil }
         }
     }
 
@@ -243,6 +324,7 @@ extension AccountDetailViewController: UICollectionViewDelegate {
         collectionView.deselectItem(at: indexPath, animated: true)
         switch dataSource.itemIdentifier(for: indexPath) {
         case .name: promptRename()
+        case .userId: copyUserID()
         case .delete: confirmDelete()
         case .email, .createdAt, nil: break
         }

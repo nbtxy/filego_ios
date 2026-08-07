@@ -14,6 +14,8 @@ nonisolated enum R {
         static let accountNameEdit = "account.name.edit"
         static let accountNamePlaceholder = "account.name.placeholder"
         static let accountTitle = "account.title"
+        static let accountUserId = "account.userId"
+        static let accountUserIdCopied = "account.userId.copied"
         static let appName = "app.name"
         static let cacheClear = "cache.clear"
         static let cacheClearConfirm = "cache.clear.confirm"
