@@ -715,6 +715,23 @@
         }
       }
     },
+    "drive.copyTemporaryLink": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy temporary link"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制临时链接"
+          }
+        }
+      }
+    },
     "drive.displayOptions": {
       "extractionState": "manual",
       "localizations": {
@@ -1323,6 +1340,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "移到回收站"
+          }
+        }
+      }
+    },
+    "drive.temporaryLinkCopied": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temporary link copied. Valid for 1 day."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "临时链接已复制，1 天内有效"
           }
         }
       }

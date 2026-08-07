@@ -15,6 +15,7 @@ final class DriveListViewController: UIViewController {
     private let emptyLabel = UILabel()
     private let addFolderButton = UIButton(type: .system)
     private let fileActivityIndicator = UIActivityIndicatorView(style: .medium)
+    private weak var toast: UIView?
     private var collectionView: UICollectionView!
     private var dataSource: UICollectionViewDiffableDataSource<String, String>!
     private var openFileTask: Task<Void, Never>?
@@ -757,6 +758,10 @@ final class DriveListViewController: UIViewController {
         var children = [star, rename, move]
         if !node.isFolder {
             children.append(UIAction(
+                title: R.Strings.driveCopyTemporaryLink.localizedString(),
+                image: UIImage(systemName: "link")
+            ) { [weak self] _ in self?.copyTemporaryLink(for: node) })
+            children.append(UIAction(
                 title: R.Strings.driveCopy.localizedString(), image: UIImage(systemName: "doc.on.doc")
             ) { [weak self] _ in self?.pickFolder(for: node, copy: true) })
         }
@@ -776,6 +781,19 @@ final class DriveListViewController: UIViewController {
         Task {
             do { try await viewModel.moveToTrash(node); applySnapshot() }
             catch { showError(error) }
+        }
+    }
+
+    private func copyTemporaryLink(for node: DriveNode) {
+        Task {
+            do {
+                let url = try await viewModel.temporaryLink(for: node)
+                UIPasteboard.general.string = url.absoluteString
+                HapticManager.notification(.success)
+                presentToast(R.Strings.driveTemporaryLinkCopied.localizedString())
+            } catch {
+                showError(error)
+            }
         }
     }
 
@@ -846,6 +864,49 @@ final class DriveListViewController: UIViewController {
         )
         alert.addAction(UIAlertAction(title: R.Strings.commonOk.localizedString(), style: .default))
         present(alert, animated: true)
+    }
+
+    private func presentToast(_ message: String) {
+        toast?.removeFromSuperview()
+
+        let container = UIVisualEffectView(effect: UIBlurEffect(style: .systemThickMaterial))
+        container.layer.cornerRadius = AppSpacing.medium
+        container.clipsToBounds = true
+        container.alpha = 0
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.isUserInteractionEnabled = false
+
+        let label = UILabel()
+        label.text = message
+        label.font = AppTypography.caption
+        label.textColor = AppColor.textPrimary
+        label.numberOfLines = 0
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        container.contentView.addSubview(label)
+        view.addSubview(container)
+        toast = container
+
+        NSLayoutConstraint.activate([
+            label.topAnchor.constraint(equalTo: container.contentView.topAnchor, constant: AppSpacing.small),
+            label.bottomAnchor.constraint(equalTo: container.contentView.bottomAnchor, constant: -AppSpacing.small),
+            label.leadingAnchor.constraint(equalTo: container.contentView.leadingAnchor, constant: AppSpacing.medium),
+            label.trailingAnchor.constraint(equalTo: container.contentView.trailingAnchor, constant: -AppSpacing.medium),
+            container.centerXAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerXAnchor),
+            container.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -AppSpacing.large),
+            container.leadingAnchor.constraint(
+                greaterThanOrEqualTo: view.safeAreaLayoutGuide.leadingAnchor,
+                constant: AppSpacing.large
+            )
+        ])
+
+        UIView.animate(withDuration: 0.2) { container.alpha = 1 }
+        UIView.animate(withDuration: 0.3, delay: 1.6) {
+            container.alpha = 0
+        } completion: { [weak self] _ in
+            container.removeFromSuperview()
+            if self?.toast === container { self?.toast = nil }
+        }
     }
 
     private func showQuotaExceeded() {

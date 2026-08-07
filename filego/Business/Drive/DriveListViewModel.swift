@@ -112,4 +112,9 @@ final class DriveListViewModel {
         let _: DriveNode = try await session.request(NodeAPI.copy(id: node.id, parentId: parentId))
         _ = try await reload()
     }
+
+    func temporaryLink(for node: DriveNode) async throws -> URL {
+        let result: NodeTemporaryLink = try await session.request(NodeAPI.temporaryLink(id: node.id))
+        return result.url
+    }
 }

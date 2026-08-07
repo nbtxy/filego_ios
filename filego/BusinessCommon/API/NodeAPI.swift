@@ -7,6 +7,7 @@ enum NodeAPI {
     case search(parentId: String, query: String)
     case detail(id: String)
     case ancestors(id: String)
+    case temporaryLink(id: String)
     case createFolder(parentId: String, name: String)
     case createImportAddress(id: String)
     case resetImportAddress(id: String)
@@ -26,6 +27,7 @@ nonisolated extension NodeAPI: FileGoTarget {
         case let .resetImportAddress(id): return "/nodes/\(id)/import-address/reset"
         case let .detail(id): return "/nodes/\(id)"
         case let .ancestors(id): return "/nodes/\(id)/ancestors"
+        case let .temporaryLink(id): return "/nodes/\(id)/download-url"
         case let .update(id, _, _, _): return "/nodes/\(id)"
         case let .copy(id, _): return "/nodes/\(id)/copy"
         case let .trash(id): return "/nodes/\(id)"
@@ -34,7 +36,7 @@ nonisolated extension NodeAPI: FileGoTarget {
 
     var method: Moya.Method {
         switch self {
-        case .list, .search, .detail, .ancestors: return .get
+        case .list, .search, .detail, .ancestors, .temporaryLink: return .get
         case .createFolder, .createImportAddress, .resetImportAddress, .copy: return .post
         case .update: return .patch
         case .trash: return .delete
@@ -56,7 +58,7 @@ nonisolated extension NodeAPI: FileGoTarget {
                 parameters: ["parent_id": parentId, "q": query, "limit": 200],
                 encoding: URLEncoding.queryString
             )
-        case .detail, .ancestors, .createImportAddress, .resetImportAddress, .trash:
+        case .detail, .ancestors, .temporaryLink, .createImportAddress, .resetImportAddress, .trash:
             return .requestPlain
         case let .createFolder(parentId, name):
             return .requestParameters(

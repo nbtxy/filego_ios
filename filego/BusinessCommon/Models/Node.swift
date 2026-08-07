@@ -58,6 +58,10 @@ struct NodeAncestors: Decodable {
     let nodes: [DriveNode]
 }
 
+struct NodeTemporaryLink: Decodable {
+    let url: URL
+}
+
 struct ImportAddressResult: Decodable {
     let importAddress: URL
     let expiresAt: Date
