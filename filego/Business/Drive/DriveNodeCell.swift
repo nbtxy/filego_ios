@@ -1,12 +1,24 @@
 import UIKit
 
+/// 文件/文件夹的条目。一份 cell 兼两种形态：
+///   - 列表：对齐网页 `.row`——38pt 图标块 + 名字/副标题 + 星标 + ⋯，行底一条发丝线；
+///   - 宫格：对齐网页 `.card`——白卡里一块缩略图位，下面两行名字与 meta。
 final class DriveNodeCell: UICollectionViewCell {
-    private let iconView = UIImageView()
+    /// 网页 `.row` 的 `padding: 10px 16px` 里的那个 16。
+    private static let rowPadding: CGFloat = 16
+    private static let moreButtonHitSize: CGFloat = 44
+    /// `ellipsis` 这个 SF Symbol 在 15pt 下的实际字形宽度，用来把点击区的余量折回去。
+    private static let moreGlyphWidth: CGFloat = 19
+
+    private let listIcon = FileIconTile(size: .small)
+    private let gridIcon = FileIconTile(size: .large)
+    private let thumbHolder = UIView()
     private let nameLabel = UILabel()
     private let detailLabel = UILabel()
     private let starView = UIImageView(image: UIImage(systemName: "star.fill"))
     private let moreButton = UIButton(type: .system)
     private let textStack = UIStackView()
+    private let separator = UIView()
     private var listConstraints: [NSLayoutConstraint] = []
     private var gridConstraints: [NSLayoutConstraint] = []
 
@@ -14,24 +26,33 @@ final class DriveNodeCell: UICollectionViewCell {
         super.init(frame: frame)
         backgroundColor = .clear
 
-        iconView.contentMode = .center
-        iconView.tintColor = AppColor.textSecondary
-        iconView.backgroundColor = UIColor.secondarySystemBackground
-        iconView.layer.cornerRadius = 6
-        iconView.layer.cornerCurve = .continuous
-        iconView.clipsToBounds = true
-        iconView.translatesAutoresizingMaskIntoConstraints = false
+        listIcon.translatesAutoresizingMaskIntoConstraints = false
 
-        nameLabel.font = .systemFont(ofSize: 15, weight: .medium)
+        // 宫格的缩略图位：paper-2 底的圆角块，中间摆文件图标。网页 `.card-thumb`。
+        thumbHolder.backgroundColor = AppColor.paper2
+        thumbHolder.layer.cornerRadius = AppRadius.tile
+        thumbHolder.layer.cornerCurve = .continuous
+        thumbHolder.clipsToBounds = true
+        thumbHolder.translatesAutoresizingMaskIntoConstraints = false
+        gridIcon.translatesAutoresizingMaskIntoConstraints = false
+        thumbHolder.addSubview(gridIcon)
+
+        nameLabel.font = AppTypography.rowName
         nameLabel.textColor = AppColor.textPrimary
         nameLabel.lineBreakMode = .byTruncatingMiddle
         nameLabel.adjustsFontForContentSizeCategory = true
 
-        detailLabel.font = .systemFont(ofSize: 12)
+        detailLabel.font = AppTypography.rowMeta
         detailLabel.textColor = AppColor.textSecondary
         detailLabel.adjustsFontForContentSizeCategory = true
 
-        starView.tintColor = .systemYellow
+        // 宫格卡片是固定高度，超大字号下总有东西放不下。这里定死让步顺序：
+        // 文字一步不让，缩略图位随便压——名字和大小是这张卡要说的话，图位只是装饰。
+        for label in [nameLabel, detailLabel] {
+            label.setContentCompressionResistancePriority(.required, for: .vertical)
+        }
+
+        starView.tintColor = AppColor.star
         starView.contentMode = .scaleAspectFit
         starView.setContentHuggingPriority(.required, for: .horizontal)
         starView.translatesAutoresizingMaskIntoConstraints = false
@@ -47,6 +68,10 @@ final class DriveNodeCell: UICollectionViewCell {
         moreButton.showsMenuAsPrimaryAction = true
         moreButton.translatesAutoresizingMaskIntoConstraints = false
 
+        // 网页 `.row` 的行间发丝线是 paper-2，比卡片描边的 --line 浅一档。
+        separator.backgroundColor = AppColor.paper2
+        separator.translatesAutoresizingMaskIntoConstraints = false
+
         let titleStack = UIStackView(arrangedSubviews: [nameLabel, starView])
         titleStack.axis = .horizontal
         titleStack.spacing = AppSpacing.extraSmall
@@ -55,41 +80,81 @@ final class DriveNodeCell: UICollectionViewCell {
         textStack.addArrangedSubview(titleStack)
         textStack.addArrangedSubview(detailLabel)
         textStack.axis = .vertical
-        textStack.spacing = 2
+        textStack.spacing = 3
         textStack.alignment = .fill
         textStack.translatesAutoresizingMaskIntoConstraints = false
 
-        contentView.addSubview(iconView)
+        contentView.addSubview(listIcon)
+        contentView.addSubview(thumbHolder)
         contentView.addSubview(textStack)
         contentView.addSubview(moreButton)
+        contentView.addSubview(separator)
 
         NSLayoutConstraint.activate([
-            iconView.widthAnchor.constraint(equalToConstant: 36),
-            iconView.heightAnchor.constraint(equalToConstant: 36),
             starView.widthAnchor.constraint(equalToConstant: 13),
             starView.heightAnchor.constraint(equalToConstant: 13),
-            moreButton.widthAnchor.constraint(equalToConstant: 44),
-            moreButton.heightAnchor.constraint(equalToConstant: 44)
+            moreButton.widthAnchor.constraint(equalToConstant: Self.moreButtonHitSize),
+            moreButton.heightAnchor.constraint(equalToConstant: Self.moreButtonHitSize),
+            gridIcon.centerXAnchor.constraint(equalTo: thumbHolder.centerXAnchor),
+            gridIcon.centerYAnchor.constraint(equalTo: thumbHolder.centerYAnchor)
         ])
 
+        // contentView 铺满整个 collection 宽度，而白卡只占中间那块。所以行内元素
+        // 要退到「卡的内缩 + 行自己的内边距」之外，才是网页 `.row` 那 16px padding
+        // 的等价物；只写一个 16 的话，图标会正好压在卡的描边上。
+        let rowInset = PaperSectionBackgroundView.horizontalInset + Self.rowPadding
+        // ⋯ 的点击区是 44，里面的字形只有约 19，两侧各空 12.5。要让**字形**的右沿
+        // 落在卡内缘 16 处，按钮本身就得再往外挪回这段空白。
+        let moreOverhang = (Self.moreButtonHitSize - Self.moreGlyphWidth) / 2
+
         listConstraints = [
-            iconView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: AppSpacing.medium),
-            iconView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            textStack.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 12),
-            textStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),
-            textStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -10),
+            listIcon.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: rowInset),
+            listIcon.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            textStack.leadingAnchor.constraint(equalTo: listIcon.trailingAnchor, constant: 14),
+            // 上下给的是「不小于」，配合下面的最小行高把文字居中放。写成必须的
+            // 等式会在行被撑到 58 时把 stack 拉长，名字和副标题之间凭空多出一段。
+            textStack.topAnchor.constraint(greaterThanOrEqualTo: contentView.topAnchor, constant: 10),
+            textStack.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -10),
+            textStack.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
             textStack.trailingAnchor.constraint(lessThanOrEqualTo: moreButton.leadingAnchor, constant: -8),
-            moreButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -8),
-            moreButton.centerYAnchor.constraint(equalTo: contentView.centerYAnchor)
+            moreButton.trailingAnchor.constraint(
+                equalTo: contentView.trailingAnchor, constant: -(rowInset - moreOverhang)
+            ),
+            moreButton.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            // 网页 `.row` 的 border-bottom 铺满整个 border box，所以发丝线要横贯
+            // 整张卡——正好落在卡的左右沿上，而不是再往里缩一段。
+            separator.leadingAnchor.constraint(
+                equalTo: contentView.leadingAnchor,
+                constant: PaperSectionBackgroundView.horizontalInset
+            ),
+            separator.trailingAnchor.constraint(
+                equalTo: contentView.trailingAnchor,
+                constant: -PaperSectionBackgroundView.horizontalInset
+            ),
+            separator.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            separator.heightAnchor.constraint(equalToConstant: 0.5),
+            // 网页 `.row` 是 38 的图标加上下各 10，至少 58 高。行高交给文字撑的话
+            // 只有 52，图标上下各剩 7，挤。
+            contentView.heightAnchor.constraint(greaterThanOrEqualToConstant: 58)
         ]
+        // 缩略图位可压缩，见上面对让步顺序的说明。
+        let thumbHeight = thumbHolder.heightAnchor.constraint(equalToConstant: 104)
+        thumbHeight.priority = .defaultLow
         gridConstraints = [
-            iconView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 12),
-            iconView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
+            // `.card`：14 内边距，缩略图位 104 高。
+            thumbHolder.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 14),
+            thumbHolder.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -14),
+            thumbHolder.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 14),
+            thumbHeight,
+            textStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 14),
+            textStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -14),
+            textStack.topAnchor.constraint(equalTo: thumbHolder.bottomAnchor, constant: 12),
+            textStack.bottomAnchor.constraint(
+                lessThanOrEqualTo: contentView.bottomAnchor, constant: -12
+            ),
+            // ⋯ 浮在卡片右上角（网页把星标放在这个位置）。
             moreButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -2),
-            moreButton.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 2),
-            textStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 12),
-            textStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -12),
-            textStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -12)
+            moreButton.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 2)
         ]
         NSLayoutConstraint.activate(listConstraints)
     }
@@ -101,50 +166,22 @@ final class DriveNodeCell: UICollectionViewCell {
         moreButton.menu = nil
     }
 
-    // TODO: [star] 排查用，定位后删除。用来看 configure 设完之后，
-    // 到真正布局时 isHidden / alpha 有没有被别人改回去。
-    private var debugNodeID = ""
-    private var debugWantsStar = false
-
-    /// 供 applySnapshot 完成回调枚举 visibleCells 时读取真实上屏状态。
-    var debugStarState: String {
-        let id = debugNodeID.isEmpty ? "?" : String(debugNodeID.prefix(6))
-        let flag = starView.isHidden == debugWantsStar ? "⚠️" : ""
-        return "\(id)want=\(debugWantsStar ? 1 : 0)hidden=\(starView.isHidden ? 1 : 0)"
-            + "a=\(starView.alpha)w=\(Int(starView.frame.width))"
-            + "c=\(UInt(bitPattern: ObjectIdentifier(self).hashValue) % 10000)\(flag)"
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        guard !debugNodeID.isEmpty else { return }
-        let mismatch = starView.isHidden == debugWantsStar
-        AppLogger.info(
-            "[star] layoutSubviews id=\(debugNodeID) wantStar=\(debugWantsStar)"
-            + " isHidden=\(starView.isHidden) alpha=\(starView.alpha)"
-            + " frame=\(NSCoder.string(for: starView.frame))"
-            + " stackHidden=\(starView.superview?.isHidden ?? false)"
-            + (mismatch ? " ⚠️不一致" : "")
-        )
-    }
-
-    /// `detailOverride` 用于回收站：副标题换成「还有 N 天自动删除」，比文件尺寸更有用。
-    func configure(with node: DriveNode, menu: UIMenu, grid: Bool, detailOverride: String? = nil) {
-        iconView.image = UIImage(
-            systemName: symbol(for: node),
-            withConfiguration: UIImage.SymbolConfiguration(pointSize: 16, weight: .regular)
-        )
-        iconView.tintColor = node.isFolder ? AppColor.accent : AppColor.textSecondary
+    /// - Parameters:
+    ///   - detailOverride: 回收站用——副标题换成「还有 N 天自动删除」，比文件尺寸更有用。
+    ///   - isLast: 段内最后一行不画发丝线，否则它会压在白卡的下边缘上
+    ///     （网页 `.row:last-child { border-bottom: 0 }`）。
+    func configure(
+        with node: DriveNode,
+        menu: UIMenu,
+        grid: Bool,
+        detailOverride: String? = nil,
+        isLast: Bool = false
+    ) {
+        listIcon.configure(with: node)
+        gridIcon.configure(with: node)
         nameLabel.text = node.name
         starView.isHidden = !node.starred
-        // TODO: [star] 排查用，定位后删除
-        debugNodeID = node.id
-        debugWantsStar = node.starred
-        AppLogger.info(
-            "[star] cell.configure id=\(node.id) name=\(node.name) starred=\(node.starred)"
-            + " → isHidden=\(starView.isHidden) cell=\(UInt(bitPattern: ObjectIdentifier(self).hashValue) % 10000)"
-            + " window=\(window != nil)"
-        )
+
         if let detailOverride {
             detailLabel.text = detailOverride
         } else if node.isFolder {
@@ -156,15 +193,38 @@ final class DriveNodeCell: UICollectionViewCell {
         }
         moreButton.menu = menu
 
-        NSLayoutConstraint.deactivate(grid ? listConstraints : gridConstraints)
-        NSLayoutConstraint.activate(grid ? gridConstraints : listConstraints)
-        contentView.backgroundColor = grid ? UIColor.secondarySystemBackground : .clear
-        contentView.layer.cornerRadius = grid ? 12 : 0
-        contentView.layer.cornerCurve = .continuous
-        nameLabel.numberOfLines = grid ? 2 : 1
+        apply(grid: grid, isLast: isLast)
     }
 
-    private func symbol(for node: DriveNode) -> String {
-        FileKind(node: node).symbolName
+    private func apply(grid: Bool, isLast: Bool) {
+        NSLayoutConstraint.deactivate(grid ? listConstraints : gridConstraints)
+        NSLayoutConstraint.activate(grid ? gridConstraints : listConstraints)
+
+        listIcon.isHidden = grid
+        thumbHolder.isHidden = !grid
+        separator.isHidden = grid || isLast
+        isListRow = !grid
+        nameLabel.numberOfLines = grid ? 2 : 1
+        nameLabel.lineBreakMode = grid ? .byTruncatingTail : .byTruncatingMiddle
+
+        // 宫格是一张独立的白卡；列表行躺在整段共用的白卡上，自己不要底色。
+        contentView.backgroundColor = grid ? AppColor.surface : .clear
+        contentView.layer.cornerRadius = grid ? AppRadius.card : 0
+        contentView.layer.cornerCurve = .continuous
+        contentView.layer.borderWidth = grid ? 1 : 0
+        contentView.layer.borderColor = AppColor.line.cgColor
+    }
+
+    /// 高亮态要按形态分别处理，不能拿 separator 的显隐来推断——段内最后一行也没有它。
+    private var isListRow = true
+
+    /// 列表态的按下高亮：网页 `.row:hover` 是一层极浅的暖白。
+    override var isHighlighted: Bool {
+        didSet {
+            guard isListRow else { return }
+            contentView.backgroundColor = isHighlighted
+                ? AppColor.paper2.withAlphaComponent(0.6)
+                : .clear
+        }
     }
 }

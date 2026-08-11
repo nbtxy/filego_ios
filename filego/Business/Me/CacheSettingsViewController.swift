@@ -19,6 +19,8 @@ final class CacheSettingsViewController: UITableViewController {
         super.viewDidLoad()
         title = R.Strings.cacheTitle.localizedString()
         navigationItem.largeTitleDisplayMode = .never
+        tableView.backgroundColor = AppColor.background
+        tableView.separatorColor = AppColor.paper2
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "CacheRow")
         activityIndicator.hidesWhenStopped = true
         navigationItem.rightBarButtonItem = UIBarButtonItem(customView: activityIndicator)
@@ -37,8 +39,10 @@ final class CacheSettingsViewController: UITableViewController {
         cellForRowAt indexPath: IndexPath
     ) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "CacheRow", for: indexPath)
+        PaperListCellStyle.apply(to: cell)
         if indexPath.section == 0 {
             var content = UIListContentConfiguration.valueCell()
+            content.applyPaperColors()
             content.text = R.Strings.cacheUsage.localizedString()
             content.secondaryText = R.Strings.cacheUsageValue.formatted(
                 ByteFormatting.string(statistics.bytes), statistics.fileCount
@@ -48,7 +52,7 @@ final class CacheSettingsViewController: UITableViewController {
         } else {
             var content = UIListContentConfiguration.cell()
             content.text = R.Strings.cacheClear.localizedString()
-            content.textProperties.color = .systemRed
+            content.textProperties.color = AppColor.danger
             content.textProperties.alignment = .center
             cell.contentConfiguration = content
             cell.selectionStyle = statistics.fileCount == 0 ? .none : .default

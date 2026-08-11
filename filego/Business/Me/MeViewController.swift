@@ -46,8 +46,7 @@ final class MeViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        // 分组列表要有灰底才衬得出白色卡片，这里不用 AppColor.background。
-        view.backgroundColor = .systemGroupedBackground
+        view.backgroundColor = AppColor.background
         configureCollectionView()
         configureActivityIndicator()
         reload()
@@ -62,13 +61,12 @@ final class MeViewController: UIViewController {
     // MARK: - 视图
 
     private func configureCollectionView() {
-        var configuration = UICollectionLayoutListConfiguration(appearance: .insetGrouped)
-        configuration.backgroundColor = .clear
+        let configuration = UICollectionLayoutListConfiguration.paperInsetGrouped()
         collectionView = UICollectionView(
             frame: .zero,
             collectionViewLayout: UICollectionViewCompositionalLayout.list(using: configuration)
         )
-        collectionView.backgroundColor = .systemGroupedBackground
+        collectionView.backgroundColor = AppColor.background
         collectionView.delegate = self
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(collectionView)
@@ -104,11 +102,14 @@ final class MeViewController: UIViewController {
     }
 
     private func configure(_ cell: UICollectionViewListCell, for row: Row) {
+        PaperListCellStyle.apply(to: cell)
         switch row {
         case .pro:
             var content = UIListContentConfiguration.valueCell()
+            content.applyPaperColors()
+            // Pro 是这页唯一的「升级」出口，用点缀色的柠檬绿冠冕最扎眼。
             content.image = UIImage(systemName: "crown.fill")
-            content.imageProperties.tintColor = AppColor.accent
+            content.imageProperties.tintColor = AppColor.FileTile.folderForeground
             let plan = profile?.plan
             if plan?.isPro == true {
                 content.text = R.Strings.proEntryActive.localizedString()
@@ -124,6 +125,7 @@ final class MeViewController: UIViewController {
 
         case .account:
             var content = UIListContentConfiguration.valueCell()
+            content.applyPaperColors()
             content.text = R.Strings.meAccount.localizedString()
             content.secondaryText = profile?.user.displayName?.nilIfEmpty ?? "—"
             cell.contentConfiguration = content
@@ -131,6 +133,7 @@ final class MeViewController: UIViewController {
 
         case .storage:
             var content = UIListContentConfiguration.valueCell()
+            content.applyPaperColors()
             content.text = R.Strings.meStorageTitle.localizedString()
             if let storage = profile?.storage {
                 content.secondaryText = R.Strings.meStorageValue.formatted(
@@ -143,6 +146,7 @@ final class MeViewController: UIViewController {
 
         case .cache:
             var content = UIListContentConfiguration.valueCell()
+            content.applyPaperColors()
             content.text = R.Strings.cacheTitle.localizedString()
             content.secondaryText = ByteFormatting.string(cacheStatistics.bytes)
             cell.contentConfiguration = content
@@ -150,6 +154,7 @@ final class MeViewController: UIViewController {
 
         case .trash:
             var content = UIListContentConfiguration.valueCell()
+            content.applyPaperColors()
             content.text = R.Strings.trashTitle.localizedString()
             if let trashed = profile?.counts.trashed, trashed > 0 {
                 content.secondaryText = String(trashed)
@@ -160,6 +165,7 @@ final class MeViewController: UIViewController {
         #if DEBUG
         case .debugPanel:
             var content = UIListContentConfiguration.valueCell()
+            content.applyPaperColors()
             content.image = UIImage(systemName: "ladybug")
             content.text = R.Strings.debugPanelTitle.localizedString()
             content.secondaryText = BackendConfig.baseURL.host ?? BackendConfig.baseURL.absoluteString
@@ -170,13 +176,14 @@ final class MeViewController: UIViewController {
         case .signOut:
             var content = UIListContentConfiguration.cell()
             content.text = R.Strings.meSignOut.localizedString()
-            content.textProperties.color = .systemRed
+            content.textProperties.color = AppColor.danger
             content.textProperties.alignment = .center
             cell.contentConfiguration = content
             cell.accessories = []
 
         case .failure:
             var content = UIListContentConfiguration.cell()
+            content.applyPaperColors()
             content.text = R.Strings.meLoadFailed.localizedString()
             content.secondaryText = loadErrorMessage
             content.secondaryTextProperties.color = AppColor.textSecondary

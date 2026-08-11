@@ -26,6 +26,8 @@ final class DebugPanelViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = R.Strings.debugPanelTitle.localizedString()
+        tableView.backgroundColor = AppColor.background
+        tableView.separatorColor = AppColor.paper2
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "DebugPanelRow")
     }
 
@@ -52,6 +54,7 @@ final class DebugPanelViewController: UITableViewController {
         cellForRowAt indexPath: IndexPath
     ) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "DebugPanelRow", for: indexPath)
+        PaperListCellStyle.apply(to: cell)
         let row = row(at: indexPath)
         var content = cell.defaultContentConfiguration()
         cell.accessoryType = .none

@@ -23,6 +23,10 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         let window = UIWindow(windowScene: windowScene)
         window.tintColor = AppColor.accent
+        // 设计语言是固定的纸色底，不跟随系统深色——与网页版一致，见 DesignSystem。
+        // Info.plist 的 UIUserInterfaceStyle 已经锁了一道，这里是第二道：
+        // 它同时覆盖本 App 弹出的系统控件（alert、菜单、分享面板）。
+        window.overrideUserInterfaceStyle = .light
         let rootViewController = RootViewController(environment: environment)
         window.rootViewController = rootViewController
         window.makeKeyAndVisible()

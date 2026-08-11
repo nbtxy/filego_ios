@@ -17,6 +17,8 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
         AppLogger.info("Application did finish launching")
+        // 要早于任何界面创建：UIAppearance 只对之后创建的视图生效。
+        AppAppearance.install()
         // 必须在 AppEnvironment 之前：把历史明文令牌搬进 Keychain，并恢复
         // KeyValueStore 的用户域，否则首屏读到的偏好会落在 default 域里。
         SessionManager.bootstrap()

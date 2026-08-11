@@ -34,14 +34,16 @@ final class LoginViewController: UIViewController {
     }
 
     private func setUpViews() {
-        let iconView = UIImageView(image: UIImage(systemName: "externaldrive.badge.icloud"))
-        iconView.tintColor = AppColor.accent
-        iconView.contentMode = .scaleAspectFit
+        // 网页登录页左上角就是这枚品牌标，比一个通用的 SF Symbol 认得出人。
+        let iconView = BrandMarkView(side: 62)
 
-        titleLabel.text = R.Strings.appName.localizedString()
-        titleLabel.font = .preferredFont(forTextStyle: .largeTitle)
         titleLabel.textColor = AppColor.textPrimary
         titleLabel.textAlignment = .center
+        titleLabel.setTightText(
+            R.Strings.appName.localizedString(),
+            font: .systemFont(ofSize: 40, weight: .heavy),
+            kernEm: -0.07
+        )
 
         subtitleLabel.text = R.Strings.loginSubtitle.localizedString()
         subtitleLabel.font = AppTypography.body
@@ -50,10 +52,11 @@ final class LoginViewController: UIViewController {
         subtitleLabel.numberOfLines = 0
 
         appleButton.addTarget(self, action: #selector(didTapAppleSignIn), for: .touchUpInside)
-        appleButton.cornerRadius = 10
+        // `.btn-lg`：圆角 15。Apple 按钮本身就是墨黑底白字，与 `.btn-primary` 同气质。
+        appleButton.cornerRadius = 15
 
         errorLabel.font = AppTypography.caption
-        errorLabel.textColor = .systemRed
+        errorLabel.textColor = AppColor.danger
         errorLabel.textAlignment = .center
         errorLabel.numberOfLines = 0
         errorLabel.isHidden = true
@@ -74,6 +77,7 @@ final class LoginViewController: UIViewController {
         #if DEBUG
         debugPanelButton.setTitle(R.Strings.debugPanelTitle.localizedString(), for: .normal)
         debugPanelButton.titleLabel?.font = AppTypography.caption
+        debugPanelButton.setTitleColor(AppColor.muted, for: .normal)
         debugPanelButton.addTarget(self, action: #selector(didTapDebugPanel), for: .touchUpInside)
         actionStack.addArrangedSubview(debugPanelButton)
         #endif
@@ -85,8 +89,7 @@ final class LoginViewController: UIViewController {
 
         let guide = view.safeAreaLayoutGuide
         NSLayoutConstraint.activate([
-            iconView.widthAnchor.constraint(equalToConstant: 72),
-            iconView.heightAnchor.constraint(equalToConstant: 72),
+            // BrandMarkView 自带尺寸约束，这里不再钉宽高。
 
             stack.centerXAnchor.constraint(equalTo: guide.centerXAnchor),
             stack.centerYAnchor.constraint(equalTo: guide.centerYAnchor, constant: -60),
@@ -100,7 +103,8 @@ final class LoginViewController: UIViewController {
             activityIndicator.centerXAnchor.constraint(equalTo: guide.centerXAnchor),
             activityIndicator.bottomAnchor.constraint(equalTo: actionStack.topAnchor, constant: -AppSpacing.medium),
 
-            appleButton.heightAnchor.constraint(equalToConstant: 50),
+            // `.btn-lg`：min-height 54
+            appleButton.heightAnchor.constraint(equalToConstant: 54),
             actionStack.leadingAnchor.constraint(equalTo: guide.leadingAnchor, constant: AppSpacing.large),
             actionStack.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -AppSpacing.large),
             actionStack.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -AppSpacing.large * 2)

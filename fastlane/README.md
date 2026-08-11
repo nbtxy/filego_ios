@@ -31,6 +31,14 @@ Download the current App Store metadata for comparison
 
 Validate and upload metadata without submitting for review
 
+### ios sync_screenshots
+
+```sh
+[bundle exec] fastlane ios sync_screenshots
+```
+
+Upload localized App Store screenshots without submitting for review
+
 ### ios build
 
 ```sh

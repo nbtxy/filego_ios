@@ -32,6 +32,8 @@ final class FolderPickerViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = folderName
+        tableView.backgroundColor = AppColor.background
+        tableView.separatorColor = AppColor.paper2
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "folder")
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             title: R.Strings.driveMoveHere.localizedString(),
@@ -62,10 +64,13 @@ final class FolderPickerViewController: UITableViewController {
 
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "folder", for: indexPath)
+        PaperListCellStyle.apply(to: cell)
         var content = cell.defaultContentConfiguration()
+        content.applyPaperColors()
         content.text = folders[indexPath.row].name
         content.image = UIImage(systemName: "folder.fill")
-        content.imageProperties.tintColor = AppColor.accent
+        // 与列表里的文件夹图标块同色，一眼认得出是同一种东西。
+        content.imageProperties.tintColor = AppColor.FileTile.folderForeground
         cell.contentConfiguration = content
         cell.accessoryType = .disclosureIndicator
         return cell

@@ -12,10 +12,10 @@ final class DriveListViewController: UIViewController {
     private let onShowMe: (() -> Void)?
     private let viewModel: DriveListViewModel
     private let breadcrumbBar = BreadcrumbBar()
-    private let emptyLabel = UILabel()
+    private let emptyView = PaperEmptyStateView(title: R.Strings.driveEmpty.localizedString())
     private let addFolderButton = UIButton(type: .system)
     private let fileActivityIndicator = UIActivityIndicatorView(style: .medium)
-    private weak var toast: UIView?
+    private let activityBackdrop = UIView()
     private var collectionView: UICollectionView!
     private var dataSource: UICollectionViewDiffableDataSource<String, String>!
     private var openFileTask: Task<Void, Never>?
@@ -30,6 +30,15 @@ final class DriveListViewController: UIViewController {
         searchBar.placeholder = R.Strings.driveSearchPlaceholder.localizedString()
         searchBar.searchBarStyle = .minimal
         searchBar.showsCancelButton = true
+        // 网页 `.search-wrap .input`：白底胶囊 + `--line` 描边。
+        let field = searchBar.searchTextField
+        field.backgroundColor = AppColor.surface
+        field.textColor = AppColor.textPrimary
+        field.layer.cornerRadius = 18
+        field.layer.cornerCurve = .continuous
+        field.layer.borderWidth = 1
+        field.layer.borderColor = AppColor.line.cgColor
+        field.clipsToBounds = true
         return searchBar
     }()
     private var isGrid: Bool {
@@ -81,16 +90,24 @@ final class DriveListViewController: UIViewController {
         configureBreadcrumbs()
         configureAddFolderButton()
         configureFileActivityIndicator()
+        observeContentSizeCategory()
         reload()
+    }
+
+    /// 宫格卡的高度是算出来的常量，字号变了要重算一次，否则名字会被裁掉。
+    private func observeContentSizeCategory() {
+        registerForTraitChanges([UITraitPreferredContentSizeCategory.self]) {
+            (self: Self, _: UITraitCollection) in
+            guard self.isGrid else { return }
+            self.collectionView.setCollectionViewLayout(self.makeLayout(), animated: false)
+        }
     }
 
     private func configureNavigation() {
         navigationItem.largeTitleDisplayMode = .never
-        let appearance = UINavigationBarAppearance()
-        appearance.configureWithTransparentBackground()
-        navigationItem.standardAppearance = appearance
-        navigationItem.scrollEdgeAppearance = appearance
-        navigationItem.compactAppearance = appearance
+        // 导航栏外观统一由 AppAppearance 提供（纸色底 + 滚动后一条 --line 发丝线）。
+        // 这里刻意不再逐页覆盖：之前的 transparent 让内容直接从标题下穿过去，
+        // 纸色底又没有毛玻璃衬着，滚动时文字会糊成一团。
 
         if isSearching {
             navigationItem.hidesBackButton = true
@@ -220,11 +237,7 @@ final class DriveListViewController: UIViewController {
             collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
-        emptyLabel.text = R.Strings.driveEmpty.localizedString()
-        emptyLabel.font = AppTypography.body
-        emptyLabel.textColor = AppColor.textSecondary
-        emptyLabel.textAlignment = .center
-        collectionView.backgroundView = emptyLabel
+        collectionView.backgroundView = emptyView
 
         dataSource = UICollectionViewDiffableDataSource<String, String>(
             collectionView: collectionView
@@ -234,7 +247,12 @@ final class DriveListViewController: UIViewController {
                   let cell = collectionView.dequeueReusableCell(
                     withReuseIdentifier: "node", for: indexPath
                   ) as? DriveNodeCell else { return nil }
-            cell.configure(with: node, menu: actions(for: node), grid: isGrid)
+            cell.configure(
+                with: node,
+                menu: actions(for: node),
+                grid: isGrid,
+                isLast: id == visibleNodes.last?.id
+            )
             return cell
         }
     }
@@ -245,8 +263,9 @@ final class DriveListViewController: UIViewController {
             systemName: "plus",
             withConfiguration: UIImage.SymbolConfiguration(pointSize: 22, weight: .semibold)
         )
-        configuration.baseBackgroundColor = AppColor.accent
-        configuration.baseForegroundColor = .white
+        // 与网页 `.seg button.active` / `.nav-item.active` 同一套：墨绿底 + 柠檬绿图形。
+        configuration.baseBackgroundColor = AppColor.ink
+        configuration.baseForegroundColor = AppColor.lime
         configuration.cornerStyle = .capsule
         addFolderButton.configuration = configuration
         addFolderButton.accessibilityLabel = R.Strings.driveAdd.localizedString()
@@ -279,10 +298,7 @@ final class DriveListViewController: UIViewController {
             ])
         ])
         addFolderButton.showsMenuAsPrimaryAction = true
-        addFolderButton.layer.shadowColor = UIColor.black.cgColor
-        addFolderButton.layer.shadowOpacity = 0.18
-        addFolderButton.layer.shadowRadius = 8
-        addFolderButton.layer.shadowOffset = CGSize(width: 0, height: 4)
+        AppShadow.raisedButton(addFolderButton)
         addFolderButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(addFolderButton)
 
@@ -295,38 +311,71 @@ final class DriveListViewController: UIViewController {
     }
 
     private func configureFileActivityIndicator() {
+        // 白卡 + `--line` 描边 + `--shadow-sm`，与列表里的卡片同一套质感。
+        activityBackdrop.backgroundColor = AppColor.surface
+        activityBackdrop.layer.cornerRadius = AppRadius.tile
+        activityBackdrop.layer.cornerCurve = .continuous
+        activityBackdrop.layer.borderWidth = 1
+        activityBackdrop.layer.borderColor = AppColor.line.cgColor
+        activityBackdrop.isHidden = true
+        activityBackdrop.translatesAutoresizingMaskIntoConstraints = false
+        AppShadow.small(activityBackdrop)
+
         fileActivityIndicator.hidesWhenStopped = true
-        fileActivityIndicator.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.92)
-        fileActivityIndicator.layer.cornerRadius = 12
+        fileActivityIndicator.color = AppColor.muted
         fileActivityIndicator.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(fileActivityIndicator)
+
+        view.addSubview(activityBackdrop)
+        activityBackdrop.addSubview(fileActivityIndicator)
         NSLayoutConstraint.activate([
-            fileActivityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            fileActivityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            fileActivityIndicator.widthAnchor.constraint(equalToConstant: 52),
-            fileActivityIndicator.heightAnchor.constraint(equalToConstant: 52)
+            activityBackdrop.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            activityBackdrop.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            activityBackdrop.widthAnchor.constraint(equalToConstant: 52),
+            activityBackdrop.heightAnchor.constraint(equalToConstant: 52),
+            fileActivityIndicator.centerXAnchor.constraint(equalTo: activityBackdrop.centerXAnchor),
+            fileActivityIndicator.centerYAnchor.constraint(equalTo: activityBackdrop.centerYAnchor)
         ])
+    }
+
+    /// 打开文件时的转圈。卡片跟着指示器一起显隐，否则会留一张空白卡在屏幕中间。
+    private func setFileActivity(_ running: Bool) {
+        activityBackdrop.isHidden = !running
+        running ? fileActivityIndicator.startAnimating() : fileActivityIndicator.stopAnimating()
+    }
+
+    /// 网格卡的高度。网页 `.card` 是 14 内边距 + 104 的缩略图位 + 两行名字 + meta。
+    ///
+    /// 跟着字号一起长：卡片是固定高度，不放大的话超大字号下名字会被从中间裁掉。
+    /// 封顶 1.8 倍，否则辅助功能字号下一屏放不下一张卡。
+    private var gridItemHeight: CGFloat {
+        let scaled = UIFontMetrics(forTextStyle: .subheadline).scaledValue(
+            for: 188, compatibleWith: traitCollection
+        )
+        return min(scaled, 188 * 1.8)
     }
 
     private func makeLayout() -> UICollectionViewLayout {
         if isGrid {
+            let height = gridItemHeight
             let item = NSCollectionLayoutItem(layoutSize: .init(
                 widthDimension: .fractionalWidth(0.5),
-                heightDimension: .absolute(132)
+                heightDimension: .absolute(height)
             ))
-            item.contentInsets = .init(top: 6, leading: 6, bottom: 6, trailing: 6)
+            // 网页 `.grid` 的 gap 是 14，两侧各摊一半。
+            item.contentInsets = .init(top: 7, leading: 7, bottom: 7, trailing: 7)
             let group = NSCollectionLayoutGroup.horizontal(
-                layoutSize: .init(widthDimension: .fractionalWidth(1), heightDimension: .absolute(132)),
+                layoutSize: .init(widthDimension: .fractionalWidth(1), heightDimension: .absolute(height)),
                 subitems: [item, item]
             )
             let section = NSCollectionLayoutSection(group: group)
-            section.contentInsets = .init(top: 6, leading: 10, bottom: 16, trailing: 10)
+            section.contentInsets = .init(top: 7, leading: 9, bottom: 16, trailing: 9)
             return UICollectionViewCompositionalLayout(section: section)
         }
-        var configuration = UICollectionLayoutListConfiguration(appearance: .plain)
-        configuration.showsSeparators = false
-        configuration.backgroundColor = .clear
-        return UICollectionViewCompositionalLayout.list(using: configuration)
+
+        // 网页 `.rows`：整段套一张白卡。
+        return PaperSectionBackgroundView.makeListLayout { [weak self] _ in
+            self?.visibleNodes.count ?? 0
+        }
     }
 
     private func applySnapshot() {
@@ -343,28 +392,21 @@ final class DriveListViewController: UIViewController {
         // 快照，即使 starView 已经 isHidden，旧快照里的星号仍然盖在上面，直到 cell 被重建
         // （切换列表/宫格触发 reloadData）才消失。只有增删移这类结构变化才需要动画。
         let isStructuralChange = previousIDs != ids
-        // TODO: [star] 排查用，定位后删除
-        AppLogger.info(
-            "[star] applySnapshot old=\(existing.count) new=\(ids.count)"
-            + " reconfigure=\(reconfigured.count) animate=\(isStructuralChange)"
-        )
         snapshot.reconfigureItems(reconfigured)
-        // TODO: [star] 排查用，定位后删除。动画结束后回读真实上屏状态：
-        // visibleCells 的条数、每个 cell 期望值 vs 实际 isHidden，⚠️ 表示对不上。
-        dataSource.apply(snapshot, animatingDifferences: isStructuralChange) { [weak self] in
-            guard let self else { return }
-            let dump = collectionView.visibleCells
-                .compactMap { $0 as? DriveNodeCell }
-                .map(\.debugStarState)
-                .joined(separator: " | ")
-            AppLogger.info(
-                "[star] afterApply visible=\(collectionView.visibleCells.count) \(dump)"
-            )
+        dataSource.apply(snapshot, animatingDifferences: isStructuralChange)
+        // 空/非空之间切换时（搜索无结果、清空目录）要重算 section，
+        // 否则那张白卡会以 0 行的高度留在原地，成为一条扁药丸。
+        if previousIDs.isEmpty != ids.isEmpty {
+            collectionView.collectionViewLayout.invalidateLayout()
         }
-        emptyLabel.text = searchQuery.isEmpty
-            ? R.Strings.driveEmpty.localizedString()
-            : R.Strings.driveSearchEmpty.localizedString()
-        emptyLabel.isHidden = isSearchLoading || !nodes.isEmpty
+
+        emptyView.update(
+            glyph: searchQuery.isEmpty ? "▱" : "⌕",
+            title: searchQuery.isEmpty
+                ? R.Strings.driveEmpty.localizedString()
+                : R.Strings.driveSearchEmpty.localizedString()
+        )
+        emptyView.isHidden = isSearchLoading || !nodes.isEmpty
         breadcrumbBar.configure(nodes: viewModel.ancestors)
     }
 
@@ -712,7 +754,7 @@ final class DriveListViewController: UIViewController {
         }
 
         openFileTask?.cancel()
-        fileActivityIndicator.startAnimating()
+        setFileActivity(true)
         collectionView.isUserInteractionEnabled = false
         openFileTask = Task { [weak self] in
             do {
@@ -730,7 +772,7 @@ final class DriveListViewController: UIViewController {
             } catch {
                 self?.showError(error)
             }
-            self?.fileActivityIndicator.stopAnimating()
+            self?.setFileActivity(false)
             self?.collectionView.isUserInteractionEnabled = true
         }
     }
@@ -798,11 +840,6 @@ final class DriveListViewController: UIViewController {
     }
 
     private func setStar(_ node: DriveNode, starred: Bool) {
-        // TODO: [star] 排查用，定位后删除。menuStarred 是菜单闭包捕获的旧值，
-        // 若它和界面上显示的菜单标题对不上，说明 cell 没被重建。
-        AppLogger.info(
-            "[star] setStar id=\(node.id) name=\(node.name) menuStarred=\(node.starred) → send starred=\(starred)"
-        )
         Task {
             do { try await viewModel.setStarred(node, starred: starred); applySnapshot() }
             catch { showError(error) }
@@ -867,46 +904,7 @@ final class DriveListViewController: UIViewController {
     }
 
     private func presentToast(_ message: String) {
-        toast?.removeFromSuperview()
-
-        let container = UIVisualEffectView(effect: UIBlurEffect(style: .systemThickMaterial))
-        container.layer.cornerRadius = AppSpacing.medium
-        container.clipsToBounds = true
-        container.alpha = 0
-        container.translatesAutoresizingMaskIntoConstraints = false
-        container.isUserInteractionEnabled = false
-
-        let label = UILabel()
-        label.text = message
-        label.font = AppTypography.caption
-        label.textColor = AppColor.textPrimary
-        label.numberOfLines = 0
-        label.textAlignment = .center
-        label.translatesAutoresizingMaskIntoConstraints = false
-        container.contentView.addSubview(label)
-        view.addSubview(container)
-        toast = container
-
-        NSLayoutConstraint.activate([
-            label.topAnchor.constraint(equalTo: container.contentView.topAnchor, constant: AppSpacing.small),
-            label.bottomAnchor.constraint(equalTo: container.contentView.bottomAnchor, constant: -AppSpacing.small),
-            label.leadingAnchor.constraint(equalTo: container.contentView.leadingAnchor, constant: AppSpacing.medium),
-            label.trailingAnchor.constraint(equalTo: container.contentView.trailingAnchor, constant: -AppSpacing.medium),
-            container.centerXAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerXAnchor),
-            container.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -AppSpacing.large),
-            container.leadingAnchor.constraint(
-                greaterThanOrEqualTo: view.safeAreaLayoutGuide.leadingAnchor,
-                constant: AppSpacing.large
-            )
-        ])
-
-        UIView.animate(withDuration: 0.2) { container.alpha = 1 }
-        UIView.animate(withDuration: 0.3, delay: 1.6) {
-            container.alpha = 0
-        } completion: { [weak self] _ in
-            container.removeFromSuperview()
-            if self?.toast === container { self?.toast = nil }
-        }
+        PaperToast.show(message, in: view)
     }
 
     private func showQuotaExceeded() {

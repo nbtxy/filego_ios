@@ -41,8 +41,7 @@ final class ProUpgradeViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = R.Strings.proTitle.localizedString()
-        // 分组列表要有灰底才衬得出白色卡片，这里不用 AppColor.background。
-        view.backgroundColor = .systemGroupedBackground
+        view.backgroundColor = AppColor.background
         navigationItem.largeTitleDisplayMode = .never
         configureCollectionView()
         configureActivityIndicator()
@@ -53,14 +52,13 @@ final class ProUpgradeViewController: UIViewController {
     // MARK: - 视图
 
     private func configureCollectionView() {
-        var configuration = UICollectionLayoutListConfiguration(appearance: .insetGrouped)
-        configuration.backgroundColor = .clear
+        var configuration = UICollectionLayoutListConfiguration.paperInsetGrouped()
         configuration.headerMode = .supplementary
         collectionView = UICollectionView(
             frame: .zero,
             collectionViewLayout: UICollectionViewCompositionalLayout.list(using: configuration)
         )
-        collectionView.backgroundColor = .systemGroupedBackground
+        collectionView.backgroundColor = AppColor.background
         collectionView.delegate = self
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(collectionView)
@@ -74,11 +72,20 @@ final class ProUpgradeViewController: UIViewController {
         let heroRegistration = UICollectionView.CellRegistration<ProHeroCell, Row> {
             [weak self] cell, _, _ in
             guard let self else { return }
+            // 付费墙的主视觉。网页把「行动号召」这类块统一刷成柠檬绿（`.closing-card`），
+            // 这是全站唯一一处整块上点缀色的地方，正好对应这里。
+            var background = cell.defaultBackgroundConfiguration()
+            background.backgroundColor = AppColor.lime
+            background.cornerRadius = AppRadius.card
+            background.strokeColor = AppColor.lime
+            background.strokeWidth = 1
+            cell.backgroundConfiguration = background
             cell.apply(status: self.store.status)
         }
         let legalRegistration = UICollectionView.CellRegistration<ProLegalCell, Row> {
             [weak self] cell, _, _ in
             guard let self else { return }
+            PaperListCellStyle.apply(to: cell)
             cell.configure(
                 userAgreement: environment.appConfigStore.userAgreementURL,
                 privacy: environment.appConfigStore.privacyPolicyURL,
@@ -102,6 +109,7 @@ final class ProUpgradeViewController: UIViewController {
             content.text = indexPath.section == 1
                 ? R.Strings.proBenefitsTitle.localizedString()
                 : nil
+            content.textProperties.color = AppColor.textSecondary
             header.contentConfiguration = content
         }
 
@@ -141,12 +149,14 @@ final class ProUpgradeViewController: UIViewController {
     }
 
     private func configure(_ cell: UICollectionViewListCell, for row: Row) {
+        PaperListCellStyle.apply(to: cell)
         switch row {
         case .hero, .legal:
             return
 
         case .benefitStorage:
             var content = UIListContentConfiguration.valueCell()
+            content.applyPaperColors()
             content.text = R.Strings.proBenefitStorage.localizedString()
             // 两档容量由服务端下发，端上不写死——改后端常量即可全线生效。
             content.secondaryText = R.Strings.proBenefitStorageValue.formatted(
@@ -158,6 +168,7 @@ final class ProUpgradeViewController: UIViewController {
 
         case .subscribe:
             var content = UIListContentConfiguration.cell()
+            content.applyPaperColors()
             // 价格一律取 displayPrice：App Store 会按用户所在地区换算货币，
             // 硬编码 "$0.49" 在非美区就是错的，且会被审核拒。
             if let product = store.proProduct {
@@ -166,12 +177,14 @@ final class ProUpgradeViewController: UIViewController {
                 content.text = R.Strings.proCtaSubscribe.formatted("—")
             }
             content.textProperties.color = AppColor.accent
+            content.textProperties.font = .systemFont(ofSize: 17, weight: .bold)
             content.textProperties.alignment = .center
             cell.contentConfiguration = content
             cell.accessories = []
 
         case .manage:
             var content = UIListContentConfiguration.cell()
+            content.applyPaperColors()
             content.text = R.Strings.proCtaManage.localizedString()
             content.textProperties.color = AppColor.accent
             content.textProperties.alignment = .center
@@ -180,6 +193,7 @@ final class ProUpgradeViewController: UIViewController {
 
         case .restore:
             var content = UIListContentConfiguration.cell()
+            content.applyPaperColors()
             content.text = R.Strings.proCtaRestore.localizedString()
             content.textProperties.alignment = .center
             cell.contentConfiguration = content
@@ -189,6 +203,7 @@ final class ProUpgradeViewController: UIViewController {
             // 商品拉不到时必须给个说法，不能白屏。最常见原因是
             // Paid Applications Agreement 还没生效。
             var content = UIListContentConfiguration.cell()
+            content.applyPaperColors()
             content.text = R.Strings.proProductsUnavailable.localizedString()
             content.textProperties.color = AppColor.textSecondary
             cell.contentConfiguration = content
@@ -356,13 +371,14 @@ private final class ProHeroCell: UICollectionViewListCell {
         case (true, true, _):
             // 续费失败但还在宽限窗口内——这是唯一需要用户立刻行动的状态，标红。
             statusLabel.text = expiry.map { R.Strings.proStatusGrace.formatted($0) }
-            statusLabel.textColor = .systemRed
+            statusLabel.textColor = AppColor.danger
+            statusLabel.font = .systemFont(ofSize: 12, weight: .bold)
         case (true, false, false):
             statusLabel.text = expiry.map { R.Strings.proStatusExpiring.formatted($0) }
-            statusLabel.textColor = AppColor.textSecondary
+            statusLabel.textColor = AppColor.ink.withAlphaComponent(0.72)
         case (true, false, true):
             statusLabel.text = expiry.map { R.Strings.proStatusActive.formatted($0) }
-            statusLabel.textColor = AppColor.textSecondary
+            statusLabel.textColor = AppColor.ink.withAlphaComponent(0.72)
         case (false, _, _):
             statusLabel.text = nil
         }
@@ -370,16 +386,17 @@ private final class ProHeroCell: UICollectionViewListCell {
     }
 
     private func setUpViews() {
-        iconView.tintColor = AppColor.accent
+        // 柠檬绿底上一律用墨绿字，白字在这个亮度上读不清。
+        iconView.tintColor = AppColor.ink
         iconView.contentMode = .scaleAspectFit
         iconView.setContentHuggingPriority(.required, for: .vertical)
 
-        titleLabel.font = AppTypography.title
-        titleLabel.textColor = AppColor.textPrimary
+        titleLabel.font = AppTypography.sectionTitle
+        titleLabel.textColor = AppColor.ink
         titleLabel.numberOfLines = 0
 
         subtitleLabel.font = AppTypography.body
-        subtitleLabel.textColor = AppColor.textSecondary
+        subtitleLabel.textColor = AppColor.ink.withAlphaComponent(0.72)
         subtitleLabel.numberOfLines = 0
 
         statusLabel.font = AppTypography.caption
@@ -446,6 +463,7 @@ private final class ProLegalCell: UICollectionViewListCell {
 
         userAgreementButton.setTitle(R.Strings.proUserAgreement.localizedString(), for: .normal)
         userAgreementButton.titleLabel?.font = AppTypography.caption
+        userAgreementButton.setTitleColor(AppColor.link, for: .normal)
         userAgreementButton.addTarget(
             self,
             action: #selector(openUserAgreement),
@@ -454,10 +472,12 @@ private final class ProLegalCell: UICollectionViewListCell {
 
         termsButton.setTitle(R.Strings.proTerms.localizedString(), for: .normal)
         termsButton.titleLabel?.font = AppTypography.caption
+        termsButton.setTitleColor(AppColor.link, for: .normal)
         termsButton.addTarget(self, action: #selector(openTerms), for: .touchUpInside)
 
         privacyButton.setTitle(R.Strings.proPrivacy.localizedString(), for: .normal)
         privacyButton.titleLabel?.font = AppTypography.caption
+        privacyButton.setTitleColor(AppColor.link, for: .normal)
         privacyButton.addTarget(self, action: #selector(openPrivacy), for: .touchUpInside)
 
         let links = UIStackView(arrangedSubviews: [

@@ -36,8 +36,7 @@ final class StorageDetailViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = R.Strings.meStorageTitle.localizedString()
-        // 分组列表要有灰底才衬得出白色卡片，这里不用 AppColor.background。
-        view.backgroundColor = .systemGroupedBackground
+        view.backgroundColor = AppColor.background
         navigationItem.largeTitleDisplayMode = .never
         configureCollectionView()
         applySnapshot()
@@ -52,14 +51,13 @@ final class StorageDetailViewController: UIViewController {
     // MARK: - 视图
 
     private func configureCollectionView() {
-        var configuration = UICollectionLayoutListConfiguration(appearance: .insetGrouped)
-        configuration.backgroundColor = .clear
+        var configuration = UICollectionLayoutListConfiguration.paperInsetGrouped()
         configuration.headerMode = .supplementary
         collectionView = UICollectionView(
             frame: .zero,
             collectionViewLayout: UICollectionViewCompositionalLayout.list(using: configuration)
         )
-        collectionView.backgroundColor = .systemGroupedBackground
+        collectionView.backgroundColor = AppColor.background
         collectionView.delegate = self
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(collectionView)
@@ -89,6 +87,7 @@ final class StorageDetailViewController: UIViewController {
                 content = .groupedHeader()
             }
             content.text = Self.sectionTitle(indexPath.section)
+            content.textProperties.color = AppColor.textSecondary
             header.contentConfiguration = content
         }
 
@@ -114,7 +113,9 @@ final class StorageDetailViewController: UIViewController {
     }
 
     private func configure(_ cell: UICollectionViewListCell, for row: Row) {
+        PaperListCellStyle.apply(to: cell)
         var content = UIListContentConfiguration.valueCell()
+        content.applyPaperColors()
         let storage = profile.storage
         let breakdown = storage.breakdown
 
@@ -152,7 +153,7 @@ final class StorageDetailViewController: UIViewController {
 
         cell.contentConfiguration = content
         // 回收站里的文件仍然占配额（见规划 §2），这一行要能直接点进去清空。
-        cell.accessories = row == .trash ? [.disclosureIndicator()] : []
+        cell.accessories = row == .trash ? [PaperListCellStyle.disclosure] : []
     }
 
     private static func sectionTitle(_ section: Int) -> String? {
@@ -220,7 +221,10 @@ private final class StorageOverviewCell: UICollectionViewListCell {
     }
 
     func apply(_ storage: StorageUsage) {
-        progress.progress = Float(storage.committedFraction)
+        let fraction = Float(storage.committedFraction)
+        progress.progress = fraction
+        // 网页 `.storage-bar i.full`：用到九成就从柠檬绿转橙，颜色本身就是提醒。
+        progress.progressTintColor = fraction >= 0.9 ? AppColor.orange : AppColor.lime
         usedLabel.text = R.Strings.storageUsed.formatted(
             ByteFormatting.string(storage.usedBytes),
             ByteFormatting.string(storage.quotaBytes)
@@ -231,8 +235,13 @@ private final class StorageOverviewCell: UICollectionViewListCell {
     }
 
     private func setUpViews() {
-        progress.progressTintColor = AppColor.accent
-        progress.trackTintColor = AppColor.separator
+        progress.progressTintColor = AppColor.lime
+        progress.trackTintColor = AppColor.paper2
+        // 8pt 的胶囊条，与网页 `.storage-bar` 一致；系统默认的 4pt 太细，
+        // 柠檬绿在那个厚度上几乎看不出来。
+        progress.layer.cornerRadius = 4
+        progress.clipsToBounds = true
+        progress.transform = CGAffineTransform(scaleX: 1, y: 2)
 
         usedLabel.font = AppTypography.body
         usedLabel.textColor = AppColor.textPrimary

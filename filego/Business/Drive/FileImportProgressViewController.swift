@@ -23,9 +23,11 @@ final class FileImportProgressViewController: UIViewController {
         }
 
         let titleLabel = UILabel()
-        titleLabel.text = R.Strings.driveImportTitle.localizedString()
-        titleLabel.font = AppTypography.title
         titleLabel.textColor = AppColor.textPrimary
+        titleLabel.setTightText(
+            R.Strings.driveImportTitle.localizedString(),
+            font: AppTypography.modalTitle
+        )
 
         let fileLabel = UILabel()
         fileLabel.text = fileName
@@ -37,7 +39,12 @@ final class FileImportProgressViewController: UIViewController {
         statusLabel.font = AppTypography.caption
         statusLabel.textColor = AppColor.textSecondary
 
-        progressView.progressTintColor = AppColor.accent
+        // 与网页 `.up-bar` 一致：柠檬绿进度压在 paper-2 轨道上。
+        progressView.progressTintColor = AppColor.lime
+        progressView.trackTintColor = AppColor.paper2
+        progressView.layer.cornerRadius = 3
+        progressView.clipsToBounds = true
+        progressView.transform = CGAffineTransform(scaleX: 1, y: 1.5)
         progressView.progress = 0
 
         let stack = UIStackView(arrangedSubviews: [titleLabel, fileLabel, progressView, statusLabel])

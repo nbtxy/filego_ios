@@ -78,9 +78,12 @@ enum MarkdownViewerAssets {
     }
 
     /// WebView 自身会跟随系统亮暗切换 `prefers-color-scheme`，CSS 主题不需要 Swift 干预；
-    /// 唯独品牌强调色要从 `AppColor` 取，所以两种外观各解析一次。
+    /// 唯独链接色要从 `AppColor` 取，所以两种外观各解析一次。
+    ///
+    /// 取的是 `link` 而不是 `accent`：正文里的链接用墨绿会和普通文字混在一起，
+    /// 网页版的 `md-viewer.client.css` 同样把 `--fgColor-accent` 指到了蓝色。
     private static func accentHex(userInterfaceStyle: UIUserInterfaceStyle) -> String {
-        let resolved = AppColor.accent.resolvedColor(
+        let resolved = AppColor.link.resolvedColor(
             with: UITraitCollection(userInterfaceStyle: userInterfaceStyle)
         )
         var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0

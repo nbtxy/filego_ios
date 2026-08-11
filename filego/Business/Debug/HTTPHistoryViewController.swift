@@ -8,6 +8,8 @@ final class HTTPHistoryViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = R.Strings.debugHttpTitle.localizedString()
+        tableView.backgroundColor = AppColor.background
+        tableView.separatorColor = AppColor.paper2
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "HTTPRecord")
         tableView.rowHeight = 72
         navigationItem.rightBarButtonItem = UIBarButtonItem(
@@ -41,6 +43,7 @@ final class HTTPHistoryViewController: UITableViewController {
         cellForRowAt indexPath: IndexPath
     ) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "HTTPRecord", for: indexPath)
+        PaperListCellStyle.apply(to: cell)
         let record = records[indexPath.row]
         var content = cell.defaultContentConfiguration()
         content.text = "\(record.method)  \(record.statusCode.map(String.init) ?? "…")"

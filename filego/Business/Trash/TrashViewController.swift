@@ -8,7 +8,10 @@ final class TrashViewController: UIViewController {
     private let trashRetentionDays: Int
 
     private let noticeLabel = UILabel()
-    private let emptyLabel = UILabel()
+    private let emptyView = PaperEmptyStateView(
+        glyph: "⌫",
+        title: R.Strings.trashEmpty.localizedString()
+    )
     private var collectionView: UICollectionView!
     private var dataSource: UICollectionViewDiffableDataSource<String, String>!
     private var emptyAllButton: UIBarButtonItem!
@@ -39,14 +42,14 @@ final class TrashViewController: UIViewController {
             target: self,
             action: #selector(confirmEmptyAll)
         )
-        emptyAllButton.tintColor = .systemRed
+        emptyAllButton.tintColor = AppColor.danger
         emptyAllButton.isEnabled = false
         navigationItem.rightBarButtonItem = emptyAllButton
     }
 
     private func configureNotice() {
         noticeLabel.text = R.Strings.trashNotice.formatted(trashRetentionDays)
-        noticeLabel.font = AppTypography.caption
+        noticeLabel.font = AppTypography.metaSmall
         noticeLabel.textColor = AppColor.textSecondary
         noticeLabel.numberOfLines = 0
         noticeLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -68,13 +71,7 @@ final class TrashViewController: UIViewController {
     }
 
     private func configureCollectionView() {
-        var configuration = UICollectionLayoutListConfiguration(appearance: .plain)
-        configuration.showsSeparators = false
-        configuration.backgroundColor = .clear
-        collectionView = UICollectionView(
-            frame: .zero,
-            collectionViewLayout: UICollectionViewCompositionalLayout.list(using: configuration)
-        )
+        collectionView = UICollectionView(frame: .zero, collectionViewLayout: makeLayout())
         collectionView.backgroundColor = AppColor.background
         collectionView.alwaysBounceVertical = true
         collectionView.delegate = self
@@ -93,12 +90,8 @@ final class TrashViewController: UIViewController {
             collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
-        emptyLabel.text = R.Strings.trashEmpty.localizedString()
-        emptyLabel.font = AppTypography.body
-        emptyLabel.textColor = AppColor.textSecondary
-        emptyLabel.textAlignment = .center
-        emptyLabel.isHidden = true
-        collectionView.backgroundView = emptyLabel
+        emptyView.isHidden = true
+        collectionView.backgroundView = emptyView
 
         dataSource = UICollectionViewDiffableDataSource<String, String>(
             collectionView: collectionView
@@ -115,9 +108,17 @@ final class TrashViewController: UIViewController {
                 detailOverride: Self.remainingText(
                     for: node,
                     retentionDays: trashRetentionDays
-                )
+                ),
+                isLast: id == viewModel.nodes.last?.id
             )
             return cell
+        }
+    }
+
+    /// 与文件列表同一张白卡（网页 `.rows`）。
+    private func makeLayout() -> UICollectionViewLayout {
+        PaperSectionBackgroundView.makeListLayout { [weak self] _ in
+            self?.viewModel.nodes.count ?? 0
         }
     }
 
@@ -130,11 +131,16 @@ final class TrashViewController: UIViewController {
     }
 
     private func applySnapshot() {
+        let wasEmpty = dataSource.snapshot().itemIdentifiers.isEmpty
         var snapshot = NSDiffableDataSourceSnapshot<String, String>()
         snapshot.appendSections(["main"])
         snapshot.appendItems(viewModel.nodes.map(\.id))
         dataSource.apply(snapshot, animatingDifferences: true)
-        emptyLabel.isHidden = !viewModel.nodes.isEmpty
+        // 见 DriveListViewController 里的同类说明：空/非空切换要重算 section。
+        if wasEmpty != viewModel.nodes.isEmpty {
+            collectionView.collectionViewLayout.invalidateLayout()
+        }
+        emptyView.isHidden = !viewModel.nodes.isEmpty
         emptyAllButton.isEnabled = !viewModel.nodes.isEmpty
     }
 

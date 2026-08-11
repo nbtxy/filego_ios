@@ -18,7 +18,6 @@ final class AccountDetailViewController: UIViewController {
     private var collectionView: UICollectionView!
     private var dataSource: UICollectionViewDiffableDataSource<Int, Row>!
     private let activityIndicator = UIActivityIndicatorView(style: .medium)
-    private weak var toast: UIView?
 
     init(environment: AppEnvironment, profile: AccountProfile) {
         self.environment = environment
@@ -33,8 +32,7 @@ final class AccountDetailViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = R.Strings.accountTitle.localizedString()
-        // 分组列表要有灰底才衬得出白色卡片，这里不用 AppColor.background。
-        view.backgroundColor = .systemGroupedBackground
+        view.backgroundColor = AppColor.background
         navigationItem.largeTitleDisplayMode = .never
         configureCollectionView()
         configureActivityIndicator()
@@ -44,13 +42,12 @@ final class AccountDetailViewController: UIViewController {
     // MARK: - 视图
 
     private func configureCollectionView() {
-        var configuration = UICollectionLayoutListConfiguration(appearance: .insetGrouped)
-        configuration.backgroundColor = .clear
+        let configuration = UICollectionLayoutListConfiguration.paperInsetGrouped()
         collectionView = UICollectionView(
             frame: .zero,
             collectionViewLayout: UICollectionViewCompositionalLayout.list(using: configuration)
         )
-        collectionView.backgroundColor = .systemGroupedBackground
+        collectionView.backgroundColor = AppColor.background
         collectionView.delegate = self
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(collectionView)
@@ -86,16 +83,19 @@ final class AccountDetailViewController: UIViewController {
     }
 
     private func configure(_ cell: UICollectionViewListCell, for row: Row) {
+        PaperListCellStyle.apply(to: cell)
         switch row {
         case .name:
             var content = UIListContentConfiguration.valueCell()
+            content.applyPaperColors()
             content.text = R.Strings.accountName.localizedString()
             content.secondaryText = user.displayName?.nilIfEmpty ?? "—"
             cell.contentConfiguration = content
-            cell.accessories = [.disclosureIndicator()]
+            cell.accessories = [PaperListCellStyle.disclosure]
 
         case .email:
             var content = UIListContentConfiguration.valueCell()
+            content.applyPaperColors()
             content.text = R.Strings.accountEmail.localizedString()
             content.secondaryText = user.email?.nilIfEmpty ?? "—"
             cell.contentConfiguration = content
@@ -103,6 +103,7 @@ final class AccountDetailViewController: UIViewController {
 
         case .userId:
             var content = UIListContentConfiguration.valueCell()
+            content.applyPaperColors()
             content.text = R.Strings.accountUserId.localizedString()
             content.secondaryText = Self.compactUserID(user.id)
             content.secondaryTextProperties.font = .monospacedSystemFont(
@@ -124,6 +125,7 @@ final class AccountDetailViewController: UIViewController {
 
         case .createdAt:
             var content = UIListContentConfiguration.valueCell()
+            content.applyPaperColors()
             content.text = R.Strings.accountCreatedAt.localizedString()
             content.secondaryText = user.createdAt.map(Self.dateFormatter.string(from:)) ?? "—"
             cell.contentConfiguration = content
@@ -131,8 +133,9 @@ final class AccountDetailViewController: UIViewController {
 
         case .delete:
             var content = UIListContentConfiguration.cell()
+            content.applyPaperColors()
             content.text = R.Strings.accountDelete.localizedString()
-            content.textProperties.color = .systemRed
+            content.textProperties.color = AppColor.danger
             content.textProperties.alignment = .center
             cell.contentConfiguration = content
             cell.accessories = []
@@ -200,52 +203,8 @@ final class AccountDetailViewController: UIViewController {
         presentToast(R.Strings.accountUserIdCopied.localizedString())
     }
 
-    /// 复制这种一次性反馈不值得弹 alert，浮一条自己消失的提示就够。
     private func presentToast(_ message: String) {
-        toast?.removeFromSuperview()
-
-        let container = UIVisualEffectView(effect: UIBlurEffect(style: .systemThickMaterial))
-        container.layer.cornerRadius = AppSpacing.medium
-        container.clipsToBounds = true
-        container.alpha = 0
-        container.translatesAutoresizingMaskIntoConstraints = false
-        // 提示只是路过，别挡住底下的点击。
-        container.isUserInteractionEnabled = false
-
-        let label = UILabel()
-        label.text = message
-        label.font = AppTypography.caption
-        label.textColor = AppColor.textPrimary
-        label.numberOfLines = 0
-        label.textAlignment = .center
-        label.translatesAutoresizingMaskIntoConstraints = false
-        container.contentView.addSubview(label)
-
-        view.addSubview(container)
-        toast = container
-        NSLayoutConstraint.activate([
-            label.topAnchor.constraint(equalTo: container.contentView.topAnchor, constant: AppSpacing.small),
-            label.bottomAnchor.constraint(equalTo: container.contentView.bottomAnchor, constant: -AppSpacing.small),
-            label.leadingAnchor.constraint(equalTo: container.contentView.leadingAnchor, constant: AppSpacing.medium),
-            label.trailingAnchor.constraint(equalTo: container.contentView.trailingAnchor, constant: -AppSpacing.medium),
-            container.centerXAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerXAnchor),
-            container.bottomAnchor.constraint(
-                equalTo: view.safeAreaLayoutGuide.bottomAnchor,
-                constant: -AppSpacing.large
-            ),
-            container.leadingAnchor.constraint(
-                greaterThanOrEqualTo: view.safeAreaLayoutGuide.leadingAnchor,
-                constant: AppSpacing.large
-            )
-        ])
-
-        UIView.animate(withDuration: 0.2) { container.alpha = 1 }
-        UIView.animate(withDuration: 0.3, delay: 1.6) {
-            container.alpha = 0
-        } completion: { [weak self] _ in
-            container.removeFromSuperview()
-            if self?.toast === container { self?.toast = nil }
-        }
+        PaperToast.show(message, in: view)
     }
 
     // MARK: - 注销

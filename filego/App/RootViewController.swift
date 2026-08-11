@@ -45,7 +45,17 @@ final class RootViewController: UIViewController {
               arguments.indices.contains(flag + 1) else { return }
         let scene = arguments[flag + 1]
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-            (self?.current as? DrawerContainerViewController)?.prepareScreenshot(scene: scene)
+            guard let self else { return }
+            // 登录页平时只有未登录才看得到，为了截一张图去退登录代价太大
+            // （Sign in with Apple 是唯一入口，退了得重新过一遍系统授权）。
+            // 这里只是把它盖在最上层，**完全不碰登录态**。
+            if scene == "login" {
+                let login = LoginViewController(environment: self.environment)
+                login.modalPresentationStyle = .fullScreen
+                self.present(login, animated: false)
+                return
+            }
+            (self.current as? DrawerContainerViewController)?.prepareScreenshot(scene: scene)
         }
     }
     #endif

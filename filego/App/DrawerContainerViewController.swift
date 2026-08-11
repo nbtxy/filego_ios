@@ -50,7 +50,7 @@ final class DrawerContainerViewController: UIViewController, UIGestureRecognizer
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .systemGroupedBackground
+        view.backgroundColor = AppColor.background
 
         configureDrawer()
         configureMainContent()
@@ -61,12 +61,12 @@ final class DrawerContainerViewController: UIViewController, UIGestureRecognizer
     private func configureDrawer() {
         // qingshu_ios 的抽屉内容直接从个人信息开始，不额外显示「我的」标题栏。
         drawerNavigationController.setNavigationBarHidden(true, animated: false)
-        drawerNavigationController.view.backgroundColor = .systemGroupedBackground
+        drawerNavigationController.view.backgroundColor = AppColor.background
         addChild(drawerNavigationController)
         view.addSubview(drawerNavigationController.view)
         drawerNavigationController.didMove(toParent: self)
 
-        drawerDim.backgroundColor = .black
+        drawerDim.backgroundColor = AppColor.ink
         drawerDim.isUserInteractionEnabled = false
         view.addSubview(drawerDim)
     }
@@ -83,12 +83,14 @@ final class DrawerContainerViewController: UIViewController, UIGestureRecognizer
         mainNavigationController.view.layer.cornerCurve = .continuous
         mainNavigationController.view.layer.masksToBounds = true
 
-        mainContainer.layer.shadowColor = UIColor.black.cgColor
+        mainContainer.layer.shadowColor = AppColor.ink.cgColor
         mainContainer.layer.shadowRadius = 12
         mainContainer.layer.shadowOffset = CGSize(width: -2, height: 0)
         mainContainer.layer.shadowOpacity = 0
 
-        scrim.backgroundColor = .white
+        // 抽屉打开时压在主界面上的一层提亮。用纸色而不是纯白，
+        // 否则退到最后会看到一块冷白，与整页的暖调打架。
+        scrim.backgroundColor = AppColor.paper
         scrim.alpha = 0
         scrim.isUserInteractionEnabled = false
         scrim.layer.maskedCorners = [.layerMinXMinYCorner, .layerMinXMaxYCorner]
