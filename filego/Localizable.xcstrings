@@ -817,91 +817,6 @@
         }
       }
     },
-    "drive.import.copyAddress": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copy Address"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "复制地址"
-          }
-        }
-      }
-    },
-    "drive.import.shareAddress": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Share Address"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "分享地址"
-          }
-        }
-      }
-    },
-    "drive.import.resetAddress": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reset Address"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重置地址"
-          }
-        }
-      }
-    },
-    "drive.import.resetConfirmMessage": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The current address will stop working immediately. People using it will no longer be able to import files."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "当前地址将立即失效，正在使用旧地址的人将无法继续导入文件。"
-          }
-        }
-      }
-    },
-    "drive.import.resetConfirmTitle": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reset the import address?"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重置文件导入地址？"
-          }
-        }
-      }
-    },
     "drive.import.cameraDenied": {
       "extractionState": "manual",
       "localizations": {
@@ -949,6 +864,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "当前设备无法使用相机"
+          }
+        }
+      }
+    },
+    "drive.import.copyAddress": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy Address"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制地址"
           }
         }
       }
@@ -1017,6 +949,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在准备文件…"
+          }
+        }
+      }
+    },
+    "drive.import.resetAddress": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset Address"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置地址"
+          }
+        }
+      }
+    },
+    "drive.import.resetConfirmMessage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The current address will stop working immediately. People using it will no longer be able to import files."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前地址将立即失效，正在使用旧地址的人将无法继续导入文件。"
+          }
+        }
+      }
+    },
+    "drive.import.resetConfirmTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset the import address?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置文件导入地址？"
+          }
+        }
+      }
+    },
+    "drive.import.shareAddress": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share Address"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分享地址"
           }
         }
       }
@@ -1327,23 +1327,6 @@
         }
       }
     },
-    "drive.trash": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Move to Trash"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "移到回收站"
-          }
-        }
-      }
-    },
     "drive.temporaryLinkCopied": {
       "extractionState": "manual",
       "localizations": {
@@ -1357,6 +1340,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "临时链接已复制，1 天内有效"
+          }
+        }
+      }
+    },
+    "drive.trash": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move to Trash"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移到回收站"
           }
         }
       }
@@ -1503,13 +1503,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your personal cloud storage"
+            "value": "Your private space for files in motion"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的私人云存储空间"
+            "value": "你的私人文件流转空间"
           }
         }
       }
@@ -2030,13 +2030,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ → %2$@"
+            "value": "%1$@ · %2$@"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ → %2$@"
+            "value": "%1$@ · %2$@"
           }
         }
       }
@@ -2183,13 +2183,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ of space, always with you"
+            "value": "%@ for files coming and going"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ 空间，随身带着走"
+            "value": "%@ 文件空间，流转更从容"
           }
         }
       }
@@ -2370,13 +2370,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Renewal failed. Update your payment method before %@ or you'll drop back to 20 MB."
+            "value": "Renewal failed. Update your payment method before %@ or you'll drop back to 200 MB."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "续费未成功，%@ 前请更新支付方式，否则空间将回到 20 MB。"
+            "value": "续费未成功，%@ 前请更新支付方式，否则空间将回到 200 MB。"
           }
         }
       }
@@ -2387,13 +2387,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The free %@ handles documents just fine — until photos and video show up. Upgrade and stop deciding what to delete."
+            "value": "The free %@ is ideal for light file flow. Upgrade when photos, video, or larger files start coming in."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "免费版 %@，放文档绰绰有余；照片和视频一进来就紧张。升级之后，不用再挑哪个该留。"
+            "value": "免费版 %@，适合轻量文件流转；需要接收照片、视频或大文件时，升级后不必反复腾空间。"
           }
         }
       }
@@ -2415,19 +2415,121 @@
         }
       }
     },
-    "pro.userAgreement": {
+    "pro.tier.directUpload": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "User Agreement"
+            "value": "Direct uploads up to %@ per file"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "用户协议"
+            "value": "单文件最高 %@ 直传"
+          }
+        }
+      }
+    },
+    "pro.tier.expiry.free": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import addresses expire after 7 days"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入地址有效期 7 天"
+          }
+        }
+      }
+    },
+    "pro.tier.expiry.pro": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expiry: 1, 7, 30 or 90 days — or never"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有效期可选 1、7、30、90 天或永不过期"
+          }
+        }
+      }
+    },
+    "pro.tier.storageValue": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ storage"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 存储空间"
+          }
+        }
+      }
+    },
+    "pro.tier.addressCount": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ import addresses"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 条导入地址"
+          }
+        }
+      }
+    },
+    "pro.tier.free": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Free"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "免费版"
+          }
+        }
+      }
+    },
+    "pro.tier.unlimited": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlimited import addresses"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入地址不限量"
           }
         }
       }
@@ -2449,19 +2551,36 @@
         }
       }
     },
+    "pro.userAgreement": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "User Agreement"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用户协议"
+          }
+        }
+      }
+    },
     "quota.exceeded.message": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You've filled the free plan's %1$@. Pro takes you to %2$@ — enough to stop curating."
+            "value": "The free plan's %1$@ is full, so new files can't be received or uploaded. Upgrade to Pro for %2$@."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "免费版只有 %1$@，已经用满了。升级 Pro 拿 %2$@，照片视频随手就存。"
+            "value": "免费版的 %1$@ 已用满，暂时无法接收或上传新文件。升级 Pro 可获得 %2$@。"
           }
         }
       }

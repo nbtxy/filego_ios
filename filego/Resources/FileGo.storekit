@@ -19,14 +19,15 @@
         {
           "adHocOffers" : [],
           "codeOffers" : [],
-          "displayPrice" : "0.49",
+          "displayPrice" : "2.99",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "6798478945",
           "introductoryOffer" : null,
           "localizations" : [
-            { "description" : "10 GB 云端空间，照片视频随手存。", "displayName" : "Pro 会员", "locale" : "zh_CN" },
-            { "description" : "10 GB of space for photos and video.", "displayName" : "FileGo Pro", "locale" : "en_US" }
+            { "description" : "50 GB、导入地址不限量、永久有效、单文件 5 GB 直传", "displayName" : "Pro 会员", "locale" : "zh_CN" },
+            { "description" : "50 GB、匯入地址不限量、永久有效、單檔 5 GB 直傳", "displayName" : "Pro 會員", "locale" : "zh_TW" },
+            { "description" : "50 GB, unlimited links, 5 GB direct uploads.", "displayName" : "FileGo Pro", "locale" : "en_US" }
           ],
           "productID" : "com.nbtxy.filego.pro.monthly",
           "recurringSubscriptionPeriod" : "P1M",

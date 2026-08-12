@@ -25,7 +25,7 @@ const APPLY = process.argv.includes("--apply");
 const APP_ID = "6798472788";                            // com.nbtxy.filego
 const PRODUCT_ID = "com.nbtxy.filego.pro.monthly";      // 与 filego/src/lib/plans.ts 的 PRO_PRODUCT_ID 一致
 const BASE_TERRITORY = "USA";
-const TARGET_PRICE = "0.49";
+const TARGET_PRICE = "2.99";
 
 // 内部名（referenceName / name）不对用户可见，只在 ASC 后台和报表里出现。
 const GROUP_REFERENCE_NAME = "FileGo Pro";
@@ -39,13 +39,14 @@ const GROUP_LOCALIZATIONS = [
   { locale: "en-US",   name: "FileGo Membership" },
 ];
 const SUBSCRIPTION_LOCALIZATIONS = [
-  { locale: "zh-Hans", name: "Pro 会员",   description: "10 GB 云端空间，照片视频随手存。" },
-  { locale: "zh-Hant", name: "Pro 會員",   description: "10 GB 雲端空間，照片影片隨手存。" },
-  { locale: "en-US",   name: "FileGo Pro", description: "10 GB of space for photos and video." },
+  { locale: "zh-Hans", name: "Pro 会员",   description: "50 GB、导入地址不限量、永久有效、单文件 5 GB 直传" },
+  { locale: "zh-Hant", name: "Pro 會員",   description: "50 GB、匯入地址不限量、永久有效、單檔 5 GB 直傳" },
+  { locale: "en-US",   name: "FileGo Pro", description: "50 GB, unlimited links, 5 GB direct uploads." },
 ];
 
 const REVIEW_NOTE =
-  "Auto-renewable subscription that raises cloud storage from 20 MB to 10 GB. " +
+  "Auto-renewable subscription: 50 GB storage, unlimited import addresses, " +
+  "1/7/30/90-day or non-expiring addresses, and direct uploads up to 5 GB per file. " +
   "Paywall: Me tab -> Upgrade to Pro.";
 
 // ---------------------------------------------------------------------------

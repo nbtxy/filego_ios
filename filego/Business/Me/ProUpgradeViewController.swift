@@ -5,8 +5,10 @@ import UIKit
 /// diffable 的条目标识必须是 Sendable，见 MeViewController 里的同类说明。
 private nonisolated enum Row: Hashable {
     case hero
-    case benefitStorage
-    case subscribe
+    /// 一档的完整权益说明。
+    case benefit(PlanName)
+    /// 一档的购买入口。带上档位，两档才能各自成为独立的 diffable 条目。
+    case subscribe(PlanName)
     case manage
     case restore
     case legal
@@ -154,28 +156,39 @@ final class ProUpgradeViewController: UIViewController {
         case .hero, .legal:
             return
 
-        case .benefitStorage:
-            var content = UIListContentConfiguration.valueCell()
+        case let .benefit(plan):
+            var content = UIListContentConfiguration.subtitleCell()
             content.applyPaperColors()
-            content.text = R.Strings.proBenefitStorage.localizedString()
-            // 两档容量由服务端下发，端上不写死——改后端常量即可全线生效。
-            content.secondaryText = R.Strings.proBenefitStorageValue.formatted(
-                ByteFormatting.string(store.status.freeQuotaBytes),
-                ByteFormatting.string(store.status.proQuotaBytes)
-            )
+            content.text = Self.displayName(of: plan)
+            let status = store.status
+            var benefits = [
+                R.Strings.proTierStorageValue.formatted(
+                    ByteFormatting.string(status.quotaBytes(for: plan))
+                ),
+                Self.addressText(status.importAddresses(for: plan)),
+                plan == .free
+                    ? R.Strings.proTierExpiryFree.localizedString()
+                    : R.Strings.proTierExpiryPro.localizedString()
+            ]
+            if let limit = status.directImportMaxBytes(for: plan) {
+                benefits.append(R.Strings.proTierDirectUpload.formatted(
+                    ByteFormatting.string(limit)
+                ))
+            }
+            content.secondaryText = benefits.map { "• \($0)" }.joined(separator: "\n")
+            content.secondaryTextProperties.color = AppColor.textSecondary
+            content.secondaryTextProperties.numberOfLines = 0
             cell.contentConfiguration = content
             cell.accessories = []
 
-        case .subscribe:
+        case let .subscribe(plan):
             var content = UIListContentConfiguration.cell()
             content.applyPaperColors()
             // 价格一律取 displayPrice：App Store 会按用户所在地区换算货币，
-            // 硬编码 "$0.49" 在非美区就是错的，且会被审核拒。
-            if let product = store.proProduct {
-                content.text = R.Strings.proCtaSubscribe.formatted(product.displayPrice)
-            } else {
-                content.text = R.Strings.proCtaSubscribe.formatted("—")
-            }
+            // 硬编码 "$2.99" 在非美区就是错的，且会被审核拒。
+            let price = store.product(for: plan)?.displayPrice ?? "—"
+            content.text = "\(Self.displayName(of: plan)) · "
+                + R.Strings.proCtaSubscribe.formatted(price)
             content.textProperties.color = AppColor.accent
             content.textProperties.font = .systemFont(ofSize: 17, weight: .bold)
             content.textProperties.alignment = .center
@@ -214,18 +227,29 @@ final class ProUpgradeViewController: UIViewController {
     // MARK: - 数据
 
     private func applySnapshot() {
+        let status = store.status
+        // 免费档也列进权益表：付费墙的说服力来自「200 MB → 50 GB」这个对比，
+        // 只列付费档的话用户不知道自己现在缺什么。
+        let allTiers: [PlanName] = [.free] + status.purchasableTiers
+
         var snapshot = NSDiffableDataSourceSnapshot<Int, Row>()
         snapshot.appendSections([0, 1, 2, 3])
         snapshot.appendItems([.hero], toSection: 0)
-        snapshot.appendItems([.benefitStorage], toSection: 1)
+        snapshot.appendItems(allTiers.map(Row.benefit), toSection: 1)
 
         var actions: [Row] = []
-        if store.status.isPro {
+        if status.isPaid {
+            // 已经在付费档：只给「管理订阅」。升降档由 App Store 的订阅组处理，
+            // 我们自己再画一个换档按钮只会和系统那套冲突。
             actions.append(.manage)
-        } else if store.proProduct != nil {
-            actions.append(.subscribe)
-        } else if !store.isLoadingProducts {
-            actions.append(.unavailable)
+        } else {
+            // 只列真的拉到商品的那些档。拉不到的档不显示按钮——点了也买不了。
+            let buyable = status.purchasableTiers.filter { store.product(for: $0) != nil }
+            if buyable.isEmpty {
+                if !store.isLoadingProducts { actions.append(.unavailable) }
+            } else {
+                actions.append(contentsOf: buyable.map(Row.subscribe))
+            }
         }
         actions.append(.restore)
         snapshot.appendItems(actions, toSection: 2)
@@ -234,11 +258,27 @@ final class ProUpgradeViewController: UIViewController {
         dataSource.applySnapshotUsingReloadData(snapshot)
     }
 
+    /// 档位显示名。Pro 是产品名，中英文下都不翻译。
+    private static func displayName(of plan: PlanName) -> String {
+        switch plan {
+        case .free: return R.Strings.proTierFree.localizedString()
+        case .pro: return "Pro"
+        }
+    }
+
+    /// 导入地址数。nil 既可能是「不限」也可能是「服务端没下发」——两种都按不限显示。
+    private static func addressText(_ count: Int?) -> String {
+        guard let count else { return R.Strings.proTierUnlimited.localizedString() }
+        return R.Strings.proTierAddressCount.formatted(String(count))
+    }
+
     private func reload() {
         setBusy(true)
         Task {
             await environment.appConfigStore.bootstrap()
-            await store.loadProducts()
+            // App 启动时可能缓存了调价前的 Product。系统购买确认框会拿到新价格，
+            // 付费墙也必须在展示时重拉，确保两处 `displayPrice` 一致。
+            await store.loadProducts(forceRefresh: true)
             await store.refreshStatus()
             setBusy(false)
             applySnapshot()
@@ -249,15 +289,15 @@ final class ProUpgradeViewController: UIViewController {
 
     private func didSelect(_ row: Row) {
         switch row {
-        case .subscribe: buy()
+        case let .subscribe(plan): buy(plan)
         case .restore: restore()
         case .manage: manageSubscription()
-        case .hero, .benefitStorage, .legal, .unavailable: break
+        case .hero, .benefit, .legal, .unavailable: break
         }
     }
 
-    private func buy() {
-        guard let product = store.proProduct else { return }
+    private func buy(_ plan: PlanName) {
+        guard let product = store.product(for: plan) else { return }
         setBusy(true)
         Task {
             let outcome = await store.purchase(product)
@@ -359,15 +399,17 @@ private final class ProHeroCell: UICollectionViewListCell {
     }
 
     func apply(status: BillingStatus) {
+        // 主视觉打最高档的容量——付费墙的第一屏要给出天花板，不是入门档。
+        let headlineQuota = status.purchasableTiers.last ?? .pro
         titleLabel.text = R.Strings.proHeadline.formatted(
-            ByteFormatting.string(status.proQuotaBytes)
+            ByteFormatting.string(status.quotaBytes(for: headlineQuota))
         )
         subtitleLabel.text = R.Strings.proSubheadline.formatted(
             ByteFormatting.string(status.freeQuotaBytes)
         )
 
         let expiry = status.expiresAt.map(Self.dateFormatter.string(from:))
-        switch (status.isPro, status.inGracePeriod, status.autoRenew) {
+        switch (status.isPaid, status.inGracePeriod, status.autoRenew) {
         case (true, true, _):
             // 续费失败但还在宽限窗口内——这是唯一需要用户立刻行动的状态，标红。
             statusLabel.text = expiry.map { R.Strings.proStatusGrace.formatted($0) }

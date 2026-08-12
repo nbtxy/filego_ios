@@ -1,2 +1,1 @@
-storage,drive,manager,upload,transfer,receive,send,share,backup,folder,document,markdown,viewer,zip
-
+transfer,receive files,file request,upload link,share,cross device,file manager,folder,large files

@@ -12,6 +12,6 @@ reuses the English screenshots.
 | 2 | Expanded add menu | Add from anywhere. | 拍照、相册、文件，都能进来 | English fallback |
 | 3 | File list | Everything in one place. | 文件都在一个地方 | English fallback |
 | 4 | Account and storage drawer | Space and account at a glance. | 空间和账号，一眼看清 | English fallback |
-| 5 | Pro paywall | 10 GB when you need it. | 需要的时候，有 10 GB | English fallback |
+| 5 | Pro paywall | 50 GB, flexible links, 5 GB direct uploads. | 50 GB、灵活有效期、单文件 5 GB 直传 | English fallback |
 
 For screenshot 5, select `filego/Resources/FileGo.storekit` under Scheme → Run → Options → StoreKit Configuration before launching the app.

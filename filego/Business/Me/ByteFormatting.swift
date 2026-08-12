@@ -2,7 +2,8 @@ import Foundation
 
 /// 「我的」相关页面共用的字节格式化。
 ///
-/// 配额是 10 GiB，必须用二进制单位口径才和服务端的数字对得上。
+/// 服务端的配额是二进制进制的（见 src/lib/plans.ts），这里必须用同一口径，
+/// 否则 50 GiB 会显示成 53.69 GB。
 enum ByteFormatting {
     static func string(_ byteCount: Int64) -> String {
         formatter.string(fromByteCount: byteCount)

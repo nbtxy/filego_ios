@@ -1,18 +1,17 @@
 ENGLISH
 
 1. Sign in with Apple is the only sign-in method. The reviewer can use their own Apple Account; no demo account is required.
-2. FileGo Pro raises storage from the free 20 MB tier to 10 GB. Open Me → Upgrade to Pro. Restore Purchases is on the same paywall.
+2. FileGo Pro includes 50 GB, unlimited import addresses, flexible expiry and direct uploads up to 5 GB per file. Open Me → Upgrade to Pro. Restore Purchases is on the same paywall.
 3. HTML preview is a local file preview, not a general-purpose web browser. Network access is disabled by default; the user must explicitly allow remote resources or approve navigation.
-4. A File Import Address is created only after the account owner chooses a destination folder. It expires, can be reset immediately, accepts uploads only, cannot list/read/delete files, and limits each request to 20 MB.
+4. A File Import Address is created only after the account owner chooses a destination folder. It expires, can be reset immediately, accepts uploads only, and cannot list/read/delete files. Free accounts use regular uploads up to 20 MB; Pro supports direct uploads up to 5 GB per file.
 5. The app contains no ads, ATT prompt, analytics SDK, or third-party tracking.
 6. Account deletion is available in Me → Account → Delete Account and removes the profile and stored content as described in the Privacy Policy.
 
 中文
 
 1. Sign in with Apple 是唯一登录方式。审核员可使用自己的 Apple 账户，无需演示账号。
-2. FileGo Pro 将免费版 20 MB 存储提升至 10 GB。入口：我的 → 升级 Pro；同一付费墙提供“恢复购买”。
+2. FileGo Pro 提供 50 GB、导入地址不限量、灵活有效期与单文件最高 5 GB 直传。入口：我的 → 升级 Pro；同一付费墙提供“恢复购买”。
 3. HTML 预览仅用于查看本地文件，不是通用网页浏览器。默认禁止联网；远程资源与跳转都需要用户明确允许。
-4. 文件导入地址仅由账号所有者为指定文件夹主动生成；地址有有效期、可即时重置、只能上传而不能读取/列举/删除文件，单次请求上限 20 MB。
+4. 文件导入地址仅由账号所有者为指定文件夹主动生成；地址有有效期、可即时重置、只能上传而不能读取/列举/删除文件。免费版普通上传单次最高 20 MB；Pro 支持单文件最高 5 GB 直传。
 5. App 无广告、无 ATT、无统计 SDK、无第三方追踪。
 6. 注销入口：我的 → 账号 → 注销账号。注销会按隐私政策删除资料与文件。
-

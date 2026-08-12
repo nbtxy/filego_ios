@@ -35,12 +35,38 @@ final class FolderPickerViewController: UITableViewController {
         tableView.backgroundColor = AppColor.background
         tableView.separatorColor = AppColor.paper2
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "folder")
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
+        let moveHereItem = UIBarButtonItem(
             title: R.Strings.driveMoveHere.localizedString(),
             style: .done,
             target: self,
             action: #selector(pickCurrent)
         )
+        // 这个页面由一套临时的 UINavigationController 弹出。不要只依赖全局
+        // appearance 继承文字色：系统在更新 done item 的 configuration 时可能把
+        // title attributes 覆盖掉，结果纸色导航栏上只剩一块空的点击区域。
+        // iOS 26 会把 `.done` 渲染成 tint 色的实心胶囊，文字必须用反色；
+        // 较早系统仍是透明导航按钮，需要深色文字。
+        let foregroundColor: UIColor
+        let disabledForegroundColor: UIColor
+        if #available(iOS 26.0, *) {
+            foregroundColor = AppColor.white
+            disabledForegroundColor = AppColor.white.withAlphaComponent(0.5)
+        } else {
+            foregroundColor = AppColor.ink
+            disabledForegroundColor = AppColor.muted
+        }
+        let titleAttributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 15, weight: .semibold),
+            .foregroundColor: foregroundColor
+        ]
+        moveHereItem.tintColor = AppColor.ink
+        moveHereItem.setTitleTextAttributes(titleAttributes, for: .normal)
+        moveHereItem.setTitleTextAttributes(titleAttributes, for: .highlighted)
+        moveHereItem.setTitleTextAttributes([
+            .font: UIFont.systemFont(ofSize: 15, weight: .semibold),
+            .foregroundColor: disabledForegroundColor
+        ], for: .disabled)
+        navigationItem.rightBarButtonItem = moveHereItem
         loadFolders()
     }
 

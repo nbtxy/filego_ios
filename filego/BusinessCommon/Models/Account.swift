@@ -27,7 +27,7 @@ struct AccountProfile: Decodable {
     /// 档位摘要。可选：老服务端不返回这个字段，缺失时按免费档处理。
     let plan: AccountPlan?
 
-    var isPro: Bool { plan?.isPro ?? false }
+    var isPaid: Bool { plan?.isPaid ?? false }
 }
 
 struct ItemCounts: Decodable {

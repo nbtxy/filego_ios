@@ -107,11 +107,11 @@ final class MeViewController: UIViewController {
         case .pro:
             var content = UIListContentConfiguration.valueCell()
             content.applyPaperColors()
-            // Pro 是这页唯一的「升级」出口，用点缀色的柠檬绿冠冕最扎眼。
+            // 付费档是这页唯一的「升级」出口，用点缀色的柠檬绿冠冕最扎眼。
             content.image = UIImage(systemName: "crown.fill")
             content.imageProperties.tintColor = AppColor.FileTile.folderForeground
             let plan = profile?.plan
-            if plan?.isPro == true {
+            if plan?.isPaid == true {
                 content.text = R.Strings.proEntryActive.localizedString()
                 content.secondaryText = plan?.expiresAt.map {
                     R.Strings.proEntryExpires.formatted(Self.dateFormatter.string(from: $0))
@@ -237,7 +237,7 @@ final class MeViewController: UIViewController {
             snapshot.appendSections([0])
             snapshot.appendItems([.failure], toSection: 0)
         } else {
-            // Pro 独占第一节：insetGrouped 下自然渲染成顶部单独一张卡。
+            // 会员入口独占第一节：insetGrouped 下自然渲染成顶部单独一张卡。
             snapshot.appendSections([0, 1, 2])
             snapshot.appendItems([.pro], toSection: 0)
             snapshot.appendItems([.account, .storage, .cache], toSection: 1)

@@ -251,6 +251,7 @@ final class DriveListViewController: UIViewController {
                 with: node,
                 menu: actions(for: node),
                 grid: isGrid,
+                isFirst: id == visibleNodes.first?.id,
                 isLast: id == visibleNodes.last?.id
             )
             return cell
@@ -567,7 +568,7 @@ final class DriveListViewController: UIViewController {
 
     private func importFile(at url: URL) {
         // 本地快速失败：FileUploadService 会先把整个文件跑一遍 SHA-256 才调 /uploads/init，
-        // 免费档只有 20 MB，选个大视频要白算一遍完整哈希才被拒。这里先按最近一次
+        // 免费档只有 200 MB，选个大视频要白算一遍完整哈希才被拒。这里先按最近一次
         // 用量快照挡掉明显放不下的。
         //
         // **只用于快速失败，绝不用于放行**——快照可能过期（别的设备刚传了东西、
@@ -908,13 +909,15 @@ final class DriveListViewController: UIViewController {
     }
 
     private func showQuotaExceeded() {
-        // 两档容量取服务端下发的值，与付费墙同源，不在端上写死。
+        // 容量取服务端下发的值，与付费墙同源，不在端上写死。对比里用最高档，
+        // 因为这个弹窗是"你还能买到多大"的场景，不是"下一档是什么"。
         let status = environment.storeKitService.status
+        let topTier = status.purchasableTiers.last ?? .pro
         let alert = UIAlertController(
             title: R.Strings.quotaExceededTitle.localizedString(),
             message: R.Strings.quotaExceededMessage.formatted(
                 ByteFormatting.string(status.freeQuotaBytes),
-                ByteFormatting.string(status.proQuotaBytes)
+                ByteFormatting.string(status.quotaBytes(for: topTier))
             ),
             preferredStyle: .alert
         )

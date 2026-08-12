@@ -19,6 +19,7 @@ final class DriveNodeCell: UICollectionViewCell {
     private let moreButton = UIButton(type: .system)
     private let textStack = UIStackView()
     private let separator = UIView()
+    private let listHighlightView = UIView()
     private var listConstraints: [NSLayoutConstraint] = []
     private var gridConstraints: [NSLayoutConstraint] = []
 
@@ -72,6 +73,12 @@ final class DriveNodeCell: UICollectionViewCell {
         separator.backgroundColor = AppColor.paper2
         separator.translatesAutoresizingMaskIntoConstraints = false
 
+        // cell 本身铺满屏幕，列表白卡却左右各内缩 16pt。按下态必须单独画在
+        // 白卡的 bounds 内，不能再直接给 contentView 上色。
+        listHighlightView.isUserInteractionEnabled = false
+        listHighlightView.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(listHighlightView)
+
         let titleStack = UIStackView(arrangedSubviews: [nameLabel, starView])
         titleStack.axis = .horizontal
         titleStack.spacing = AppSpacing.extraSmall
@@ -91,6 +98,16 @@ final class DriveNodeCell: UICollectionViewCell {
         contentView.addSubview(separator)
 
         NSLayoutConstraint.activate([
+            listHighlightView.leadingAnchor.constraint(
+                equalTo: contentView.leadingAnchor,
+                constant: PaperSectionBackgroundView.horizontalInset
+            ),
+            listHighlightView.trailingAnchor.constraint(
+                equalTo: contentView.trailingAnchor,
+                constant: -PaperSectionBackgroundView.horizontalInset
+            ),
+            listHighlightView.topAnchor.constraint(equalTo: contentView.topAnchor),
+            listHighlightView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
             starView.widthAnchor.constraint(equalToConstant: 13),
             starView.heightAnchor.constraint(equalToConstant: 13),
             moreButton.widthAnchor.constraint(equalToConstant: Self.moreButtonHitSize),
@@ -168,13 +185,14 @@ final class DriveNodeCell: UICollectionViewCell {
 
     /// - Parameters:
     ///   - detailOverride: 回收站用——副标题换成「还有 N 天自动删除」，比文件尺寸更有用。
-    ///   - isLast: 段内最后一行不画发丝线，否则它会压在白卡的下边缘上
+    ///   - isFirst/isLast: 控制按下态在白卡首尾处的圆角，以及最后一行的发丝线
     ///     （网页 `.row:last-child { border-bottom: 0 }`）。
     func configure(
         with node: DriveNode,
         menu: UIMenu,
         grid: Bool,
         detailOverride: String? = nil,
+        isFirst: Bool = false,
         isLast: Bool = false
     ) {
         listIcon.configure(with: node)
@@ -193,16 +211,17 @@ final class DriveNodeCell: UICollectionViewCell {
         }
         moreButton.menu = menu
 
-        apply(grid: grid, isLast: isLast)
+        apply(grid: grid, isFirst: isFirst, isLast: isLast)
     }
 
-    private func apply(grid: Bool, isLast: Bool) {
+    private func apply(grid: Bool, isFirst: Bool, isLast: Bool) {
         NSLayoutConstraint.deactivate(grid ? listConstraints : gridConstraints)
         NSLayoutConstraint.activate(grid ? gridConstraints : listConstraints)
 
         listIcon.isHidden = grid
         thumbHolder.isHidden = !grid
         separator.isHidden = grid || isLast
+        listHighlightView.isHidden = grid
         isListRow = !grid
         nameLabel.numberOfLines = grid ? 2 : 1
         nameLabel.lineBreakMode = grid ? .byTruncatingTail : .byTruncatingMiddle
@@ -213,6 +232,22 @@ final class DriveNodeCell: UICollectionViewCell {
         contentView.layer.cornerCurve = .continuous
         contentView.layer.borderWidth = grid ? 1 : 0
         contentView.layer.borderColor = AppColor.line.cgColor
+
+        listHighlightView.layer.cornerRadius = AppRadius.card
+        listHighlightView.layer.cornerCurve = .continuous
+        switch (isFirst, isLast) {
+        case (true, true):
+            listHighlightView.layer.maskedCorners = [
+                .layerMinXMinYCorner, .layerMaxXMinYCorner,
+                .layerMinXMaxYCorner, .layerMaxXMaxYCorner
+            ]
+        case (true, false):
+            listHighlightView.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+        case (false, true):
+            listHighlightView.layer.maskedCorners = [.layerMinXMaxYCorner, .layerMaxXMaxYCorner]
+        case (false, false):
+            listHighlightView.layer.maskedCorners = []
+        }
     }
 
     /// 高亮态要按形态分别处理，不能拿 separator 的显隐来推断——段内最后一行也没有它。
@@ -222,7 +257,7 @@ final class DriveNodeCell: UICollectionViewCell {
     override var isHighlighted: Bool {
         didSet {
             guard isListRow else { return }
-            contentView.backgroundColor = isHighlighted
+            listHighlightView.backgroundColor = isHighlighted
                 ? AppColor.paper2.withAlphaComponent(0.6)
                 : .clear
         }

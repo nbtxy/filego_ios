@@ -9,9 +9,18 @@ import StoreKit
 @MainActor
 final class StoreKitService {
     enum ProductID {
-        /// 与服务端 src/lib/plans.ts 的 PRO_PRODUCT_ID 保持一致。
+        /// 付费档 Pro。历次改名都刻意没有新建商品（价格权益都没变），换商品号会让
+        /// 存量订阅者一续期就失去会员。与服务端 src/lib/plans.ts 的 PRO_PRODUCT_ID 一致。
         static let proMonthly = "com.nbtxy.filego.pro.monthly"
         static let all: [String] = [proMonthly]
+
+        /// 档位 → 商品号。free 没有商品。
+        static func of(_ plan: PlanName) -> String? {
+            switch plan {
+            case .free: return nil
+            case .pro: return proMonthly
+            }
+        }
     }
 
     enum PurchaseOutcome {
@@ -37,7 +46,11 @@ final class StoreKitService {
         self.session = session
     }
 
-    var proProduct: Product? { products.first { $0.id == ProductID.proMonthly } }
+    /// 某一档对应的 StoreKit 商品。没拉到（或该档无商品）返回 nil。
+    func product(for plan: PlanName) -> Product? {
+        guard let id = ProductID.of(plan) else { return nil }
+        return products.first { $0.id == id }
+    }
 
     // MARK: - 生命周期
 
@@ -65,8 +78,12 @@ final class StoreKitService {
         status = .free
     }
 
-    func loadProducts() async {
-        guard products.isEmpty else { return }
+    /// 加载 StoreKit 商品。付费墙传 `forceRefresh: true`，避免价格在 App Store Connect
+    /// 调整后仍展示 App 启动时缓存的旧 `displayPrice`；购买确认框由系统实时展示价格，
+    /// 两处不一致会直接影响用户信任。
+    func loadProducts(forceRefresh: Bool = false) async {
+        guard isLoadingProducts == false else { return }
+        guard forceRefresh || products.isEmpty else { return }
         isLoadingProducts = true
         defer { isLoadingProducts = false }
         do {
@@ -150,7 +167,7 @@ final class StoreKitService {
         }
 
         await refreshStatus()
-        if status.isPro { return .success }
+        if status.isPaid { return .success }
         return .failed(lastBusinessError ?? R.Strings.proRestoreNone.localizedString())
     }
 
@@ -212,10 +229,10 @@ final class StoreKitService {
             await transaction.finish()
             await refreshStatus()
             // 服务端没报错不等于开通成功——它判定的档位才算数。正常情况下
-            // /billing/verify 已经把非 Pro 的判定拒成业务错了，这里是双保险，
+            // /billing/verify 已经把免费档的判定拒成业务错了，这里是双保险，
             // 顺带覆盖 devGrant 那条路径。宁可说“稍后同步”也不能谎报成功。
-            guard reported == nil || reported?.isPro == true || status.isPro else {
-                AppLogger.warning("交易已核验但服务端档位不是 Pro，按待同步处理")
+            guard reported == nil || reported?.isPaid == true || status.isPaid else {
+                AppLogger.warning("交易已核验但服务端仍是免费档，按待同步处理")
                 return .failed(R.Strings.proPurchasePendingSync.localizedString())
             }
             return .success

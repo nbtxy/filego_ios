@@ -109,6 +109,7 @@ final class TrashViewController: UIViewController {
                     for: node,
                     retentionDays: trashRetentionDays
                 ),
+                isFirst: id == viewModel.nodes.first?.id,
                 isLast: id == viewModel.nodes.last?.id
             )
             return cell

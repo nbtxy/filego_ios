@@ -1,25 +1,24 @@
-Someone needs to send you a file. They don't have your app. They don't want another account. They're on a laptop, in another timezone, right now.
+FileGo is your private space for files in motion. Receive with one link, organize everything into folders, then download, open, or share files whenever you need them.
 
-FileGo gives you a link. They open it, drop the file, and it lands in the exact folder you chose.
+RECEIVE
+Open any folder and tap "Get File Import Address" to create a public upload link with an expiry. Senders need no app or account: they open the link in a browser, choose files, and everything lands in the folder you selected.
 
-THE IMPORT ADDRESS
-Pick a folder. Tap "Get File Import Address." You get a link that anyone can open in a browser — no app, no sign-up, nothing to install. Files they drop go straight into that folder.
+You can also take photos or video, import from Photos or Files, or choose "Open in FileGo" from another app. Terminal users can upload through the same address with curl.
 
-Working from a terminal? The same address takes a curl upload.
-Done collecting? Reset the address and it stops working instantly.
+ORGANIZE
+• Browse as a list or grid, then find files with breadcrumbs, search, and sorting
+• Star, rename, move, or duplicate files so everything lands where it belongs
+• Preview images, video, audio, PDFs, text, archives, Markdown, and HTML
+• Keep deleted items in Trash for 30 days and see storage use by file type
 
-WHAT ELSE IS IN HERE
-• Browse as a list or a grid, with breadcrumbs, search, and sorting by name, date, or size
-• Add files by taking a photo, picking from your library, importing from Files, or using "Open in FileGo" from any other app
-• Star, rename, move, duplicate, and copy a temporary share link that expires in a day
-• Preview without downloading — Markdown renders properly (with a source toggle), HTML opens sandboxed with remote content off by default, and QuickLook handles images, video, audio, PDFs, text, and archives
-• Trash keeps deleted items for 30 days with a countdown on each one, so a mis-tap is never final
-• See exactly what's using your space, broken down by photos, video, audio, and documents
-• Opened files cache on device and clear themselves above 1 GB
+SEND
+Download files, open them in another app, or copy a temporary share link that expires after one day. No permanent public door is left behind.
+
+SAFE AND CONTROLLED
+Each import address leads only to the folder you choose. Anyone with the address can upload, but cannot see, download, or delete existing files. Reset it when you're done and the old address stops working immediately.
 
 PRIVACY
 Sign in with Apple, and that's the only account there is. No ads. No tracking. No analytics SDKs — we didn't ship any. You can delete your account, and everything in it, from inside the app.
 
 FILEGO PRO
-The free plan is 20 MB — fine for documents, tight the moment photos and video show up. Pro takes you to 10 GB.
-
+The free plan includes 200 MB, unlimited import addresses, and 7-day expiry. Pro includes 50 GB, unlimited import addresses, flexible expiry of 1, 7, 30 or 90 days or never, and direct uploads up to 5 GB per file.
