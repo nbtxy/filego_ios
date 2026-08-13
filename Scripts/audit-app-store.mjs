@@ -85,6 +85,22 @@ const version = versions.data[0];
 if (!version) throw new Error(`找不到 iOS ${VERSION} 版本`);
 console.log(`version: ${version.attributes.versionString} (${version.attributes.appStoreState})`);
 
+const attachedBuild = await asc(`/v1/appStoreVersions/${version.id}/build`)
+  .catch((error) => error.message.includes("404") ? null : Promise.reject(error));
+console.log(`selected build: ${attachedBuild?.data?.attributes?.version ?? "none"}`);
+const recentBuilds = await asc(
+  `/v1/builds?filter[app]=${APP_ID}&sort=-uploadedDate&limit=10&include=preReleaseVersion`,
+);
+console.log("recent builds:");
+for (const build of recentBuilds.data) {
+  const prereleaseId = build.relationships?.preReleaseVersion?.data?.id;
+  const prerelease = (recentBuilds.included ?? []).find((item) => item.id === prereleaseId);
+  console.log(
+    `  ${prerelease?.attributes?.version ?? "?"} (${build.attributes.version}) ` +
+    `${build.attributes.processingState} ${build.attributes.uploadedDate}`,
+  );
+}
+
 const versionLocalizations = await asc(
   `/v1/appStoreVersions/${version.id}/appStoreVersionLocalizations?limit=200`,
 );
