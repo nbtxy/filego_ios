@@ -63,6 +63,14 @@ Upload the existing IPA; final review submission remains manual
 
 Build and upload the binary; final review submission remains manual
 
+### ios submit_review
+
+```sh
+[bundle exec] fastlane ios submit_review
+```
+
+Select an existing processed build and submit it for manual release
+
 ----
 
 This README.md is auto-generated and will be re-generated every time [_fastlane_](https://fastlane.tools) is run.
