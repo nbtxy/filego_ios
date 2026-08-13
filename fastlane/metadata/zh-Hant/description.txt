@@ -22,3 +22,6 @@ Sign in with Apple 是唯一登入方式。沒有廣告、不做跨 App 追蹤�
 
 FileGo Pro
 免費方案提供 200 MB、匯入地址不限數量，每條地址有效期為 7 天。Pro 提供 50 GB，匯入地址不限數量，有效期可選 1、7、30、90 天或永久有效，單檔最高 5 GB 直傳。
+
+使用條款：https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+隱私政策：https://filego.deeptrans.pro/legal/privacy

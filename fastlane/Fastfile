@@ -15,14 +15,8 @@ platform :ios do
 
   desc "Download the current App Store metadata for comparison"
   lane :download_metadata do
-    deliver(
-      api_key: connect_api_key,
-      app_identifier: "com.nbtxy.filego",
-      download_metadata: true,
-      metadata_path: File.join(PROJECT_ROOT, "fastlane/metadata-download"),
-      skip_binary_upload: true,
-      skip_screenshots: true
-    )
+    connect_api_key
+    sh("node", File.join(PROJECT_ROOT, "Scripts/audit-app-store.mjs"))
   end
 
   desc "Validate and upload metadata without submitting for review"
@@ -40,6 +34,7 @@ platform :ios do
       force: true,
       run_precheck_before_submit: false
     )
+    sh("node", File.join(PROJECT_ROOT, "Scripts/audit-app-store.mjs"), "--apply-review")
   end
 
   desc "Upload localized App Store screenshots without submitting for review"

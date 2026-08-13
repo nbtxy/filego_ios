@@ -22,3 +22,6 @@ Sign in with Apple, and that's the only account there is. No ads. No tracking. N
 
 FILEGO PRO
 The free plan includes 200 MB, unlimited import addresses, and 7-day expiry. Pro includes 50 GB, unlimited import addresses, flexible expiry of 1, 7, 30 or 90 days or never, and direct uploads up to 5 GB per file.
+
+Terms of Use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacy Policy: https://filego.deeptrans.pro/legal/privacy
