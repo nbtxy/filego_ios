@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>FileGo</string>
+	<string>JustFling</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -47,9 +47,9 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Take photos or videos and upload them to FileGo.</string>
+	<string>Take photos or videos and upload them to JustFling.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Record audio while capturing video for upload to FileGo.</string>
+	<string>Record audio while capturing video for upload to JustFling.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -1,0 +1,9 @@
+Hello App Review,
+
+Thank you for the detailed feedback. We have addressed both issues:
+
+1. Guideline 2.3.2: We replaced the promoted In-App Purchase image with unique 1024 × 1024 artwork that represents the JustFling Pro subscription and its premium file-storage experience. The new image is no longer the same as the app icon.
+
+2. Guideline 4.1(a): We renamed the product to JustFling and removed all user-visible references to FileGo from the app name, descriptions, subscription metadata, screenshots, review notes, and in-app text. We also uploaded a new binary, version 1.0 (build 5), containing the updated branding.
+
+Please review the updated submission. Thank you.

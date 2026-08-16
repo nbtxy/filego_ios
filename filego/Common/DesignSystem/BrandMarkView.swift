@@ -1,6 +1,6 @@
 import UIKit
 
-/// FileGo 品牌标。对齐网页 `.brand-mark`：一个微微左倾的墨绿圆角块，
+/// JustFling 品牌标。对齐网页 `.brand-mark`：一个微微左倾的墨绿圆角块，
 /// 顶上探出一小截（文件夹的「舌」），中间是柠檬绿的 ↗。
 @MainActor
 final class BrandMarkView: UIView {

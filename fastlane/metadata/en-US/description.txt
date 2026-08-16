@@ -1,9 +1,9 @@
-FileGo is your private space for files in motion. Receive with one link, organize everything into folders, then download, open, or share files whenever you need them.
+JustFling is your private space for files in motion. Receive with one link, organize everything into folders, then download, open, or share files whenever you need them.
 
 RECEIVE
 Open any folder and tap "Get File Import Address" to create a public upload link with an expiry. Senders need no app or account: they open the link in a browser, choose files, and everything lands in the folder you selected.
 
-You can also take photos or video, import from Photos or Files, or choose "Open in FileGo" from another app. Terminal users can upload through the same address with curl.
+You can also take photos or video, import from Photos or Files, or choose "Open in JustFling" from another app. Terminal users can upload through the same address with curl.
 
 ORGANIZE
 • Browse as a list or grid, then find files with breadcrumbs, search, and sorting
@@ -20,8 +20,7 @@ Each import address leads only to the folder you choose. Anyone with the address
 PRIVACY
 Sign in with Apple, and that's the only account there is. No ads. No tracking. No analytics SDKs — we didn't ship any. You can delete your account, and everything in it, from inside the app.
 
-FILEGO PRO
+JUSTFLING PRO
 The free plan includes 200 MB, unlimited import addresses, and 7-day expiry. Pro includes 50 GB, unlimited import addresses, flexible expiry of 1, 7, 30 or 90 days or never, and direct uploads up to 5 GB per file.
 
 Terms of Use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
-Privacy Policy: https://filego.deeptrans.pro/legal/privacy

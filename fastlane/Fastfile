@@ -56,16 +56,6 @@ platform :ios do
 
   desc "Archive and export an App Store IPA"
   lane :build do
-    profile_path = get_provisioning_profile(
-      api_key: connect_api_key,
-      app_identifier: "com.nbtxy.filego",
-      team_id: "U26MT4R2WR",
-      adhoc: false,
-      skip_install: false
-    )
-    profile_name = lane_context[SharedValues::SIGH_NAME]
-    UI.user_error!("Could not resolve the App Store provisioning profile") if profile_name.to_s.empty?
-
     build_app(
       project: File.join(PROJECT_ROOT, "filego.xcodeproj"),
       scheme: "filego",
@@ -75,13 +65,10 @@ platform :ios do
       output_name: "filego.ipa",
       export_method: "app-store",
       export_options: {
-        signingStyle: "manual",
-        provisioningProfiles: {
-          "com.nbtxy.filego" => profile_name
-        }
+        signingStyle: "automatic",
+        teamID: "U26MT4R2WR"
       }
     )
-    UI.message("Provisioning profile: #{profile_path}")
   end
 
   desc "Upload the existing IPA; final review submission remains manual"

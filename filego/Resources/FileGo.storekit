@@ -11,10 +11,10 @@
     {
       "id" : "22290281",
       "localizations" : [
-        { "description" : "", "displayName" : "FileGo 会员", "locale" : "zh_CN" },
-        { "description" : "", "displayName" : "FileGo Membership", "locale" : "en_US" }
+        { "description" : "", "displayName" : "JustFling 会员", "locale" : "zh_CN" },
+        { "description" : "", "displayName" : "JustFling Membership", "locale" : "en_US" }
       ],
-      "name" : "FileGo Pro",
+      "name" : "JustFling Pro",
       "subscriptions" : [
         {
           "adHocOffers" : [],
@@ -27,11 +27,11 @@
           "localizations" : [
             { "description" : "50 GB、导入地址不限量、永久有效、单文件 5 GB 直传", "displayName" : "Pro 会员", "locale" : "zh_CN" },
             { "description" : "50 GB、匯入地址不限量、永久有效、單檔 5 GB 直傳", "displayName" : "Pro 會員", "locale" : "zh_TW" },
-            { "description" : "50 GB, unlimited links, 5 GB direct uploads.", "displayName" : "FileGo Pro", "locale" : "en_US" }
+            { "description" : "50 GB, unlimited links, 5 GB direct uploads.", "displayName" : "JustFling Pro", "locale" : "en_US" }
           ],
           "productID" : "com.nbtxy.filego.pro.monthly",
           "recurringSubscriptionPeriod" : "P1M",
-          "referenceName" : "FileGo Pro Monthly",
+          "referenceName" : "JustFling Pro Monthly",
           "subscriptionGroupID" : "22290281",
           "type" : "RecurringSubscription",
           "winbackOffers" : []

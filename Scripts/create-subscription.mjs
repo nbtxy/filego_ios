@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 在 App Store Connect 建 FileGo Pro 月度订阅。
+ * 在 App Store Connect 建 JustFling Pro 月度订阅。
  *
  * 为什么不用 fastlane：fastlane 没有任何内购/订阅 action，spaceship 里唯一的
  * create_iap! 走的是已废弃的私有 iTunes Connect 接口（ra/apps/{id}/iaps/...），
@@ -28,20 +28,20 @@ const BASE_TERRITORY = "USA";
 const TARGET_PRICE = "2.99";
 
 // 内部名（referenceName / name）不对用户可见，只在 ASC 后台和报表里出现。
-const GROUP_REFERENCE_NAME = "FileGo Pro";
-const SUBSCRIPTION_REFERENCE_NAME = "FileGo Pro Monthly";
+const GROUP_REFERENCE_NAME = "JustFling Pro";
+const SUBSCRIPTION_REFERENCE_NAME = "JustFling Pro Monthly";
 
 // 用户可见：订阅组名出现在系统「管理订阅」页；商品名与描述出现在购买弹窗与订阅列表。
 // Apple 限长：name ≤ 30 字符，description ≤ 45 字符。
 const GROUP_LOCALIZATIONS = [
-  { locale: "zh-Hans", name: "FileGo 会员" },
-  { locale: "zh-Hant", name: "FileGo 會員" },
-  { locale: "en-US",   name: "FileGo Membership" },
+  { locale: "zh-Hans", name: "JustFling 会员" },
+  { locale: "zh-Hant", name: "JustFling 會員" },
+  { locale: "en-US",   name: "JustFling Membership" },
 ];
 const SUBSCRIPTION_LOCALIZATIONS = [
   { locale: "zh-Hans", name: "Pro 会员",   description: "50 GB、导入地址不限量、永久有效、单文件 5 GB 直传" },
   { locale: "zh-Hant", name: "Pro 會員",   description: "50 GB、匯入地址不限量、永久有效、單檔 5 GB 直傳" },
-  { locale: "en-US",   name: "FileGo Pro", description: "50 GB, unlimited links, 5 GB direct uploads." },
+  { locale: "en-US",   name: "JustFling Pro", description: "50 GB, unlimited links, 5 GB direct uploads." },
 ];
 
 const REVIEW_NOTE =

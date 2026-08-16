@@ -1,11 +1,13 @@
 #!/usr/bin/env node
-/** 同步已存在的 FileGo Pro 订阅文案与 US$2.99 基准价格；重复运行幂等。 */
+/** 同步已存在的 JustFling Pro 订阅文案与 US$2.99 基准价格；重复运行幂等。 */
 import { readFileSync } from "node:fs";
 import { createSign, createPrivateKey } from "node:crypto";
 
 const APPLY = process.argv.includes("--apply");
 const GROUP_ID = "22290281";
 const SUBSCRIPTION_ID = "6798478945";
+const GROUP_REFERENCE_NAME = "JustFling Pro";
+const SUBSCRIPTION_REFERENCE_NAME = "JustFling Pro Monthly";
 const BASE_TERRITORY = "USA";
 const TARGET_PRICE = "2.99";
 const REVIEW_NOTE =
@@ -21,7 +23,7 @@ const REQUIRED = [
     relationship: "subscriptionGroup",
     relationshipType: "subscriptionGroups",
     relationshipId: GROUP_ID,
-    attributes: { locale: "zh-Hans", name: "FileGo 会员" },
+    attributes: { locale: "zh-Hans", name: "JustFling 会员" },
   },
   {
     endpoint: `/v1/subscriptionGroups/${GROUP_ID}/subscriptionGroupLocalizations?limit=200`,
@@ -30,7 +32,7 @@ const REQUIRED = [
     relationship: "subscriptionGroup",
     relationshipType: "subscriptionGroups",
     relationshipId: GROUP_ID,
-    attributes: { locale: "zh-Hant", name: "FileGo 會員" },
+    attributes: { locale: "zh-Hant", name: "JustFling 會員" },
   },
   {
     endpoint: `/v1/subscriptionGroups/${GROUP_ID}/subscriptionGroupLocalizations?limit=200`,
@@ -39,7 +41,7 @@ const REQUIRED = [
     relationship: "subscriptionGroup",
     relationshipType: "subscriptionGroups",
     relationshipId: GROUP_ID,
-    attributes: { locale: "en-US", name: "FileGo Membership" },
+    attributes: { locale: "en-US", name: "JustFling Membership" },
   },
   {
     endpoint: `/v1/subscriptions/${SUBSCRIPTION_ID}/subscriptionLocalizations?limit=200`,
@@ -76,7 +78,7 @@ const REQUIRED = [
     relationshipId: SUBSCRIPTION_ID,
     attributes: {
       locale: "en-US",
-      name: "FileGo Pro",
+      name: "JustFling Pro",
       description: "50 GB, unlimited links, 5 GB direct uploads.",
     },
   },
@@ -180,7 +182,33 @@ for (const item of REQUIRED) {
   console.log(`${item.type} ${item.attributes.locale}: ${APPLY ? "已创建" : "缺少"}`);
 }
 
+const group = await asc("GET", `/v1/subscriptionGroups/${GROUP_ID}`);
+if (group.data.attributes.referenceName !== GROUP_REFERENCE_NAME) {
+  await mutate("PATCH", `/v1/subscriptionGroups/${GROUP_ID}`, {
+    data: {
+      type: "subscriptionGroups",
+      id: GROUP_ID,
+      attributes: { referenceName: GROUP_REFERENCE_NAME },
+    },
+  });
+  console.log(`subscriptionGroup referenceName: ${APPLY ? "已更新" : "需要更新"}`);
+} else {
+  console.log("subscriptionGroup referenceName: 已是最新");
+}
+
 const subscription = await asc("GET", `/v1/subscriptions/${SUBSCRIPTION_ID}`);
+if (subscription.data.attributes.name !== SUBSCRIPTION_REFERENCE_NAME) {
+  await mutate("PATCH", `/v1/subscriptions/${SUBSCRIPTION_ID}`, {
+    data: {
+      type: "subscriptions",
+      id: SUBSCRIPTION_ID,
+      attributes: { name: SUBSCRIPTION_REFERENCE_NAME },
+    },
+  });
+  console.log(`subscription referenceName: ${APPLY ? "已更新" : "需要更新"}`);
+} else {
+  console.log("subscription referenceName: 已是最新");
+}
 if (subscription.data.attributes.reviewNote !== REVIEW_NOTE) {
   await mutate("PATCH", `/v1/subscriptions/${SUBSCRIPTION_ID}`, {
     data: {

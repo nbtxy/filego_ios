@@ -228,13 +228,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "FileGo"
+            "value": "JustFling"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "FileGo"
+            "value": "JustFling"
           }
         }
       }
@@ -1044,13 +1044,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Import to FileGo"
+            "value": "Import to JustFling"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "导入到 FileGo"
+            "value": "导入到 JustFling"
           }
         }
       }
@@ -1588,7 +1588,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign out of FileGo?"
+            "value": "Sign out of JustFling?"
           }
         },
         "zh-Hans": {
@@ -2540,7 +2540,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "FileGo Pro"
+            "value": "JustFling Pro"
           }
         },
         "zh-Hans": {

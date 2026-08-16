@@ -8,7 +8,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "FileGo"
+            "value" : "JustFling"
           }
         }
       }
@@ -31,13 +31,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Take photos or videos and upload them to FileGo."
+            "value" : "Take photos or videos and upload them to JustFling."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "用于拍摄照片或视频并上传到 FileGo。"
+            "value" : "用于拍摄照片或视频并上传到 JustFling。"
           }
         }
       }
@@ -48,13 +48,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Record audio while capturing video for upload to FileGo."
+            "value" : "Record audio while capturing video for upload to JustFling."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "用于录制带声音的视频并上传到 FileGo。"
+            "value" : "用于录制带声音的视频并上传到 JustFling。"
           }
         }
       }

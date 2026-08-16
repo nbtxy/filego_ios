@@ -6,6 +6,9 @@ import { join } from "node:path";
 const APP_ID = "6798472788";
 const VERSION = "1.0";
 const APPLY_REVIEW = process.argv.includes("--apply-review");
+const SELECT_BUILD = process.argv
+  .find((argument) => argument.startsWith("--select-build="))
+  ?.split("=", 2)[1];
 const METADATA_ROOT = new URL("../fastlane/metadata/", import.meta.url).pathname;
 const LOCALES = ["en-US", "zh-Hans", "zh-Hant"];
 
@@ -99,6 +102,29 @@ for (const build of recentBuilds.data) {
     `  ${prerelease?.attributes?.version ?? "?"} (${build.attributes.version}) ` +
     `${build.attributes.processingState} ${build.attributes.uploadedDate}`,
   );
+}
+
+if (SELECT_BUILD && attachedBuild?.data?.attributes?.version !== SELECT_BUILD) {
+  const selected = recentBuilds.data.find(
+    (build) => build.attributes.version === SELECT_BUILD,
+  );
+  if (!selected) {
+    throw new Error(`构建 ${SELECT_BUILD} 尚未出现在 App Store Connect`);
+  }
+  if (selected.attributes.processingState !== "VALID") {
+    throw new Error(
+      `构建 ${SELECT_BUILD} 尚未处理完成：${selected.attributes.processingState}`,
+    );
+  }
+  await asc(`/v1/appStoreVersions/${version.id}/relationships/build`, {
+    method: "PATCH",
+    body: { data: { type: "builds", id: selected.id } },
+  });
+  const verifiedBuild = await asc(`/v1/appStoreVersions/${version.id}/build`);
+  if (verifiedBuild.data?.id !== selected.id) {
+    throw new Error(`构建 ${SELECT_BUILD} 关联后回读不一致`);
+  }
+  console.log(`selected build: 已更新为 ${SELECT_BUILD} 并回读确认`);
 }
 
 const versionLocalizations = await asc(

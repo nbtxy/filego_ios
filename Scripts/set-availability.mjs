@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Configure FileGo for every App Store territory except China mainland.
+ * Configure JustFling for every App Store territory except China mainland.
  *
  * Required environment variables:
  *   ASC_KEY_ID  ASC_ISSUER_ID  ASC_KEY_FILEPATH
