@@ -7,9 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		3D80CE1A3019F40E00B72EF3 /* SwiftyBeaver in Frameworks */ = {isa = PBXBuildFile; productRef = 3D80CE193019F40E00B72EF3 /* SwiftyBeaver */; };
-		3DB033AE301ACAB5008E1FD4 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 3DB033AD301ACAB5008E1FD4 /* GRDB */; };
-		FA110001301A000100000001 /* Moya in Frameworks */ = {isa = PBXBuildFile; productRef = FA110003301A000100000003 /* Moya */; };
+		5C10000030200001000000A3 /* StolnkCore in Frameworks */ = {isa = PBXBuildFile; productRef = 5C10000030200001000000A2 /* StolnkCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,9 +42,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3DB033AE301ACAB5008E1FD4 /* GRDB in Frameworks */,
-				FA110001301A000100000001 /* Moya in Frameworks */,
-				3D80CE1A3019F40E00B72EF3 /* SwiftyBeaver in Frameworks */,
+				5C10000030200001000000A3 /* StolnkCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -91,9 +87,7 @@
 			);
 			name = filego;
 			packageProductDependencies = (
-				FA110003301A000100000003 /* Moya */,
-				3D80CE193019F40E00B72EF3 /* SwiftyBeaver */,
-				3DB033AD301ACAB5008E1FD4 /* GRDB */,
+				5C10000030200001000000A2 /* StolnkCore */,
 			);
 			productName = filego;
 			productReference = 3D80CCD83019E16100B72EF3 /* filego.app */;
@@ -125,9 +119,7 @@
 			mainGroup = 3D80CCCF3019E16100B72EF3;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				FA110002301A000100000002 /* XCRemoteSwiftPackageReference "Moya" */,
-				3D80CE183019F40E00B72EF3 /* XCRemoteSwiftPackageReference "SwiftyBeaver" */,
-				3DB033AC301ACAB5008E1FD4 /* XCRemoteSwiftPackageReference "GRDB" */,
+				5C10000030200001000000A1 /* XCLocalSwiftPackageReference "../stolnk_mac" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 3D80CCD93019E16100B72EF3 /* Products */;
@@ -408,48 +400,17 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		3D80CE183019F40E00B72EF3 /* XCRemoteSwiftPackageReference "SwiftyBeaver" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/SwiftyBeaver/SwiftyBeaver.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.0.0;
-			};
+/* Begin XCLocalSwiftPackageReference section */
+		5C10000030200001000000A1 /* XCLocalSwiftPackageReference "../stolnk_mac" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../stolnk_mac;
 		};
-		3DB033AC301ACAB5008E1FD4 /* XCRemoteSwiftPackageReference "GRDB" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/groue/GRDB.swift";
-			requirement = {
-				kind = exactVersion;
-				version = 7.10.0;
-			};
-		};
-		FA110002301A000100000002 /* XCRemoteSwiftPackageReference "Moya" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/Moya/Moya.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 15.0.3;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
+/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		3D80CE193019F40E00B72EF3 /* SwiftyBeaver */ = {
+		5C10000030200001000000A2 /* StolnkCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 3D80CE183019F40E00B72EF3 /* XCRemoteSwiftPackageReference "SwiftyBeaver" */;
-			productName = SwiftyBeaver;
-		};
-		3DB033AD301ACAB5008E1FD4 /* GRDB */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 3DB033AC301ACAB5008E1FD4 /* XCRemoteSwiftPackageReference "GRDB" */;
-			productName = GRDB;
-		};
-		FA110003301A000100000003 /* Moya */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = FA110002301A000100000002 /* XCRemoteSwiftPackageReference "Moya" */;
-			productName = Moya;
+			productName = StolnkCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

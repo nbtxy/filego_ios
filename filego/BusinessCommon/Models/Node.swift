@@ -1,75 +1,32 @@
 import Foundation
 
-enum NodeKind: String, Decodable {
+enum NodeKind: String {
     case folder
     case file
 }
 
-struct DriveNode: Decodable, Hashable {
+/**
+ 文件树里的一个节点。
+
+ 形状与改造前一致，来源换了：以前是后端 `/nodes` 返回的 JSON，现在由
+ `LocalDriveStore` 从 `FileManager` 现读。保持同一个类型是刻意的——
+ `DriveListViewController`、`DriveNodeCell`、`BreadcrumbBar`、
+ `FolderPickerViewController` 加起来一千多行 UI 因此原样可用。
+
+ `id` 是相对 Documents 的相对路径，根目录是空串。用路径当 id 意味着重命名或移动
+ 之后它就是另一个节点了——这对 diffable data source 正好（那确实是另一行），
+ 但也意味着加星记录跟不过去，见 `LocalDriveStore.starred`。
+ */
+struct DriveNode: Hashable {
     let id: String
     let parentId: String?
     let kind: NodeKind
     let name: String
-    let blobId: String?
     let size: Int64
     let starred: Bool
-    let createdAt: Date
     let updatedAt: Date
-    let viewedAt: Date?
-    let trashedAt: Date?
 
     var isFolder: Bool { kind == .folder }
-
-    /// config 尚未返回时的随包兜底；真正展示值由 AppConfigStore 传入。
-    static let fallbackTrashRetentionDays = 30
-
-    /// 距离自动永久删除还剩几天；已到期返回 0。不在回收站里则为 nil。
-    func trashDaysRemaining(
-        retentionDays: Int = Self.fallbackTrashRetentionDays,
-        now: Date = Date()
-    ) -> Int? {
-        guard let trashedAt else { return nil }
-        let deadline = trashedAt.addingTimeInterval(Double(retentionDays) * 86_400)
-        // 向上取整：刚删掉的文件应该显示完整保留期，而不是被截断少一天。
-        let days = (deadline.timeIntervalSince(now) / 86_400).rounded(.up)
-        return max(0, Int(days))
-    }
-}
-
-/// `GET /trash` 的 data。
-struct TrashList: Decodable {
-    let nodes: [DriveNode]
-}
-
-/// 永久删除 / 清空回收站的 data。
-struct TrashDeletionResult: Decodable {
-    let deletedNodes: Int
-    let releasedBytes: Int64
-}
-
-struct NodeListPage: Decodable {
-    let parentId: String
-    let nodes: [DriveNode]
-    let nextCursor: String?
-}
-
-struct NodeSearchResult: Decodable {
-    let nodes: [DriveNode]
-}
-
-struct NodeAncestors: Decodable {
-    let nodes: [DriveNode]
-}
-
-struct NodeTemporaryLink: Decodable {
-    let url: URL
-}
-
-struct ImportAddressResult: Decodable {
-    let importAddress: URL
-    let expiresAt: Date
-    let folder: DriveNode
-    let maxFileSize: Int64
 }
 
 enum NodeSort: String, CaseIterable {

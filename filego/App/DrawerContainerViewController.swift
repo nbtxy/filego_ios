@@ -129,22 +129,10 @@ final class DrawerContainerViewController: UIViewController, UIGestureRecognizer
         return mainNavigationController.importExternalFile(at: url)
     }
 
-    #if DEBUG
-    func prepareScreenshot(scene: String) {
-        if scene == "me" {
-            setOpen(true, animated: false)
-            return
-        }
-        setOpen(false, animated: false)
-        mainNavigationController.prepareScreenshot(scene: scene)
-    }
-    #endif
-
     func setOpen(_ open: Bool, animated: Bool) {
         let changed = open != isOpen
         isOpen = open
         dragProgress = nil
-        if open { meViewController.refresh() }
         if changed { HapticManager.impact(.light) }
 
         let target: CGFloat = open ? 1 : 0

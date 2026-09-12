@@ -1,10 +1,12 @@
 import UIKit
 
-/// UIKit 根协调器。登录态切换、主导航栈和全局弹窗统一放在这里管理。
+/// UIKit 根协调器。注册态切换、主导航栈和全局弹窗统一放在这里管理。
 ///
-/// 登录/登出不由触发方自己跳转——`SessionManager` 广播通知，这里换根界面。
-/// 好处是任意深处的一次 401（刷新也失败）都能把用户送回登录页，
-/// 不用每个调用点都写一遍「失败了要不要跳登录」。
+/// 这里换的不再是登录态而是**注册态**：没有账号，设备有没有在服务端注册过才是
+/// 唯一的分叉。切换不由触发方自己跳转——`StolnkController` 广播
+/// `.stolnkRegistrationDidChange`，这里换根界面。好处和改造前一样：任意深处收到
+/// 一个 `unknown_device`（服务端不再认识这台设备）都能把用户送回首次运行，
+/// 不用每个调用点都写一遍。
 @MainActor
 final class RootViewController: UIViewController {
     private let environment: AppEnvironment
@@ -27,97 +29,47 @@ final class RootViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = AppColor.background
-        observeSessionChanges()
-        showCurrentSessionState(animated: false)
-        #if DEBUG
-        prepareScreenshotIfRequested()
-        #endif
-        Task { await environment.appConfigStore.bootstrap() }
-        // 冷启动时已登录的话也要起监听器：Transaction.updates 会补投上次因断网
-        // 没能上报成功的交易，起得越晚补偿越晚。
-        syncStoreKitWithSession()
+        observeRegistrationChanges()
+        showCurrentRegistrationState(animated: false)
     }
 
-    #if DEBUG
-    private func prepareScreenshotIfRequested() {
-        let arguments = ProcessInfo.processInfo.arguments
-        guard let flag = arguments.firstIndex(of: "-filegoScreenshot"),
-              arguments.indices.contains(flag + 1) else { return }
-        let scene = arguments[flag + 1]
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-            guard let self else { return }
-            // 登录页平时只有未登录才看得到，为了截一张图去退登录代价太大
-            // （Sign in with Apple 是唯一入口，退了得重新过一遍系统授权）。
-            // 这里只是把它盖在最上层，**完全不碰登录态**。
-            if scene == "login" {
-                let login = LoginViewController(environment: self.environment)
-                login.modalPresentationStyle = .fullScreen
-                self.present(login, animated: false)
-                return
-            }
-            (self.current as? DrawerContainerViewController)?.prepareScreenshot(scene: scene)
-        }
-    }
-    #endif
-
-    private func observeSessionChanges() {
+    private func observeRegistrationChanges() {
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(sessionDidChange),
-            name: .fileGoSessionDidSignIn,
-            object: nil
-        )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(sessionDidChange),
-            name: .fileGoSessionDidSignOut,
+            selector: #selector(registrationDidChange),
+            name: .stolnkRegistrationDidChange,
             object: nil
         )
     }
 
-    @objc private func sessionDidChange() {
-        showCurrentSessionState(animated: true)
+    @objc private func registrationDidChange() {
+        showCurrentRegistrationState(animated: true)
         processPendingIncomingFileIfPossible()
-        syncStoreKitWithSession()
     }
 
-    /// StoreKit 的生命周期必须跟着登录态走。
-    ///
-    /// 登出时**必须** shutdown：否则 `Transaction.updates` 的监听任务会跨账号泄漏——
-    /// A 退出、B 登录的窗口里，A 的 Apple 事件会带着 B 的令牌上报，把订阅绑错人。
-    private func syncStoreKitWithSession() {
-        let store = environment.storeKitService
-        if environment.sessionManager.isSignedIn {
-            Task { await store.bootstrap() }
-        } else {
-            store.shutdown()
-            environment.storageSnapshot.clear()
-        }
-    }
-
-    private func showCurrentSessionState(animated: Bool) {
-        let signedIn = environment.sessionManager.isSignedIn
+    private func showCurrentRegistrationState(animated: Bool) {
+        let registered = environment.stolnk.isRegistered
         // 已经是目标形态就不要重建，避免通知重复触发时闪一下
         switch current {
-        case is DrawerContainerViewController where signedIn: return
-        case is LoginViewController where !signedIn: return
+        case is DrawerContainerViewController where registered: return
+        case is InboxOnboardingViewController where !registered: return
         default: break
         }
 
-        let next: UIViewController = signedIn
+        let next: UIViewController = registered
             ? DrawerContainerViewController(environment: environment)
-            : LoginViewController(environment: environment)
+            : InboxOnboardingViewController(environment: environment)
         transition(to: next, animated: animated)
     }
 
-    /// 系统“打开方式”入口：未登录时暂存，登录完成后自动导入根目录。
+    /// 系统「打开方式」入口：还没注册时暂存，注册完成后自动导入根目录。
     func handleIncomingFile(_ url: URL) {
         pendingIncomingURL = url
         processPendingIncomingFileIfPossible()
     }
 
     private func processPendingIncomingFileIfPossible() {
-        guard environment.sessionManager.isSignedIn,
+        guard environment.stolnk.isRegistered,
               let url = pendingIncomingURL,
               let drawer = current as? DrawerContainerViewController else { return }
         if drawer.importExternalFile(at: url) {

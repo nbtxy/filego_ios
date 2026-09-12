@@ -23,8 +23,8 @@ final class MainNavigationController: UINavigationController {
 
         let router = Router(navigationController: self)
         retainedRouter = router
-        let userId = environment.sessionManager.currentUserID ?? ""
-        let rootId = "root_\(userId)"
+        // 没有账号，也就没有按用户分根这回事：树只有一棵，根是 Documents。
+        let rootId = LocalDriveStore.rootID
         router.setRoot(DriveListViewController(
             environment: environment,
             router: router,
@@ -42,11 +42,4 @@ final class MainNavigationController: UINavigationController {
         return drive.importExternalFile(at: url)
     }
 
-    #if DEBUG
-    func prepareScreenshot(scene: String) {
-        loadViewIfNeeded()
-        popToRootViewController(animated: false)
-        (viewControllers.first as? DriveListViewController)?.prepareScreenshot(scene: scene)
-    }
-    #endif
 }

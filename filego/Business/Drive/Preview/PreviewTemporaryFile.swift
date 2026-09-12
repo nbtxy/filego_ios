@@ -11,8 +11,27 @@ final class PreviewTemporaryFile {
 
     let url: URL
 
+    /// 释放时是否要删掉 `url` 的父目录。
+    ///
+    /// 改造前只有一种用法：文件是下载到独占 tmp 目录里的副本，删掉理所当然。
+    /// 现在收件盘里的文件就在本机，预览的是原件，而它的父目录是用户的收件文件夹
+    /// —— 按老路径走一遍就会把整个文件夹删掉。所以所有权必须是显式的。
+    private let ownsDirectory: Bool
+
+    /// 接管一个独占的临时目录。
     init(url: URL) {
         self.url = url
+        self.ownsDirectory = true
+    }
+
+    private init(url: URL, ownsDirectory: Bool) {
+        self.url = url
+        self.ownsDirectory = ownsDirectory
+    }
+
+    /// 借用一份不归自己管的文件——本地收件盘里的原件。释放时什么都不删。
+    static func borrowing(_ url: URL) -> PreviewTemporaryFile {
+        PreviewTemporaryFile(url: url, ownsDirectory: false)
     }
 
     /// 进程被杀（崩溃、Xcode 重装、系统回收）时 `deinit` 不会执行，临时目录会留下来。
@@ -22,11 +41,13 @@ final class PreviewTemporaryFile {
     }
 
     deinit {
+        guard ownsDirectory else { return }
         try? FileManager.default.removeItem(at: url.deletingLastPathComponent())
     }
 
     /// 在还没交给预览 VC 之前（例如任务被取消）提前清理。
     func discard() {
+        guard ownsDirectory else { return }
         try? FileManager.default.removeItem(at: url.deletingLastPathComponent())
     }
 }

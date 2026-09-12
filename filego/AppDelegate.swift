@@ -1,10 +1,3 @@
-//
-//  AppDelegate.swift
-//  filego
-//
-//  Created by 赖恩光 on 2026/7/29.
-//
-
 import UIKit
 
 @main
@@ -19,12 +12,12 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         AppLogger.info("Application did finish launching")
         // 要早于任何界面创建：UIAppearance 只对之后创建的视图生效。
         AppAppearance.install()
-        // 必须在 AppEnvironment 之前：把历史明文令牌搬进 Keychain，并恢复
-        // KeyValueStore 的用户域，否则首屏读到的偏好会落在 default 域里。
-        SessionManager.bootstrap()
         environment = AppEnvironment()
         _ = AppLifecycleObserver.shared
         PreviewTemporaryFile.purgeOrphans()
+        // 不 await：取密钥可能弹系统提示，注册要走网络，任何一个卡住都不该拖住首屏。
+        // 界面自己会等 .stolnkStateDidChange。
+        Task { await environment.stolnk.start() }
         return true
     }
 

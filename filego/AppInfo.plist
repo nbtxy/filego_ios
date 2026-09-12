@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>JustFling</string>
+	<string>Stolnk</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -35,21 +35,23 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<!-- P-256 ECDH + AES-256-GCM (docs/wire-format.md). The old `false` was
+	     honest when the app did nothing beyond TLS; it is not any more. Left
+	     declared as using encryption so the TestFlight upload asks the export
+	     question rather than silently answering it wrong. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
+	<true/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<key>UIFileSharingEnabled</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
-	<key>NSCameraUsageDescription</key>
-	<string>Take photos or videos and upload them to JustFling.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Record audio while capturing video for upload to JustFling.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

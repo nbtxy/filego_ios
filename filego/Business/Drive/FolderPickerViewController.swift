@@ -71,16 +71,12 @@ final class FolderPickerViewController: UITableViewController {
     }
 
     private func loadFolders() {
-        Task {
-            do {
-                let page: NodeListPage = try await environment.sessionManager.request(
-                    NodeAPI.list(parentId: folderId, sort: .name, order: .ascending, cursor: nil)
-                )
-                folders = page.nodes.filter { $0.isFolder && $0.id != excludedNodeId }
-                tableView.reloadData()
-            } catch {
-                showError(error)
-            }
+        do {
+            let nodes = try environment.drive.list(in: folderId, sort: .name, order: .ascending)
+            folders = nodes.filter { $0.isFolder && $0.id != excludedNodeId }
+            tableView.reloadData()
+        } catch {
+            showError(error)
         }
     }
 

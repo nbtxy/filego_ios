@@ -1,4 +1,5 @@
 import PhotosUI
+import StolnkCore
 import UIKit
 import UniformTypeIdentifiers
 
@@ -67,7 +68,7 @@ final class DriveListViewController: UIViewController {
         self.onShowMe = onShowMe
         self.viewModel = DriveListViewModel(
             folderId: folderId,
-            session: environment.sessionManager,
+            drive: environment.drive,
             preferences: environment.keyValueStore
         )
         self.isGrid = environment.keyValueStore.value(forKey: "drive.grid") ?? false
@@ -76,9 +77,13 @@ final class DriveListViewController: UIViewController {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+    private var landedObserver: (any NSObjectProtocol)?
+
     deinit {
         openFileTask?.cancel()
         searchTask?.cancel()
+        // 基于 block 的观察者以 token 为键，`removeObserver(self)` 摘不掉它。
+        if let landedObserver { NotificationCenter.default.removeObserver(landedObserver) }
     }
 
     override func viewDidLoad() {
@@ -91,7 +96,25 @@ final class DriveListViewController: UIViewController {
         configureAddFolderButton()
         configureFileActivityIndicator()
         observeContentSizeCategory()
+        observeLandedFiles()
         reload()
+    }
+
+    /**
+     文件是自己落进来的，不是用户放进来的。
+
+     收件盘和普通文件浏览器的区别就在这里：内容会在没人操作的时候变。不监听的话，
+     用户盯着一个写着「这个文件夹是空的」的屏幕，而文件其实已经在磁盘上了——
+     直到他下拉刷新或者切个目录才看得到。
+     */
+    private func observeLandedFiles() {
+        landedObserver = NotificationCenter.default.addObserver(
+            forName: .stolnkDidLandFiles,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.reload() }
+        }
     }
 
     /// 宫格卡的高度是算出来的常量，字号变了要重算一次，否则名字会被裁掉。
@@ -284,10 +307,6 @@ final class DriveListViewController: UIViewController {
                 ) { [weak self] _ in self?.createImportAddress() }
             ]),
             UIMenu(options: .displayInline, children: [
-                UIAction(
-                    title: R.Strings.driveImportTakePhoto.localizedString(),
-                    image: UIImage(systemName: "camera")
-                ) { [weak self] _ in self?.openCamera() },
                 UIAction(
                     title: R.Strings.driveImportPhoto.localizedString(),
                     image: UIImage(systemName: "photo")
@@ -525,73 +544,21 @@ final class DriveListViewController: UIViewController {
         present(picker, animated: true)
     }
 
-    private func openCamera() {
-        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
-            showError(NSError(
-                domain: "FileGo.Camera",
-                code: 1,
-                userInfo: [NSLocalizedDescriptionKey: R.Strings.driveImportCameraUnavailable.localizedString()]
-            ))
-            return
-        }
-        CameraPermissionManager.shared.requestPermission { [weak self] result in
-            switch result {
-            case .granted: self?.presentCamera()
-            case .justDenied: break
-            case .previouslyDenied: self?.presentCameraDeniedAlert()
-            }
-        }
-    }
+    /**
+     把系统「打开方式」或「文件」App 交来的文件拷进当前目录。
 
-    private func presentCamera() {
-        let picker = UIImagePickerController()
-        picker.sourceType = .camera
-        picker.mediaTypes = [UTType.image.identifier, UTType.movie.identifier]
-        picker.videoQuality = .typeHigh
-        picker.delegate = self
-        present(picker, animated: true)
-    }
-
-    private func presentCameraDeniedAlert() {
-        let alert = UIAlertController(
-            title: R.Strings.driveImportCameraDenied.localizedString(),
-            message: R.Strings.driveImportCameraDeniedMessage.localizedString(),
-            preferredStyle: .alert
-        )
-        alert.addAction(UIAlertAction(title: R.Strings.commonCancel.localizedString(), style: .cancel))
-        alert.addAction(UIAlertAction(
-            title: R.Strings.driveImportOpenSettings.localizedString(),
-            style: .default
-        ) { _ in CameraPermissionManager.shared.openSystemSettings() })
-        present(alert, animated: true)
-    }
-
+     改造前这里是一次上传：先跑完整个文件的 SHA-256，再 `/uploads/init`，再分片。
+     现在收件盘就在本机，导入只是一次 `copyItem` —— 配额预检、上传进度、中途失败
+     要清理临时文件这一整套都不再存在。进度条留着，是因为大文件的拷贝在手机上
+     仍然要几秒。
+     */
     private func importFile(at url: URL) {
-        // 本地快速失败：FileUploadService 会先把整个文件跑一遍 SHA-256 才调 /uploads/init，
-        // 免费档只有 200 MB，选个大视频要白算一遍完整哈希才被拒。这里先按最近一次
-        // 用量快照挡掉明显放不下的。
-        //
-        // **只用于快速失败，绝不用于放行**——快照可能过期（别的设备刚传了东西、
-        // Pro 刚过期），服务端那条原子条件 UPDATE 才是唯一权威。
-        if let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize,
-           !environment.storageSnapshot.likelyFits(Int64(size)) {
-            cleanupTemporaryImport(url)
-            showQuotaExceeded()
-            return
-        }
-
         let progress = FileImportProgressViewController(fileName: url.lastPathComponent)
         present(progress, animated: true) { [weak self, weak progress] in
             guard let self, let progress else { return }
             Task {
                 do {
-                    _ = try await FileUploadService.upload(
-                        fileURL: url,
-                        parentId: self.folderId,
-                        session: self.environment.sessionManager
-                    ) { [weak progress] fraction in
-                        progress?.updateProgress(fraction)
-                    }
+                    _ = try await self.viewModel.importFile(at: url)
                     self.cleanupTemporaryImport(url)
                     progress.dismiss(animated: true) { [weak self] in self?.reload() }
                 } catch {
@@ -649,87 +616,66 @@ final class DriveListViewController: UIViewController {
         }
     }
 
+    /**
+     这个文件夹的收件地址。
+
+     改造前是向自家后端要一条有效期一天的明文上传链接；现在是这台设备名下、绑定到
+     本文件夹的那个 Stolnk inbox —— `ryan-phone.stolnk.com/<slug>`，不过期，内容
+     端到端加密，只有本机 Secure Enclave 里的密钥能解开。
+
+     没有绑定就说明这个文件夹还不是收件目标。真正的 inbox 管理（新建、改路径、
+     Reset、暂停、删除）在 InboxList，这里只负责把已有的那条地址交出去。
+     */
     private func createImportAddress() {
-        Task {
-            do {
-                let result: ImportAddressResult = try await environment.sessionManager.request(
-                    NodeAPI.createImportAddress(id: folderId)
-                )
-                presentImportAddress(result)
-            } catch {
-                showError(error)
-            }
+        guard let inbox = boundInbox() else {
+            showNoInboxForThisFolder()
+            return
+        }
+        presentImportAddress(inbox)
+    }
+
+    /// 找到落地目录正是本文件夹的那个 inbox。
+    private func boundInbox() -> InboxSummary? {
+        let here = environment.drive.url(for: folderId).standardizedFileURL
+        return environment.stolnk.inboxes.first { inbox in
+            environment.stolnk.folder(for: inbox.inboxID)?.standardizedFileURL == here
         }
     }
 
-    private func presentImportAddress(_ result: ImportAddressResult) {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        let message = R.Strings.driveImportAddressMessage.formatted(
-            formatter.string(from: result.expiresAt),
-            result.importAddress.absoluteString
-        )
+    private func showNoInboxForThisFolder() {
         let alert = UIAlertController(
             title: R.Strings.driveImportAddress.localizedString(),
-            message: message,
+            message: R.Strings.inboxNotBoundMessage.localizedString(),
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: R.Strings.commonOk.localizedString(), style: .cancel))
+        present(alert, animated: true)
+    }
+
+    private func presentImportAddress(_ inbox: InboxSummary) {
+        let alert = UIAlertController(
+            title: R.Strings.driveImportAddress.localizedString(),
+            message: inbox.url,
             preferredStyle: .alert
         )
         alert.addAction(UIAlertAction(
             title: R.Strings.driveImportCopyAddress.localizedString(),
             style: .default
         ) { _ in
-            UIPasteboard.general.url = result.importAddress
+            UIPasteboard.general.string = inbox.url
         })
         alert.addAction(UIAlertAction(
             title: R.Strings.driveImportShareAddress.localizedString(),
             style: .default
         ) { [weak self] _ in
-            self?.shareImportAddress(result.importAddress)
-        })
-        alert.addAction(UIAlertAction(
-            title: R.Strings.driveImportResetAddress.localizedString(),
-            style: .destructive
-        ) { [weak self] _ in
-            self?.confirmResetImportAddress()
+            guard let url = URL(string: inbox.url) else { return }
+            self?.shareImportAddress(url)
         })
         alert.addAction(UIAlertAction(
             title: R.Strings.commonOk.localizedString(),
             style: .cancel
         ))
         present(alert, animated: true)
-    }
-
-    private func confirmResetImportAddress() {
-        let alert = UIAlertController(
-            title: R.Strings.driveImportResetConfirmTitle.localizedString(),
-            message: R.Strings.driveImportResetConfirmMessage.localizedString(),
-            preferredStyle: .alert
-        )
-        alert.addAction(UIAlertAction(
-            title: R.Strings.commonCancel.localizedString(),
-            style: .cancel
-        ))
-        alert.addAction(UIAlertAction(
-            title: R.Strings.driveImportResetAddress.localizedString(),
-            style: .destructive
-        ) { [weak self] _ in
-            self?.resetImportAddress()
-        })
-        present(alert, animated: true)
-    }
-
-    private func resetImportAddress() {
-        Task {
-            do {
-                let result: ImportAddressResult = try await environment.sessionManager.request(
-                    NodeAPI.resetImportAddress(id: folderId)
-                )
-                presentImportAddress(result)
-            } catch {
-                showError(error)
-            }
-        }
     }
 
     private func shareImportAddress(_ address: URL) {
@@ -754,28 +700,11 @@ final class DriveListViewController: UIViewController {
             return
         }
 
-        openFileTask?.cancel()
-        setFileActivity(true)
-        collectionView.isUserInteractionEnabled = false
-        openFileTask = Task { [weak self] in
-            do {
-                guard let userID = self?.environment.sessionManager.currentUserID else {
-                    throw FileGoAPIError.unauthorized
-                }
-                let file = try await FileDownloadService.download(node: node, userID: userID)
-                guard !Task.isCancelled else {
-                    file.discard()
-                    return
-                }
-                self?.router.push(PreviewCoordinator.makeViewController(for: node, file: file))
-            } catch is CancellationError {
-                // 页面销毁或用户发起了另一次打开，不展示错误。
-            } catch {
-                self?.showError(error)
-            }
-            self?.setFileActivity(false)
-            self?.collectionView.isUserInteractionEnabled = true
-        }
+        // 改造前这里要先把文件从服务端下下来（带缓存、带去重、带取消）。现在文件
+        // 就在本机，直接把原件借给预览器——`borrowing` 而不是 `init`，因为后者的
+        // deinit 会删掉父目录，而这里的父目录是用户的收件文件夹。
+        let file = PreviewTemporaryFile.borrowing(viewModel.fileURL(for: node))
+        router.push(PreviewCoordinator.makeViewController(for: node, file: file))
     }
 
     private func openBreadcrumb(_ node: DriveNode) {
@@ -801,10 +730,6 @@ final class DriveListViewController: UIViewController {
         var children = [star, rename, move]
         if !node.isFolder {
             children.append(UIAction(
-                title: R.Strings.driveCopyTemporaryLink.localizedString(),
-                image: UIImage(systemName: "link")
-            ) { [weak self] _ in self?.copyTemporaryLink(for: node) })
-            children.append(UIAction(
                 title: R.Strings.driveCopy.localizedString(), image: UIImage(systemName: "doc.on.doc")
             ) { [weak self] _ in self?.pickFolder(for: node, copy: true) })
         }
@@ -824,19 +749,6 @@ final class DriveListViewController: UIViewController {
         Task {
             do { try await viewModel.moveToTrash(node); applySnapshot() }
             catch { showError(error) }
-        }
-    }
-
-    private func copyTemporaryLink(for node: DriveNode) {
-        Task {
-            do {
-                let url = try await viewModel.temporaryLink(for: node)
-                UIPasteboard.general.string = url.absoluteString
-                HapticManager.notification(.success)
-                presentToast(R.Strings.driveTemporaryLinkCopied.localizedString())
-            } catch {
-                showError(error)
-            }
         }
     }
 
@@ -889,9 +801,9 @@ final class DriveListViewController: UIViewController {
     }
 
     private func showError(_ error: Error) {
-        // 配额超限单独处理：所有上传路径的错误都汇到这里，在这一处拦就够了。
-        // 给用户一条出路，而不是一句无从下手的「存储空间不足」。
-        if case let FileGoAPIError.business(code, _) = error, code == 40301 {
+        // 服务端的 message 写死了 "This Mac…"，一律按 code 映射自己的文案，
+        // 不要直接渲染它（见计划 §J）。
+        if let apiError = error as? APIError, apiError.isQuota || apiError.isUpgradeRequired {
             showQuotaExceeded()
             return
         }
@@ -908,72 +820,23 @@ final class DriveListViewController: UIViewController {
         PaperToast.show(message, in: view)
     }
 
+    /**
+     中转额度用完了。
+
+     iOS 端目前没有购买入口（IAP 是 M3），所以这里只陈述现状，不引导升级——
+     App Store 3.1.1 不允许在 app 内引导站外购买，而站内购买还没做。额度用尽
+     只暂停新的上传，已经在路上的文件和手机上已有的文件都不受影响。
+     */
     private func showQuotaExceeded() {
-        // 容量取服务端下发的值，与付费墙同源，不在端上写死。对比里用最高档，
-        // 因为这个弹窗是"你还能买到多大"的场景，不是"下一档是什么"。
-        let status = environment.storeKitService.status
-        let topTier = status.purchasableTiers.last ?? .pro
         let alert = UIAlertController(
             title: R.Strings.quotaExceededTitle.localizedString(),
-            message: R.Strings.quotaExceededMessage.formatted(
-                ByteFormatting.string(status.freeQuotaBytes),
-                ByteFormatting.string(status.quotaBytes(for: topTier))
-            ),
+            message: R.Strings.quotaExceededMessage.localizedString(),
             preferredStyle: .alert
         )
-        alert.addAction(UIAlertAction(title: R.Strings.commonCancel.localizedString(), style: .cancel))
-        alert.addAction(UIAlertAction(
-            title: R.Strings.quotaExceededUpgrade.localizedString(),
-            style: .default
-        ) { [weak self] _ in
-            guard let self else { return }
-            self.navigationController?.pushViewController(
-                ProUpgradeViewController(environment: self.environment),
-                animated: true
-            )
-        })
+        alert.addAction(UIAlertAction(title: R.Strings.commonOk.localizedString(), style: .cancel))
         present(alert, animated: true)
     }
 
-    #if DEBUG
-    func prepareScreenshot(scene: String) {
-        switch scene {
-        case "import":
-            createImportAddress()
-        case "add":
-            if #available(iOS 17.4, *) {
-                addFolderButton.performPrimaryAction()
-            } else {
-                addFolderButton.sendActions(for: .touchUpInside)
-            }
-        case "markdown":
-            prepareMarkdownScreenshot(attemptsRemaining: 8)
-        case "trash":
-            navigationController?.pushViewController(
-                TrashViewController(environment: environment), animated: false
-            )
-        case "pro":
-            navigationController?.pushViewController(
-                ProUpgradeViewController(environment: environment), animated: false
-            )
-        default:
-            break
-        }
-    }
-
-    private func prepareMarkdownScreenshot(attemptsRemaining: Int) {
-        if let node = viewModel.nodes.first(where: {
-            $0.name.lowercased().hasSuffix(".md") && $0.size > 0
-        }) {
-            open(node)
-            return
-        }
-        guard attemptsRemaining > 0 else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.prepareMarkdownScreenshot(attemptsRemaining: attemptsRemaining - 1)
-        }
-    }
-    #endif
 }
 
 extension DriveListViewController: UICollectionViewDelegate {
@@ -984,14 +847,6 @@ extension DriveListViewController: UICollectionViewDelegate {
         open(node)
     }
 
-    func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
-        guard searchQuery.isEmpty else { return }
-        Task {
-            do {
-                if try await viewModel.loadNextPageIfNeeded(near: indexPath.item) { applySnapshot() }
-            } catch { showError(error) }
-        }
-    }
 }
 
 extension DriveListViewController: UISearchBarDelegate {

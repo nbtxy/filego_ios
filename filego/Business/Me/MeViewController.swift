@@ -1,23 +1,24 @@
+import StolnkCore
 import UIKit
 
 /// diffable 的条目标识必须是 Sendable。本模块 `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`，
 /// 不显式写 `nonisolated` 的话 Hashable conformance 会带上主线程隔离，泛型约束就对不上。
 private nonisolated enum Row: Hashable {
-    case pro
-    case account
-    case storage
-    case cache
-    case trash
+    case address
+    case plan
+    case localStorage
+    case deviceKey
     #if DEBUG
     case debugPanel
     #endif
-    case signOut
-    case failure
+    case version
 }
 
 /// 「我的」页：只放入口，不铺细节。
 ///
-/// 账号与存储空间各自是一个入口，具体信息在二级页展开——一级页不再直接暴露邮箱。
+/// 改造后这里没有账号——身份就是 Secure Enclave 里那两把密钥，所以没有登录、
+/// 没有登出、没有邮箱。取而代之的一级信息是：这台设备的收件地址、当前档位与
+/// 本月中转用量、本机占用，以及密钥到底落在安全隔区还是软件里。
 @MainActor
 final class MeViewController: UIViewController {
     private let environment: AppEnvironment
@@ -25,11 +26,8 @@ final class MeViewController: UIViewController {
 
     private var collectionView: UICollectionView!
     private var dataSource: UICollectionViewDiffableDataSource<Int, Row>!
-    private let activityIndicator = UIActivityIndicatorView(style: .medium)
 
-    private var profile: AccountProfile?
-    private var cacheStatistics = FileCacheManager.Statistics(bytes: 0, fileCount: 0)
-    private var loadErrorMessage: String?
+    private var localBytes: Int64 = 0
 
     init(
         environment: AppEnvironment,
@@ -44,19 +42,26 @@ final class MeViewController: UIViewController {
         fatalError("init(coder:) has not been implemented")
     }
 
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = AppColor.background
         configureCollectionView()
-        configureActivityIndicator()
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(stateDidChange),
+            name: .stolnkStateDidChange, object: nil)
         reload()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        // 二级页改了名字、清了回收站再返回，这里的入口摘要都要跟着变。
         if isMovingToParent == false { reload() }
     }
+
+    @objc private func stateDidChange() { applySnapshot() }
 
     // MARK: - 视图
 
@@ -84,205 +89,110 @@ final class MeViewController: UIViewController {
         dataSource = UICollectionViewDiffableDataSource<Int, Row>(collectionView: collectionView) {
             collectionView, indexPath, row in
             collectionView.dequeueConfiguredReusableCell(
-                using: registration,
-                for: indexPath,
-                item: row
-            )
+                using: registration, for: indexPath, item: row)
         }
-    }
-
-    private func configureActivityIndicator() {
-        activityIndicator.hidesWhenStopped = true
-        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(activityIndicator)
-        NSLayoutConstraint.activate([
-            activityIndicator.centerXAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerXAnchor),
-            activityIndicator.centerYAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerYAnchor)
-        ])
     }
 
     private func configure(_ cell: UICollectionViewListCell, for row: Row) {
         PaperListCellStyle.apply(to: cell)
+        var content = UIListContentConfiguration.valueCell()
+        content.applyPaperColors()
+        let stolnk = environment.stolnk
+
         switch row {
-        case .pro:
-            var content = UIListContentConfiguration.valueCell()
-            content.applyPaperColors()
-            // 付费档是这页唯一的「升级」出口，用点缀色的柠檬绿冠冕最扎眼。
-            content.image = UIImage(systemName: "crown.fill")
+        case .address:
+            content.image = UIImage(systemName: "link")
             content.imageProperties.tintColor = AppColor.FileTile.folderForeground
-            let plan = profile?.plan
-            if plan?.isPaid == true {
-                content.text = R.Strings.proEntryActive.localizedString()
-                content.secondaryText = plan?.expiresAt.map {
-                    R.Strings.proEntryExpires.formatted(Self.dateFormatter.string(from: $0))
-                }
-            } else {
-                content.text = R.Strings.proEntryUpgrade.localizedString()
-                content.secondaryText = R.Strings.proEntryFree.localizedString()
-            }
-            cell.contentConfiguration = content
+            content.text = R.Strings.meAddress.localizedString()
+            content.secondaryText =
+                stolnk.inboxes.first?.url ?? R.Strings.meAddressNone.localizedString()
             cell.accessories = [.disclosureIndicator()]
 
-        case .account:
-            var content = UIListContentConfiguration.valueCell()
-            content.applyPaperColors()
-            content.text = R.Strings.meAccount.localizedString()
-            content.secondaryText = profile?.user.displayName?.nilIfEmpty ?? "—"
-            cell.contentConfiguration = content
-            cell.accessories = [.disclosureIndicator()]
-
-        case .storage:
-            var content = UIListContentConfiguration.valueCell()
-            content.applyPaperColors()
-            content.text = R.Strings.meStorageTitle.localizedString()
-            if let storage = profile?.storage {
-                content.secondaryText = R.Strings.meStorageValue.formatted(
-                    ByteFormatting.string(storage.usedBytes),
-                    ByteFormatting.string(storage.quotaBytes)
+        case .plan:
+            content.text = R.Strings.mePlan.localizedString()
+            if let plan = stolnk.plan {
+                let tier = plan.isPro
+                    ? R.Strings.mePlanPro.localizedString()
+                    : R.Strings.mePlanFree.localizedString()
+                let relay = R.Strings.meRelayValue.formatted(
+                    ByteFormatting.string(Int64(plan.relayUsed)),
+                    ByteFormatting.string(Int64(plan.relayLimit))
                 )
+                content.secondaryText = "\(tier) · \(relay)"
             }
-            cell.contentConfiguration = content
-            cell.accessories = [.disclosureIndicator()]
+            cell.accessories = []
 
-        case .cache:
-            var content = UIListContentConfiguration.valueCell()
-            content.applyPaperColors()
-            content.text = R.Strings.cacheTitle.localizedString()
-            content.secondaryText = ByteFormatting.string(cacheStatistics.bytes)
-            cell.contentConfiguration = content
-            cell.accessories = [.disclosureIndicator()]
+        case .localStorage:
+            content.text = R.Strings.meLocalStorage.localizedString()
+            content.secondaryText = ByteFormatting.string(localBytes)
+            cell.accessories = []
 
-        case .trash:
-            var content = UIListContentConfiguration.valueCell()
-            content.applyPaperColors()
-            content.text = R.Strings.trashTitle.localizedString()
-            if let trashed = profile?.counts.trashed, trashed > 0 {
-                content.secondaryText = String(trashed)
-            }
-            cell.contentConfiguration = content
-            cell.accessories = [.disclosureIndicator()]
+        case .deviceKey:
+            content.text = R.Strings.meDeviceKey.localizedString()
+            content.secondaryText = stolnk.isEnclaveBacked
+                ? R.Strings.meDeviceKeyEnclave.localizedString()
+                : R.Strings.meDeviceKeySoftware.localizedString()
+            cell.accessories = []
 
         #if DEBUG
         case .debugPanel:
-            var content = UIListContentConfiguration.valueCell()
-            content.applyPaperColors()
             content.image = UIImage(systemName: "ladybug")
             content.text = R.Strings.debugPanelTitle.localizedString()
-            content.secondaryText = BackendConfig.baseURL.host ?? BackendConfig.baseURL.absoluteString
-            cell.contentConfiguration = content
+            content.secondaryText = stolnk.origin.host
             cell.accessories = [.disclosureIndicator()]
         #endif
 
-        case .signOut:
-            var content = UIListContentConfiguration.cell()
-            content.text = R.Strings.meSignOut.localizedString()
-            content.textProperties.color = AppColor.danger
-            content.textProperties.alignment = .center
-            cell.contentConfiguration = content
-            cell.accessories = []
-
-        case .failure:
-            var content = UIListContentConfiguration.cell()
-            content.applyPaperColors()
-            content.text = R.Strings.meLoadFailed.localizedString()
-            content.secondaryText = loadErrorMessage
-            content.secondaryTextProperties.color = AppColor.textSecondary
-            cell.contentConfiguration = content
+        case .version:
+            content.text = R.Strings.meVersion.localizedString()
+            content.secondaryText =
+                Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
             cell.accessories = []
         }
+        cell.contentConfiguration = content
     }
 
     // MARK: - 数据
 
     private func reload() {
-        activityIndicator.startAnimating()
-        Task {
-            async let loadedCacheStatistics = loadCacheStatistics()
-            do {
-                profile = try await environment.accountService.loadProfile()
-                loadErrorMessage = nil
-            } catch {
-                AppLogger.error("加载账号信息失败", error: error)
-                profile = nil
-                loadErrorMessage = error.localizedDescription
+        applySnapshot()
+        // 目录遍历在大收件盘上不是瞬时的，别占主线程。
+        let root = environment.drive.root
+        Task.detached(priority: .utility) {
+            let bytes = Self.directorySize(of: root)
+            await MainActor.run { [weak self] in
+                self?.localBytes = bytes
+                self?.applySnapshot()
             }
-            cacheStatistics = await loadedCacheStatistics
-            // 上传前的本地预检要用最新的用量快照，见 StorageSnapshotStore。
-            environment.storageSnapshot.update(profile?.storage)
-            activityIndicator.stopAnimating()
-            applySnapshot()
         }
     }
 
-    private func loadCacheStatistics() async -> FileCacheManager.Statistics {
-        guard let userID = environment.sessionManager.currentUserID else {
-            return .init(bytes: 0, fileCount: 0)
+    /// 递归统计占用。包含 `.Trash/`：那些文件确实还在占手机的空间，
+    /// 报一个不含它们的数字会和系统「设置」里看到的对不上。
+    private nonisolated static func directorySize(of root: URL) -> Int64 {
+        guard let walker = FileManager.default.enumerator(
+            at: root, includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey])
+        else { return 0 }
+        var total: Int64 = 0
+        for case let url as URL in walker {
+            let values = try? url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
+            guard values?.isRegularFile == true else { continue }
+            total += Int64(values?.fileSize ?? 0)
         }
-        return await FileCacheManager.shared.statistics(
-            userID: userID,
-            baseURL: BackendConfig.baseURL
-        )
-    }
-
-    /// 抽屉每次打开时刷新摘要，覆盖二级页修改账号或清空回收站后的变化。
-    func refresh() {
-        guard isViewLoaded else { return }
-        reload()
+        return total
     }
 
     private func applySnapshot() {
+        guard dataSource != nil else { return }
         var snapshot = NSDiffableDataSourceSnapshot<Int, Row>()
-        if profile == nil {
-            // 拉取失败时只留错误提示和退出登录，避免点进空白的二级页。
-            snapshot.appendSections([0])
-            snapshot.appendItems([.failure], toSection: 0)
-        } else {
-            // 会员入口独占第一节：insetGrouped 下自然渲染成顶部单独一张卡。
-            snapshot.appendSections([0, 1, 2])
-            snapshot.appendItems([.pro], toSection: 0)
-            snapshot.appendItems([.account, .storage, .cache], toSection: 1)
-            snapshot.appendItems([.trash], toSection: 2)
-        }
+        snapshot.appendSections([0])
+        snapshot.appendItems([.address, .plan, .localStorage, .deviceKey], toSection: 0)
+        snapshot.appendSections([1])
         #if DEBUG
-        let debugSection = snapshot.sectionIdentifiers.count
-        snapshot.appendSections([debugSection])
-        snapshot.appendItems([.debugPanel], toSection: debugSection)
+        snapshot.appendItems([.debugPanel, .version], toSection: 1)
+        #else
+        snapshot.appendItems([.version], toSection: 1)
         #endif
-        let signOutSection = snapshot.sectionIdentifiers.count
-        snapshot.appendSections([signOutSection])
-        snapshot.appendItems([.signOut], toSection: signOutSection)
-        dataSource.applySnapshotUsingReloadData(snapshot)
-    }
-
-    // MARK: - 动作
-
-    private func didSelect(_ row: Row) {
-        switch row {
-        case .pro:
-            navigate(ProUpgradeViewController(environment: environment))
-        case .account:
-            guard let profile else { return }
-            navigate(
-                AccountDetailViewController(environment: environment, profile: profile)
-            )
-        case .storage:
-            guard let profile else { return }
-            navigate(
-                StorageDetailViewController(environment: environment, profile: profile)
-            )
-        case .cache:
-            navigate(CacheSettingsViewController(environment: environment))
-        case .trash:
-            navigate(TrashViewController(environment: environment))
-        #if DEBUG
-        case .debugPanel:
-            navigate(DebugPanelViewController(environment: environment))
-        #endif
-        case .signOut:
-            confirmSignOut()
-        case .failure:
-            reload()
-        }
+        dataSource.apply(snapshot, animatingDifferences: false)
     }
 
     private func navigate(_ viewController: UIViewController) {
@@ -292,42 +202,21 @@ final class MeViewController: UIViewController {
             navigationController?.pushViewController(viewController, animated: true)
         }
     }
-
-    private func confirmSignOut() {
-        let alert = UIAlertController(
-            title: R.Strings.meSignOutConfirm.localizedString(),
-            message: nil,
-            preferredStyle: .alert
-        )
-        alert.addAction(UIAlertAction(
-            title: R.Strings.commonCancel.localizedString(),
-            style: .cancel
-        ))
-        alert.addAction(UIAlertAction(
-            title: R.Strings.meSignOut.localizedString(),
-            style: .destructive
-        ) { [weak self] _ in
-            guard let self else { return }
-            Task {
-                await self.environment.accountService.signOut()
-                // 清态后 RootViewController 会收到通知并切回登录页
-            }
-        })
-        present(alert, animated: true)
-    }
-
-    private static let dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        return formatter
-    }()
 }
 
 extension MeViewController: UICollectionViewDelegate {
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         collectionView.deselectItem(at: indexPath, animated: true)
         guard let row = dataSource.itemIdentifier(for: indexPath) else { return }
-        didSelect(row)
+        switch row {
+        case .address:
+            navigate(InboxListViewController(environment: environment))
+        #if DEBUG
+        case .debugPanel:
+            navigate(DebugPanelViewController(environment: environment))
+        #endif
+        case .plan, .localStorage, .deviceKey, .version:
+            break
+        }
     }
 }

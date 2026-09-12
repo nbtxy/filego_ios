@@ -8,7 +8,6 @@ final class DebugPanelViewController: UITableViewController {
         case production
         case local
         case custom
-        case httpHistory
         case reset
     }
 
@@ -37,7 +36,7 @@ final class DebugPanelViewController: UITableViewController {
         switch section {
         case 0: return 1
         case 1: return 3
-        default: return 2
+        default: return 1
         }
     }
 
@@ -62,27 +61,23 @@ final class DebugPanelViewController: UITableViewController {
 
         switch row {
         case .current:
-            content.text = BackendConfig.baseURL.absoluteString
+            content.text = environment.stolnk.origin.absoluteString
             content.textProperties.font = .monospacedSystemFont(ofSize: 13, weight: .regular)
-            content.secondaryText = BackendConfig.baseURL == BackendConfig.defaultBaseURL
+            content.secondaryText = environment.stolnk.isDefaultOrigin
                 ? R.Strings.debugPanelDefault.localizedString()
                 : R.Strings.debugPanelOverride.localizedString()
             cell.selectionStyle = .none
         case .production:
             content.text = R.Strings.debugPanelProduction.localizedString()
-            content.secondaryText = BackendConfig.productionBaseURL.absoluteString
-            cell.accessoryType = BackendConfig.baseURL == BackendConfig.productionBaseURL ? .checkmark : .none
+            content.secondaryText = StolnkController.productionOrigin.absoluteString
+            cell.accessoryType = environment.stolnk.origin == StolnkController.productionOrigin ? .checkmark : .none
         case .local:
             content.text = R.Strings.debugPanelLocal.localizedString()
-            content.secondaryText = BackendConfig.defaultBaseURL.absoluteString
-            cell.accessoryType = BackendConfig.baseURL == BackendConfig.defaultBaseURL ? .checkmark : .none
+            content.secondaryText = StolnkController.localOrigin.absoluteString
+            cell.accessoryType = environment.stolnk.isDefaultOrigin ? .checkmark : .none
         case .custom:
             content.text = R.Strings.debugPanelCustom.localizedString()
             content.image = UIImage(systemName: "link")
-            cell.accessoryType = .disclosureIndicator
-        case .httpHistory:
-            content.text = R.Strings.debugHttpTitle.localizedString()
-            content.image = UIImage(systemName: "antenna.radiowaves.left.and.right")
             cell.accessoryType = .disclosureIndicator
         case .reset:
             content.text = R.Strings.debugPanelReset.localizedString()
@@ -98,17 +93,14 @@ final class DebugPanelViewController: UITableViewController {
         case .current:
             break
         case .production:
-            apply(BackendConfig.productionBaseURL.absoluteString)
+            apply(StolnkController.productionOrigin.absoluteString)
         case .local:
-            apply(BackendConfig.defaultBaseURL.absoluteString)
+            apply(StolnkController.localOrigin.absoluteString)
         case .custom:
             showCustomAddressAlert()
-        case .httpHistory:
-            navigationController?.pushViewController(HTTPHistoryViewController(), animated: true)
         case .reset:
-            BackendConfig.reset()
+            environment.stolnk.resetOrigin()
             tableView.reloadData()
-            invalidateSession()
         }
     }
 
@@ -118,7 +110,6 @@ final class DebugPanelViewController: UITableViewController {
         case (1, 0): return .production
         case (1, 1): return .local
         case (1, _): return .custom
-        case (2, 0): return .httpHistory
         default: return .reset
         }
     }
@@ -130,7 +121,7 @@ final class DebugPanelViewController: UITableViewController {
             preferredStyle: .alert
         )
         alert.addTextField { textField in
-            textField.text = BackendConfig.baseURL.absoluteString
+            textField.text = self.environment.stolnk.origin.absoluteString
             textField.keyboardType = .URL
             textField.autocapitalizationType = .none
             textField.autocorrectionType = .no
@@ -150,26 +141,24 @@ final class DebugPanelViewController: UITableViewController {
     }
 
     private func apply(_ value: String) {
-        do {
-            try BackendConfig.apply(baseURL: value)
-            tableView.reloadData()
-            invalidateSession()
-        } catch {
+        guard
+            let url = URL(string: value.trimmingCharacters(in: .whitespacesAndNewlines)),
+            let scheme = url.scheme?.lowercased(),
+            ["http", "https"].contains(scheme),
+            url.host != nil
+        else {
             let alert = UIAlertController(
                 title: R.Strings.debugPanelInvalid.localizedString(),
-                message: error.localizedDescription,
+                message: value,
                 preferredStyle: .alert
             )
             alert.addAction(UIAlertAction(title: "OK", style: .default))
             present(alert, animated: true)
+            return
         }
-    }
-
-    private func invalidateSession() {
-        Task {
-            await environment.sessionManager.invalidateLocalSession()
-            await environment.appConfigStore.refresh()
-        }
+        // 换服务器会连带丢掉注册，见 StolnkController.setOrigin。
+        environment.stolnk.setOrigin(url)
+        tableView.reloadData()
     }
 }
 #endif
