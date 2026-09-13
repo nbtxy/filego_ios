@@ -409,6 +409,23 @@
         }
       }
     },
+    "common.retry": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try again"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重试"
+          }
+        }
+      }
+    },
     "common.save": {
       "extractionState": "manual",
       "localizations": {
@@ -902,6 +919,40 @@
         }
       }
     },
+    "drive.import.create": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create address"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "创建地址"
+          }
+        }
+      }
+    },
+    "drive.import.created": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Address created"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地址已创建"
+          }
+        }
+      }
+    },
     "drive.import.file": {
       "extractionState": "manual",
       "localizations": {
@@ -919,6 +970,40 @@
         }
       }
     },
+    "drive.import.newMessage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anyone with this link can send files straight into “%@”. No account, nothing to install."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拿到这条链接的人就能把文件直接发进「%@」。不用账号，不用装东西。"
+          }
+        }
+      }
+    },
+    "drive.import.newTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose this folder's address"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "给这个文件夹取一条地址"
+          }
+        }
+      }
+    },
     "drive.import.openSettings": {
       "extractionState": "manual",
       "localizations": {
@@ -932,6 +1017,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开设置"
+          }
+        }
+      }
+    },
+    "drive.import.pathInvalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use lowercase letters, numbers and hyphens — up to three segments."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只能用小写字母、数字和连字符，最多三段。"
+          }
+        }
+      }
+    },
+    "drive.import.pathPlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "client-a"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "client-a"
+          }
+        }
+      }
+    },
+    "drive.import.pathRefused": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That path isn’t available. Pick another."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个路径不可用，换一个。"
           }
         }
       }
@@ -1017,6 +1153,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "重置文件导入地址？"
+          }
+        }
+      }
+    },
+    "drive.import.secondAddressMessage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This iPhone already has a receiving address on another folder. Files already here are unaffected."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这台手机已经在别的文件夹上有一条收件地址了。已有的文件不受影响。"
+          }
+        }
+      }
+    },
+    "drive.import.secondAddressTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One address at a time"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一次只能有一条地址"
           }
         }
       }
@@ -1486,13 +1656,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This iPhone isn't set up to receive yet."
+            "value": "No addresses yet. Open a folder and tap “Get File Import Address”."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "这台手机还没设置收件地址。"
+            "value": "还没有收件地址。进任意文件夹，点「获取文件导入地址」。"
           }
         }
       }
@@ -1544,23 +1714,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "我的地址"
-          }
-        }
-      }
-    },
-    "inbox.notBoundMessage": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This folder isn't a receiving folder. Set one up from My address."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "这个文件夹还不是收件目标。到「我的地址」里设置。"
           }
         }
       }
@@ -2166,13 +2319,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Create my address"
+            "value": "Claim this name"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "创建我的地址"
+            "value": "占用这个名字"
           }
         }
       }
@@ -2183,13 +2336,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Could not create the address"
+            "value": "Could not claim that name"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "地址创建失败"
+            "value": "名字创建失败"
           }
         }
       }
@@ -2234,13 +2387,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Anyone with this link can send you files. No account, nothing to install."
+            "value": "This is your name on Stolnk. You’ll turn a folder into a receiving address later."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "拿到这条链接的人就能给你发文件。不用账号，不用装东西。"
+            "value": "这是你在 Stolnk 上的名字。之后再把某个文件夹变成收件地址。"
           }
         }
       }
@@ -2268,13 +2421,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pick your address"
+            "value": "Pick your name"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "取一个地址"
+            "value": "取一个名字"
           }
         }
       }

@@ -55,6 +55,16 @@ final class StolnkController {
     /// `.stolnk.com`，name 输入框后面跟着的那截。
     var nameSuffix: String { SiteAddress.suffix(baseHost: store.snapshot.baseHost) }
 
+    /// `ryan.stolnk.com/`，路径输入框前面钉着的那截。还没注册时为 nil。
+    ///
+    /// 单独一个属性而不是让调用方拼：`store` 是 private，外面拿不到 baseHost，
+    /// 而 `nameSuffix` 是给 name 输入框用的，形状不对。
+    var addressPrefix: String? {
+        let state = store.snapshot
+        guard let name = state.name else { return nil }
+        return SiteAddress.prefix(name: name, baseHost: state.baseHost)
+    }
+
     var origin: URL {
         let state = store.snapshot
         return URL(string: "\(state.scheme)://\(state.baseHost)")
@@ -124,9 +134,11 @@ final class StolnkController {
      PRD 7.1 —— 注册是一屏一次调用。name 不是随机地址的升级版，它**就是**身份，
      所以和公钥一起上行：重名以 409 失败且什么都不创建，这才让换个名字重试是干净的。
 
-     `folder` 是这台手机上的落地目录，绑定只存在本地（服务端从不知道文件落在哪）。
+     只上行名字，不带 slug：这一屏只确定根域名，不产生任何链接。路径是给**文件夹**
+     取的名字，而此刻还没有任何文件夹被选中，所以它属于 `createInbox`。在那之前，
+     这台设备名下一个 inbox 也没有——那不是半成品状态，只是还没取地址。
      */
-    func register(name chosen: String, slug: String, folder: URL) async -> Bool {
+    func register(name chosen: String) async -> Bool {
         guard let keys = identityKeys ?? (try? DeviceIdentity.loadOrCreate()) else {
             lastError = "无法创建设备密钥"
             broadcast()
@@ -138,21 +150,16 @@ final class StolnkController {
         lastError = nil
 
         do {
-            let result = try await client.register(
-                name: NameRules.normalise(chosen), slug: PathRules.normalise(slug))
+            let result = try await client.register(name: NameRules.normalise(chosen))
+            name = result.name
+            // 不再拉一次 /inboxes：名字已经在 result 里，列表则已知为空。
+            inboxes = []
             store.mutate { state in
                 state.deviceID = result.deviceID
                 state.name = result.name
                 state.token = result.token
-            }
-            name = result.name
-
-            let (_, list) = try await client.inboxes()
-            if let first = list.first { store.bind(inboxID: first.inboxID, to: folder) }
-            inboxes = list
-            store.mutate {
-                $0.inboxes = list
-                $0.hasCompletedOnboarding = true
+                state.inboxes = []
+                state.hasCompletedOnboarding = true
             }
 
             buildReceiver(api: client, keys: keys)
@@ -344,6 +351,34 @@ final class StolnkController {
             handle(error)
             broadcast()
             return false
+        }
+    }
+
+    /**
+     给一个文件夹取一条收件地址。
+
+     路径在这里才出现，而不是在 onboarding：它是给这个文件夹取的名字，没有文件夹
+     的时候根本无话可说。创建和绑定是一步：一条没绑定落地目录的地址收到文件只会
+     把自己暂停（`Receiver.prepare`，PRD 12.5），那是个没人想要的中间态。
+
+     `throws` 而不是返回 Bool：调用方要分开处理 402（免费版只能有一条）和 400
+     （路径被占），而 `lastError` 那条通道会把两者压成同一句话。报错前先过一道
+     `handle(_:)`，否则会漏掉它对 `unknown_device` 的处理。
+     */
+    func createInbox(slug: String, displayName: String, folder: URL) async throws -> InboxSummary {
+        guard let api else {
+            throw APIError(status: 0, code: "no_device", message: "还没有注册。")
+        }
+        do {
+            let inbox = try await api.createInbox(
+                slug: PathRules.normalise(slug), displayName: displayName)
+            store.bind(inboxID: inbox.inboxID, to: folder)
+            await refreshInboxes()
+            return inbox
+        } catch {
+            handle(error)
+            broadcast()
+            throw error
         }
     }
 

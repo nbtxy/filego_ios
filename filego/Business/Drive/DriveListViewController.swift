@@ -623,15 +623,16 @@ final class DriveListViewController: UIViewController {
      本文件夹的那个 Stolnk inbox —— `ryan-phone.stolnk.com/<slug>`，不过期，内容
      端到端加密，只有本机 Secure Enclave 里的密钥能解开。
 
-     没有绑定就说明这个文件夹还不是收件目标。真正的 inbox 管理（新建、改路径、
-     Reset、暂停、删除）在 InboxList，这里只负责把已有的那条地址交出去。
+     路径就在这里取。onboarding 只定下根域名，因为路径是给**文件夹**取的名字，
+     而当时连一个文件夹都还没有。所以第一次在这里问地址，先问路径；之后再来就直接
+     把那条地址交出去。改路径、Reset、暂停、删除仍属于 InboxList 那一步。
      */
     private func createImportAddress() {
-        guard let inbox = boundInbox() else {
-            showNoInboxForThisFolder()
+        if let inbox = boundInbox() {
+            presentImportAddress(inbox)
             return
         }
-        presentImportAddress(inbox)
+        promptForImportPath()
     }
 
     /// 找到落地目录正是本文件夹的那个 inbox。
@@ -642,13 +643,132 @@ final class DriveListViewController: UIViewController {
         }
     }
 
-    private func showNoInboxForThisFolder() {
+    /**
+     给这个文件夹取一条路径。
+
+     不用通用的 `prompt(title:value:)`：那个没地方放前缀，也没地方接校验。而前缀正是
+     这个弹窗唯一能讲清楚「你在填的是一条 URL 的后半段」的东西。
+     */
+    private func promptForImportPath() {
         let alert = UIAlertController(
-            title: R.Strings.driveImportAddress.localizedString(),
-            message: R.Strings.inboxNotBoundMessage.localizedString(),
+            title: R.Strings.driveImportNewTitle.localizedString(),
+            message: R.Strings.driveImportNewMessage.formatted(folderName),
             preferredStyle: .alert
         )
-        alert.addAction(UIAlertAction(title: R.Strings.commonOk.localizedString(), style: .cancel))
+        alert.addTextField { [weak self] field in
+            guard let self else { return }
+            field.placeholder = R.Strings.driveImportPathPlaceholder.localizedString()
+            field.autocapitalizationType = .none
+            field.autocorrectionType = .no
+            field.spellCheckingType = .no
+            field.keyboardType = .URL
+            field.text = self.suggestedPath()
+            guard let prefix = self.environment.stolnk.addressPrefix else { return }
+            // 前缀是读的，不是填的——钉在 leftView 里，光标就永远进不去。
+            let label = UILabel()
+            label.text = prefix
+            label.font = .preferredFont(forTextStyle: .body)
+            label.textColor = AppColor.textSecondary
+            label.sizeToFit()
+            field.leftView = label
+            field.leftViewMode = .always
+        }
+        alert.addAction(UIAlertAction(title: R.Strings.commonCancel.localizedString(), style: .cancel))
+        alert.addAction(UIAlertAction(
+            title: R.Strings.driveImportCreate.localizedString(),
+            style: .default
+        ) { [weak self, weak alert] _ in
+            guard let self else { return }
+            let raw = alert?.textFields?.first?.text ?? ""
+            self.createImportAddress(path: PathRules.normalise(raw))
+        })
+        present(alert, animated: true)
+    }
+
+    /**
+     路径输入框的预填。
+
+     根目录给 `inbox`。其余文件夹只有在名字归一化之后真的能当路径时才用它：这棵树
+     里大量文件夹叫「照片」这样的名字，盲预填会直接递给用户一个非法值。
+     */
+    private func suggestedPath() -> String {
+        if folderId == rootId { return "inbox" }
+        let candidate = PathRules.normalise(folderName)
+        return PathRules.problem(with: candidate) == nil ? candidate : ""
+    }
+
+    private func createImportAddress(path: String) {
+        guard PathRules.problem(with: path) == nil else {
+            // 不渲染 `PathRules.problem` 返回的英文，和 onboarding 对 `NameRules` 的做法一致。
+            showImportAddressProblem(
+                title: R.Strings.driveImportNewTitle.localizedString(),
+                message: R.Strings.driveImportPathInvalid.localizedString())
+            return
+        }
+
+        // 发件人在 send page 上看到的是这个名字，所以用文件夹名而不是路径。
+        let normalised = DisplayNameRules.normalise(folderName)
+        let displayName = normalised.isEmpty
+            ? (environment.stolnk.name ?? folderName)
+            : String(normalised.prefix(DisplayNameRules.maxLength))
+
+        Task {
+            do {
+                let inbox = try await environment.stolnk.createInbox(
+                    slug: path,
+                    displayName: displayName,
+                    folder: environment.drive.url(for: folderId)
+                )
+                presentToast(R.Strings.driveImportCreated.localizedString())
+                HapticManager.notification(.success)
+                presentImportAddress(inbox)
+            } catch {
+                showImportAddressError(error)
+            }
+        }
+    }
+
+    /**
+     建地址失败。
+
+     402 必须在这里截下来，不能交给 `showError`：那条路把 `isUpgradeRequired` 和
+     `isQuota` 一起送进「本月中转额度用完了」，而免费版只能有一条地址跟额度毫无
+     关系。新流程让每个第二个文件夹都会撞上它，本来偶发的误导会变成常态。
+     */
+    private func showImportAddressError(_ error: Error) {
+        guard let apiError = error as? APIError else {
+            showError(error)
+            return
+        }
+        if apiError.isUpgradeRequired {
+            showImportAddressProblem(
+                title: R.Strings.driveImportSecondAddressTitle.localizedString(),
+                message: R.Strings.driveImportSecondAddressMessage.localizedString())
+            return
+        }
+        /*
+         400 在这条路上意味着「这个路径不行」，但不只一种理由：已被占用，或者落在服务端
+         的保留段里（`api`、`assets`）。文案因此不指认具体哪一种——`NameRules.swift` 的开头
+         已经说明了为什么不把保留字表拷到客户端：一份会漂移的名单比一次往返更糟。
+         */
+        if apiError.status == 400 {
+            showImportAddressProblem(
+                title: R.Strings.driveImportNewTitle.localizedString(),
+                message: R.Strings.driveImportPathRefused.localizedString())
+            return
+        }
+        showError(error)
+    }
+
+    /// 拒绝之后把弹窗再递回去：重新输一遍才是这里唯一的出路，而不是从头点一遍菜单。
+    private func showImportAddressProblem(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: R.Strings.commonCancel.localizedString(), style: .cancel))
+        alert.addAction(UIAlertAction(
+            title: R.Strings.commonRetry.localizedString(), style: .default
+        ) { [weak self] _ in
+            self?.promptForImportPath()
+        })
         present(alert, animated: true)
     }
 

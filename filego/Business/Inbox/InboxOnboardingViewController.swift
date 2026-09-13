@@ -2,13 +2,14 @@ import StolnkCore
 import UIKit
 
 /**
- 首次运行：取一个名字，拿到收件地址。
+ 首次运行：取一个名字。
 
  PRD 7.1 —— 注册是一屏一次调用。名字不是随机地址的升级版，它**就是**身份，所以和
  公钥一起上行；重名以 409 失败且什么都不创建，换个名字重试因此是干净的。
 
- 落地目录固定为收件盘根目录。Mac 上这里要选一个磁盘上的文件夹，iOS 没有那个概念
- ——树就在 App 容器里，用户后面可以在树里建子文件夹再把 inbox 挪过去。
+ 这一屏只确定根域名，**不产生链接**。Mac 上还要在这里选一个磁盘文件夹并给它取
+ 路径；iOS 没有那个时机——树就在 App 容器里，此刻一个文件夹也没被选中，而路径正是
+ 给文件夹取的名字。它属于 `DriveListViewController` 里的「获取文件导入地址」。
  */
 @MainActor
 final class InboxOnboardingViewController: UIViewController {
@@ -22,6 +23,12 @@ final class InboxOnboardingViewController: UIViewController {
 
     private var probe: Task<Void, Never>?
     private var isAvailable = false
+    /// 名字后面那截后缀。换服务器会改掉它，见 `stateDidChange()`。
+    private var suffix = ""
+
+    #if DEBUG
+    private let debugButton = UIButton(type: .system)
+    #endif
 
     init(environment: AppEnvironment) {
         self.environment = environment
@@ -30,16 +37,38 @@ final class InboxOnboardingViewController: UIViewController {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+    deinit { NotificationCenter.default.removeObserver(self) }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = AppColor.background
+        suffix = environment.stolnk.nameSuffix
         buildLayout()
         updateState()
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(stateDidChange),
+            name: .stolnkStateDidChange, object: nil)
+    }
+
+    /**
+     换服务器之后把这一屏对齐到新服务端。
+
+     后缀是这屏唯一显示出来的服务器信息，不跟着换的话，用户会照着
+     `.stolnk.com` 的字样去注册一个其实发往 localhost 的名字。顺带重查一次
+     重名：刚才那个「可用」是旧服务端的答案，对新服务端不作数。
+     */
+    @objc private func stateDidChange() {
+        let current = environment.stolnk.nameSuffix
+        guard current != suffix else { return }
+        suffix = current
+        suffixLabel.text = current
+        nameChanged()
     }
 
     private func buildLayout() {
-        let mark = BrandMarkView()
-        mark.translatesAutoresizingMaskIntoConstraints = false
+        // 56 是这枚标在首屏的实际边长，交给它自己去定，而不是外面钉一个高度
+        // 约束去拉——那正是它被摊成一条黑杠的起点。
+        let mark = BrandMarkView(side: 56)
 
         let title = UILabel()
         title.text = R.Strings.onboardingTitle.localizedString()
@@ -65,7 +94,7 @@ final class InboxOnboardingViewController: UIViewController {
         nameField.addTarget(self, action: #selector(nameChanged), for: .editingChanged)
         nameField.delegate = self
 
-        suffixLabel.text = environment.stolnk.nameSuffix
+        suffixLabel.text = suffix
         suffixLabel.font = .preferredFont(forTextStyle: .body)
         suffixLabel.textColor = AppColor.textSecondary
         suffixLabel.setContentHuggingPriority(.required, for: .horizontal)
@@ -104,16 +133,54 @@ final class InboxOnboardingViewController: UIViewController {
         spinner.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(spinner)
 
+        #if DEBUG
+        // 调试面板在「我的」里，而「我的」要注册完才进得去——正好把开发机上最需要
+        // 它的时刻挡在外面：注册**之前**才是要切服务器的时候。所以这里也放一个。
+        debugButton.setImage(
+            UIImage(
+                systemName: "ladybug",
+                withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
+            ),
+            for: .normal
+        )
+        debugButton.tintColor = AppColor.textSecondary
+        debugButton.accessibilityLabel = R.Strings.debugPanelTitle.localizedString()
+        debugButton.addTarget(self, action: #selector(showDebugPanel), for: .touchUpInside)
+        debugButton.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(debugButton)
+        #endif
+
         NSLayoutConstraint.activate([
             stack.centerYAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerYAnchor),
             stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 28),
             stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -28),
-            mark.heightAnchor.constraint(equalToConstant: 56),
             createButton.heightAnchor.constraint(equalToConstant: 48),
             spinner.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             spinner.topAnchor.constraint(equalTo: stack.bottomAnchor, constant: 24),
         ])
+
+        #if DEBUG
+        NSLayoutConstraint.activate([
+            debugButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 4),
+            debugButton.trailingAnchor.constraint(
+                equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -12),
+            debugButton.widthAnchor.constraint(equalToConstant: 44),
+            debugButton.heightAnchor.constraint(equalToConstant: 44)
+        ])
+        #endif
     }
+
+    #if DEBUG
+    /// 这一屏没有导航栏，所以面板只能模态推上来，自带一个关闭按钮。
+    @objc private func showDebugPanel() {
+        let panel = DebugPanelViewController(environment: environment)
+        panel.navigationItem.rightBarButtonItem = UIBarButtonItem(
+            systemItem: .close,
+            primaryAction: UIAction { [weak self] _ in self?.dismiss(animated: true) }
+        )
+        present(UINavigationController(rootViewController: panel), animated: true)
+    }
+    #endif
 
     // MARK: - 名字可用性
 
@@ -173,11 +240,7 @@ final class InboxOnboardingViewController: UIViewController {
         nameField.resignFirstResponder()
         setBusy(true)
         Task {
-            let ok = await environment.stolnk.register(
-                name: candidate,
-                slug: PathRules.normalise("inbox"),
-                folder: environment.drive.root
-            )
+            let ok = await environment.stolnk.register(name: candidate)
             setBusy(false)
             if !ok {
                 let message = environment.stolnk.lastError

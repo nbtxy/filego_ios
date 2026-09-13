@@ -12,6 +12,7 @@
 
 /* Begin PBXFileReference section */
 		3D80CCD83019E16100B72EF3 /* filego.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = filego.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5C10000030200001000000A0 /* stolnk_mac */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = stolnk_mac; path = ../stolnk_mac; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -53,6 +54,7 @@
 			isa = PBXGroup;
 			children = (
 				3D80CCDA3019E16100B72EF3 /* filego */,
+				5C10000030200001000000A0 /* stolnk_mac */,
 				3D80CCD93019E16100B72EF3 /* Products */,
 			);
 			sourceTree = "<group>";
