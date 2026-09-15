@@ -18,7 +18,7 @@ final class AppEnvironment {
         self.services = services
         self.keyValueStore = keyValueStore
         self.stolnk = StolnkController(store: store)
-        self.drive = LocalDriveStore(preferences: keyValueStore)
+        self.drive = LocalDriveStore()
 
         services.register(stolnk, as: StolnkController.self)
     }

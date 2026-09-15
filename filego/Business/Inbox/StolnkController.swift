@@ -366,9 +366,7 @@ final class StolnkController {
      `handle(_:)`，否则会漏掉它对 `unknown_device` 的处理。
      */
     func createInbox(slug: String, displayName: String, folder: URL) async throws -> InboxSummary {
-        guard let api else {
-            throw APIError(status: 0, code: "no_device", message: "还没有注册。")
-        }
+        guard let api else { throw Self.notRegistered }
         do {
             let inbox = try await api.createInbox(
                 slug: PathRules.normalise(slug), displayName: displayName)
@@ -380,6 +378,119 @@ final class StolnkController {
             broadcast()
             throw error
         }
+    }
+
+    // MARK: - 改一条地址
+
+    /**
+     暂停 / 恢复。
+
+     恢复不自己实现，转发给 `resume(_:)`：那条路除了调接口还清了 `Receiver` 的暂停
+     备忘并补了一次 `poll()`，少任何一样这条地址都会在下一个文件到达时被重新按回
+     暂停。理由见 `resume` 自己的注释。
+     */
+    func setPaused(_ inbox: InboxSummary, paused: Bool) async -> Bool {
+        guard paused else { return await resume(inbox) }
+        guard let api else { return false }
+        do {
+            _ = try await api.updateInbox(inbox.inboxID, paused: true)
+            await refreshInboxes()
+            return true
+        } catch {
+            handle(error)
+            broadcast()
+            return false
+        }
+    }
+
+    /**
+     换路径。
+
+     旧地址立刻失效，服务端不留过渡期（见 worker `inboxes.ts` 的 reset 注释）。
+     `throws` 的理由和 `createInbox` 相同：调用方要把「这个路径被占了」和别的错分开讲。
+     */
+    func setSlug(_ inbox: InboxSummary, slug: String) async throws {
+        guard let api else { throw Self.notRegistered }
+        do {
+            _ = try await api.updateInbox(inbox.inboxID, slug: PathRules.normalise(slug))
+            await refreshInboxes()
+        } catch {
+            handle(error)
+            broadcast()
+            throw error
+        }
+    }
+
+    /// 发件人在上传页看到的名字。和地址无关——地址是「名字 + 路径」，两半都在别处改。
+    func setDisplayName(_ inbox: InboxSummary, to value: String) async throws {
+        guard let api else { throw Self.notRegistered }
+        do {
+            _ = try await api.updateInbox(
+                inbox.inboxID, displayName: DisplayNameRules.normalise(value))
+            await refreshInboxes()
+        } catch {
+            handle(error)
+            broadcast()
+            throw error
+        }
+    }
+
+    /// 换一条随机路径。只有路径变——名字是设备身份，重置一条地址从来不是改它的理由。
+    func resetInbox(_ inbox: InboxSummary) async throws {
+        guard let api else { throw Self.notRegistered }
+        do {
+            _ = try await api.resetInbox(inbox.inboxID)
+            await refreshInboxes()
+        } catch {
+            handle(error)
+            broadcast()
+            throw error
+        }
+    }
+
+    /**
+     忘掉这条地址上已完成的传输记录，地址本身留着。
+
+     返回清掉的条数：iOS 没有历史页，这个数字是该操作唯一看得见的反馈。已经落地的
+     文件在磁盘上，这里碰都不碰。
+     */
+    func clearTransfers(_ inbox: InboxSummary) async throws -> Int {
+        guard let api else { throw Self.notRegistered }
+        do {
+            let cleared = try await api.clearInboxTransfers(inbox.inboxID)
+            await refreshInboxes()
+            return cleared
+        } catch {
+            handle(error)
+            broadcast()
+            throw error
+        }
+    }
+
+    /**
+     删掉一条地址。
+
+     服务端会级联掉它的传输记录和还停在中转站的文件，路径随之释放。本地的文件夹
+     绑定必须一起解开：它以 inbox id 为键，而那个 id 已经不存在了，留着只会让下一条
+     恰好复用该 id 的地址继承一个谁也没选过的落地目录。`store` 是 private，所以这件事
+     只能在这里做。
+     */
+    func deleteInbox(_ inbox: InboxSummary) async throws {
+        guard let api else { throw Self.notRegistered }
+        do {
+            try await api.deleteInbox(inbox.inboxID)
+            store.unbind(inboxID: inbox.inboxID)
+            await receiver?.clearPauseMemo(for: inbox.inboxID)
+            await refreshInboxes()
+        } catch {
+            handle(error)
+            broadcast()
+            throw error
+        }
+    }
+
+    private static var notRegistered: APIError {
+        APIError(status: 0, code: "no_device", message: "还没有注册。")
     }
 
     func folder(for inboxID: String) -> URL? { store.folder(for: inboxID) }

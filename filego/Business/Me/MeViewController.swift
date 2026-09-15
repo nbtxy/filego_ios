@@ -53,6 +53,11 @@ final class MeViewController: UIViewController {
         NotificationCenter.default.addObserver(
             self, selector: #selector(stateDidChange),
             name: .stolnkStateDidChange, object: nil)
+        // 落地文件改变的是磁盘上的字节，不只是屏幕上的字。所以走 reload() 重算，
+        // 而不是像 stateDidChange 那样只重画。
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(filesDidLand),
+            name: .stolnkDidLandFiles, object: nil)
         reload()
     }
 
@@ -62,6 +67,11 @@ final class MeViewController: UIViewController {
     }
 
     @objc private func stateDidChange() { applySnapshot() }
+
+    @objc private func filesDidLand() { reload() }
+
+    /// 抽屉调这个重算本机占用。见 `DrawerContainerViewController.setOpen`。
+    func refresh() { reload() }
 
     // MARK: - 视图
 
@@ -104,8 +114,11 @@ final class MeViewController: UIViewController {
             content.image = UIImage(systemName: "link")
             content.imageProperties.tintColor = AppColor.FileTile.folderForeground
             content.text = R.Strings.meAddress.localizedString()
-            content.secondaryText =
-                stolnk.inboxes.first?.url ?? R.Strings.meAddressNone.localizedString()
+            // 名字是 onboarding 就定下的身份，`ryan.stolnk.com` 从那一刻起一直成立；
+            // inbox 是之后给某个文件夹取的路径，没建过不代表没有地址。拿 inbox 的有无
+            // 去渲染这一行，会在刚注册完的设备上把「已有地址」说成「未设置」。
+            content.secondaryText = stolnk.name.map { $0 + stolnk.nameSuffix }
+                ?? R.Strings.meAddressNone.localizedString()
             cell.accessories = [.disclosureIndicator()]
 
         case .plan:
@@ -115,8 +128,8 @@ final class MeViewController: UIViewController {
                     ? R.Strings.mePlanPro.localizedString()
                     : R.Strings.mePlanFree.localizedString()
                 let relay = R.Strings.meRelayValue.formatted(
-                    ByteFormatting.string(Int64(plan.relayUsed)),
-                    ByteFormatting.string(Int64(plan.relayLimit))
+                    ByteFormatting.quota(Int64(plan.relayUsed)),
+                    ByteFormatting.quota(Int64(plan.relayLimit))
                 )
                 content.secondaryText = "\(tier) · \(relay)"
             }
@@ -124,7 +137,7 @@ final class MeViewController: UIViewController {
 
         case .localStorage:
             content.text = R.Strings.meLocalStorage.localizedString()
-            content.secondaryText = ByteFormatting.string(localBytes)
+            content.secondaryText = ByteFormatting.storage(localBytes)
             cell.accessories = []
 
         case .deviceKey:
@@ -192,6 +205,15 @@ final class MeViewController: UIViewController {
         #else
         snapshot.appendItems([.version], toSection: 1)
         #endif
+        // 行标识没有关联值，内容变了 identifier 也不变。不显式 reconfigure，diffable
+        // 会比出「两次一模一样」然后什么都不做，cell 停在第一次建立时读到的值上——
+        // 本机占用因此永远是那个还没算完的 0。
+        //
+        // 只挑本来就在的行：对正在首次插入的 item 调 reconfigureItems 会踩 UIKit 的
+        // 断言，而 DEBUG 比 Release 多一行，不能写死。
+        let existing = Set(dataSource.snapshot().itemIdentifiers)
+        let carried = snapshot.itemIdentifiers.filter(existing.contains)
+        if !carried.isEmpty { snapshot.reconfigureItems(carried) }
         dataSource.apply(snapshot, animatingDifferences: false)
     }
 

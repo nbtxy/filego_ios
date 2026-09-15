@@ -15,9 +15,12 @@ private nonisolated enum Row: Hashable {
 /**
  这台设备的收件地址。
 
- 对应 Mac 端 `InboxLinksView` 的一级列表。每个 inbox 显示地址、落地目录和暂停状态；
- 点一下复制链接。新建 / 改路径 / Reset / 删除这些改动性操作还没接上——它们要配一套
- 确认流程，属于 inbox 管理那一步。
+ 对应 Mac 端 `InboxLinksView` 的一级列表。每个 inbox 显示地址、落地目录和暂停状态，
+ 点进去是 `InboxDetailViewController`——改路径、换落地目录、暂停、重置、删除都在那里。
+ 这里只负责挑一条出来。
+
+ 长按仍然直接给「复制链接」：复制是这个页面上最高频的动作，改成详情页之后多一跳，
+ 留个快捷方式把老的肌肉记忆接住。
 
  列表底部固定一条说明：手机是独立身份。没有多接收者信封（服务端的
  `files.wrapped_key` 只包给一把 `pubkey_kex`），所以发往 Mac 地址的文件到不了这里。
@@ -98,7 +101,7 @@ final class InboxListViewController: UIViewController {
                 : bound
             content.secondaryTextProperties.color = AppColor.textSecondary
             cell.contentConfiguration = content
-            cell.accessories = []
+            cell.accessories = [PaperListCellStyle.disclosure]
 
         case .note:
             var content = UIListContentConfiguration.cell()
@@ -136,34 +139,37 @@ extension InboxListViewController: UICollectionViewDelegate {
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         collectionView.deselectItem(at: indexPath, animated: true)
         guard case .inbox(let inbox)? = dataSource.itemIdentifier(for: indexPath) else { return }
-        // 暂停中的 inbox，第一件该做的事是恢复它，而不是复制一条收不到东西的链接。
-        if inbox.paused {
-            offerResume(inbox)
-            return
-        }
-        UIPasteboard.general.string = inbox.url
-        PaperToast.show(R.Strings.inboxCopied.localizedString(), in: view)
-        HapticManager.notification(.success)
+        // 暂停中的地址不再在这里拦一道弹窗：详情页里就有开关，拦截只是多一步。
+        navigationController?.pushViewController(
+            InboxDetailViewController(environment: environment, inbox: inbox), animated: true)
     }
 
-    private func offerResume(_ inbox: InboxSummary) {
-        let alert = UIAlertController(
-            title: R.Strings.inboxPaused.localizedString(),
-            message: R.Strings.inboxPausedMessage.localizedString(),
-            preferredStyle: .alert
-        )
-        alert.addAction(UIAlertAction(title: R.Strings.commonCancel.localizedString(), style: .cancel))
-        alert.addAction(UIAlertAction(
-            title: R.Strings.inboxResume.localizedString(), style: .default
-        ) { [weak self] _ in
-            guard let self else { return }
-            Task {
-                if await self.environment.stolnk.resume(inbox) {
-                    PaperToast.show(R.Strings.inboxResumed.localizedString(), in: self.view)
+    func collectionView(
+        _ collectionView: UICollectionView,
+        contextMenuConfigurationForItemAt indexPath: IndexPath,
+        point: CGPoint
+    ) -> UIContextMenuConfiguration? {
+        guard case .inbox(let inbox)? = dataSource.itemIdentifier(for: indexPath) else { return nil }
+        return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) {
+            [weak self] _ in
+            UIMenu(children: [
+                UIAction(
+                    title: R.Strings.inboxCopy.localizedString(),
+                    image: UIImage(systemName: "doc.on.doc")
+                ) { _ in
+                    guard let self else { return }
+                    UIPasteboard.general.string = inbox.url
+                    PaperToast.show(R.Strings.inboxCopied.localizedString(), in: self.view)
                     HapticManager.notification(.success)
                 }
-            }
-        })
-        present(alert, animated: true)
+            ])
+        }
+    }
+
+    func collectionView(
+        _ collectionView: UICollectionView, shouldHighlightItemAt indexPath: IndexPath
+    ) -> Bool {
+        if case .inbox? = dataSource.itemIdentifier(for: indexPath) { return true }
+        return false
     }
 }

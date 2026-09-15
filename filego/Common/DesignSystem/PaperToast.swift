@@ -16,7 +16,6 @@ enum PaperToast {
         let container = UIView()
         container.tag = tag
         container.backgroundColor = isError ? AppColor.danger : AppColor.ink
-        container.layer.cornerRadius = 21
         container.layer.cornerCurve = .continuous
         container.alpha = 0
         // 提示只是路过，别挡住底下的点击。
@@ -50,6 +49,12 @@ enum PaperToast {
                 constant: AppSpacing.large
             )
         ])
+
+        // 胶囊圆角要等布局出来再定：高度随 Dynamic Type 变，写死的半径一旦超过高度的
+        // 一半，`.continuous` 的圆角路径就构造不出来，图层什么都不画——提示会「成功
+        // 显示」却整条看不见（在窗口里、不透明、在最上层，就是没有像素）。
+        view.layoutIfNeeded()
+        container.layer.cornerRadius = container.bounds.height / 2
 
         // 网页的 `rise` 动画：从下方 10px 淡入。
         container.transform = CGAffineTransform(translationX: 0, y: 10)

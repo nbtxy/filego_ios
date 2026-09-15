@@ -15,7 +15,6 @@ final class LocalDriveStore {
     static let rootID = ""
 
     let root: URL
-    private let preferences: KeyValueStore
     private let fm = FileManager.default
 
     /// 收件过程中的 `.part` 文件由 `FileLanding` 以点开头命名，落地前对用户不可见。
@@ -24,8 +23,7 @@ final class LocalDriveStore {
 
     private static let trashFolder = ".Trash"
 
-    init(preferences: KeyValueStore, root: URL? = nil) {
-        self.preferences = preferences
+    init(root: URL? = nil) {
         self.root =
             root
             ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -52,7 +50,7 @@ final class LocalDriveStore {
         guard !id.isEmpty else {
             return DriveNode(
                 id: Self.rootID, parentId: nil, kind: .folder,
-                name: R.Strings.tabFiles.localizedString(), size: 0, starred: false,
+                name: R.Strings.tabFiles.localizedString(), size: 0,
                 updatedAt: Date())
         }
         let url = self.url(for: id)
@@ -170,21 +168,6 @@ final class LocalDriveStore {
         return makeNode(at: target)!
     }
 
-    // MARK: - 加星
-
-    /// 加星以路径为键，所以重命名或移动之后星会掉。用 inode 做键能解决，代价是
-    /// 要自己维护一张会和文件系统失同步的表——在收件盘这个量级上不值。
-    private var starredPaths: Set<String> {
-        get { Set(preferences.value(forKey: "drive.starred") as [String]? ?? []) }
-        set { preferences.set(Array(newValue), forKey: "drive.starred") }
-    }
-
-    func setStarred(_ node: DriveNode, starred: Bool) {
-        var paths = starredPaths
-        if starred { paths.insert(node.id) } else { paths.remove(node.id) }
-        starredPaths = paths
-    }
-
     // MARK: - 内部
 
     private func makeNode(at url: URL) -> DriveNode? {
@@ -200,7 +183,6 @@ final class LocalDriveStore {
             kind: isFolder ? .folder : .file,
             name: url.lastPathComponent,
             size: Int64(values?.fileSize ?? 0),
-            starred: starredPaths.contains(id),
             updatedAt: values?.contentModificationDate ?? Date()
         )
     }

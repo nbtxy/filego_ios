@@ -134,6 +134,10 @@ final class DrawerContainerViewController: UIViewController, UIGestureRecognizer
         isOpen = open
         dragProgress = nil
         if changed { HapticManager.impact(.light) }
+        // 抽屉是常驻子控制器，开合只改 transform，不走 appearance transition——
+        // `MeViewController.viewWillAppear` 一辈子只在启动时触发过一次。本机占用
+        // 得在这里重算，否则用户每次看到的都是启动那一刻的快照。
+        if changed, open { meViewController.refresh() }
 
         let target: CGFloat = open ? 1 : 0
         guard animated else {

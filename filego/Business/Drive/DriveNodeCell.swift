@@ -1,7 +1,7 @@
 import UIKit
 
 /// 文件/文件夹的条目。一份 cell 兼两种形态：
-///   - 列表：对齐网页 `.row`——38pt 图标块 + 名字/副标题 + 星标 + ⋯，行底一条发丝线；
+///   - 列表：对齐网页 `.row`——38pt 图标块 + 名字/副标题 + ⋯，行底一条发丝线；
 ///   - 宫格：对齐网页 `.card`——白卡里一块缩略图位，下面两行名字与 meta。
 final class DriveNodeCell: UICollectionViewCell {
     /// 网页 `.row` 的 `padding: 10px 16px` 里的那个 16。
@@ -15,7 +15,6 @@ final class DriveNodeCell: UICollectionViewCell {
     private let thumbHolder = UIView()
     private let nameLabel = UILabel()
     private let detailLabel = UILabel()
-    private let starView = UIImageView(image: UIImage(systemName: "star.fill"))
     private let moreButton = UIButton(type: .system)
     private let textStack = UIStackView()
     private let separator = UIView()
@@ -53,11 +52,6 @@ final class DriveNodeCell: UICollectionViewCell {
             label.setContentCompressionResistancePriority(.required, for: .vertical)
         }
 
-        starView.tintColor = AppColor.star
-        starView.contentMode = .scaleAspectFit
-        starView.setContentHuggingPriority(.required, for: .horizontal)
-        starView.translatesAutoresizingMaskIntoConstraints = false
-
         moreButton.setImage(
             UIImage(
                 systemName: "ellipsis",
@@ -79,12 +73,7 @@ final class DriveNodeCell: UICollectionViewCell {
         listHighlightView.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(listHighlightView)
 
-        let titleStack = UIStackView(arrangedSubviews: [nameLabel, starView])
-        titleStack.axis = .horizontal
-        titleStack.spacing = AppSpacing.extraSmall
-        titleStack.alignment = .center
-
-        textStack.addArrangedSubview(titleStack)
+        textStack.addArrangedSubview(nameLabel)
         textStack.addArrangedSubview(detailLabel)
         textStack.axis = .vertical
         textStack.spacing = 3
@@ -108,8 +97,6 @@ final class DriveNodeCell: UICollectionViewCell {
             ),
             listHighlightView.topAnchor.constraint(equalTo: contentView.topAnchor),
             listHighlightView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
-            starView.widthAnchor.constraint(equalToConstant: 13),
-            starView.heightAnchor.constraint(equalToConstant: 13),
             moreButton.widthAnchor.constraint(equalToConstant: Self.moreButtonHitSize),
             moreButton.heightAnchor.constraint(equalToConstant: Self.moreButtonHitSize),
             gridIcon.centerXAnchor.constraint(equalTo: thumbHolder.centerXAnchor),
@@ -198,14 +185,13 @@ final class DriveNodeCell: UICollectionViewCell {
         listIcon.configure(with: node)
         gridIcon.configure(with: node)
         nameLabel.text = node.name
-        starView.isHidden = !node.starred
 
         if let detailOverride {
             detailLabel.text = detailOverride
         } else if node.isFolder {
             detailLabel.text = R.Strings.driveFolder.localizedString()
         } else {
-            let size = ByteCountFormatter.string(fromByteCount: node.size, countStyle: .file)
+            let size = ByteFormatting.storage(node.size)
             let ext = URL(fileURLWithPath: node.name).pathExtension.uppercased()
             detailLabel.text = ext.isEmpty ? size : "\(ext) · \(size)"
         }

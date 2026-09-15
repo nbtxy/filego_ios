@@ -404,13 +404,13 @@ final class DriveListViewController: UIViewController {
         let nodes = visibleNodes
         let ids = nodes.map(\.id)
         snapshot.appendItems(ids)
-        // id 不变但内容变了（加星、重命名）时 diff 为空，需显式 reconfigure 才会重建 cell。
+        // id 不变但内容变了（改名后大小/时间刷新等）时 diff 为空，需显式 reconfigure 才会重建 cell。
         let previousIDs = dataSource.snapshot().itemIdentifiers
         let existing = Set(previousIDs)
         let reconfigured = ids.filter(existing.contains)
-        // 纯内容更新（加星、重命名）时不能开动画：apply 的交叉淡入会在 cell 上留下一张旧内容的
-        // 快照，即使 starView 已经 isHidden，旧快照里的星号仍然盖在上面，直到 cell 被重建
-        // （切换列表/宫格触发 reloadData）才消失。只有增删移这类结构变化才需要动画。
+        // 纯内容更新时不能开动画：apply 的交叉淡入会在 cell 上留下一张旧内容的快照，盖在新
+        // 内容上面，直到 cell 被重建（切换列表/宫格触发 reloadData）才消失。
+        // 只有增删移这类结构变化才需要动画。
         let isStructuralChange = previousIDs != ids
         snapshot.reconfigureItems(reconfigured)
         dataSource.apply(snapshot, animatingDifferences: isStructuralChange)
@@ -657,21 +657,11 @@ final class DriveListViewController: UIViewController {
         )
         alert.addTextField { [weak self] field in
             guard let self else { return }
-            field.placeholder = R.Strings.driveImportPathPlaceholder.localizedString()
-            field.autocapitalizationType = .none
-            field.autocorrectionType = .no
-            field.spellCheckingType = .no
-            field.keyboardType = .URL
-            field.text = self.suggestedPath()
-            guard let prefix = self.environment.stolnk.addressPrefix else { return }
-            // 前缀是读的，不是填的——钉在 leftView 里，光标就永远进不去。
-            let label = UILabel()
-            label.text = prefix
-            label.font = .preferredFont(forTextStyle: .body)
-            label.textColor = AppColor.textSecondary
-            label.sizeToFit()
-            field.leftView = label
-            field.leftViewMode = .always
+            InboxPathField.configure(
+                field,
+                prefix: self.environment.stolnk.addressPrefix,
+                text: self.suggestedPath()
+            )
         }
         alert.addAction(UIAlertAction(title: R.Strings.commonCancel.localizedString(), style: .cancel))
         alert.addAction(UIAlertAction(
@@ -837,17 +827,13 @@ final class DriveListViewController: UIViewController {
     }
 
     private func actions(for node: DriveNode) -> UIMenu {
-        let star = UIAction(
-            title: node.starred ? R.Strings.driveUnstar.localizedString() : R.Strings.driveStar.localizedString(),
-            image: UIImage(systemName: node.starred ? "star.slash" : "star")
-        ) { [weak self] _ in self?.setStar(node, starred: !node.starred) }
         let rename = UIAction(
             title: R.Strings.driveRename.localizedString(), image: UIImage(systemName: "pencil")
         ) { [weak self] _ in self?.rename(node) }
         let move = UIAction(
             title: R.Strings.driveMove.localizedString(), image: UIImage(systemName: "folder")
         ) { [weak self] _ in self?.pickFolder(for: node, copy: false) }
-        var children = [star, rename, move]
+        var children = [rename, move]
         if !node.isFolder {
             children.append(UIAction(
                 title: R.Strings.driveCopy.localizedString(), image: UIImage(systemName: "doc.on.doc")
@@ -868,13 +854,6 @@ final class DriveListViewController: UIViewController {
     private func moveToTrash(_ node: DriveNode) {
         Task {
             do { try await viewModel.moveToTrash(node); applySnapshot() }
-            catch { showError(error) }
-        }
-    }
-
-    private func setStar(_ node: DriveNode, starred: Bool) {
-        Task {
-            do { try await viewModel.setStarred(node, starred: starred); applySnapshot() }
             catch { showError(error) }
         }
     }

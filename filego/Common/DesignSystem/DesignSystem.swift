@@ -35,8 +35,6 @@ enum AppColor {
     /// `--danger`：破坏性操作。**不要用 `.systemRed`**，那个偏亮，和纸色底不搭。
     static let danger = UIColor(hex: 0xC8462F)
     static let white = UIColor.white
-    /// `.star.on`：点亮的星标。
-    static let star = UIColor(hex: 0xE5A300)
 
     // MARK: 语义别名
     //

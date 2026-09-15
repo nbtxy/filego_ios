@@ -14,8 +14,7 @@ enum NodeKind: String {
  `FolderPickerViewController` 加起来一千多行 UI 因此原样可用。
 
  `id` 是相对 Documents 的相对路径，根目录是空串。用路径当 id 意味着重命名或移动
- 之后它就是另一个节点了——这对 diffable data source 正好（那确实是另一行），
- 但也意味着加星记录跟不过去，见 `LocalDriveStore.starred`。
+ 之后它就是另一个节点了——这对 diffable data source 正好（那确实是另一行）。
  */
 struct DriveNode: Hashable {
     let id: String
@@ -23,7 +22,6 @@ struct DriveNode: Hashable {
     let kind: NodeKind
     let name: String
     let size: Int64
-    let starred: Bool
     let updatedAt: Date
 
     var isFolder: Bool { kind == .folder }

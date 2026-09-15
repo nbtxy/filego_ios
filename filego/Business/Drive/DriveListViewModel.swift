@@ -55,11 +55,6 @@ final class DriveListViewModel {
         _ = try await reload()
     }
 
-    func setStarred(_ node: DriveNode, starred: Bool) async throws {
-        drive.setStarred(node, starred: starred)
-        _ = try await reload()
-    }
-
     func move(_ node: DriveNode, to parentId: String) async throws {
         try drive.move(node, to: parentId)
         _ = try await reload()
