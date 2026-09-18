@@ -8,6 +8,7 @@ final class AppEnvironment {
     let keyValueStore: KeyValueStore
     let stolnk: StolnkController
     let drive: LocalDriveStore
+    let storeKit: StoreKitService
 
     convenience init() {
         self.init(services: ServiceContainer.shared, keyValueStore: KeyValueStore.shared)
@@ -19,6 +20,7 @@ final class AppEnvironment {
         self.keyValueStore = keyValueStore
         self.stolnk = StolnkController(store: store)
         self.drive = LocalDriveStore()
+        self.storeKit = StoreKitService(stolnk: stolnk)
 
         services.register(stolnk, as: StolnkController.self)
     }

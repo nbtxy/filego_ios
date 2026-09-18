@@ -1,7 +1,7 @@
 import Foundation
 
 /// 按扩展名归类文件类型。列表图标与预览分发共用这一张表，避免两处各写一份扩展名清单。
-enum FileKind {
+nonisolated enum FileKind {
     case folder
     case markdown
     case html

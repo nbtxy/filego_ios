@@ -1,0 +1,45 @@
+{
+  "identifier" : "3BDFD86C-6C4A-4CEE-91C2-817F7D774994",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "14.99",
+      "familyShareable" : false,
+      "internalID" : "6812208070",
+      "localizations" : [
+        {
+          "description" : "永久解锁 Stolnk Pro 的全部功能",
+          "displayName" : "Stolnk Pro 永久版",
+          "locale" : "zh_CN"
+        },
+        {
+          "description" : "永久解鎖 Stolnk Pro 的全部功能",
+          "displayName" : "Stolnk Pro 永久版",
+          "locale" : "zh_TW"
+        },
+        {
+          "description" : "Unlock every Stolnk Pro feature for good.",
+          "displayName" : "Stolnk Pro Lifetime",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.nbtxy.filego.pro.lifetime",
+      "referenceName" : "Stolnk Pro Lifetime",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6798472788",
+    "_developerTeamID" : "U26MT4R2WR",
+    "_lastSynchronizedDate" : 0
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

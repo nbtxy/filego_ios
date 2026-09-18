@@ -15,9 +15,18 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         environment = AppEnvironment()
         _ = AppLifecycleObserver.shared
         PreviewTemporaryFile.purgeOrphans()
+        // 回收站是惰性清理的：iOS 上没有能指望的后台定时器，启动是唯一
+        // 保证会到的时机。见 `LocalDriveStore.purgeExpiredTrash`。
+        environment.drive.purgeExpiredTrash()
         // 不 await：取密钥可能弹系统提示，注册要走网络，任何一个卡住都不该拖住首屏。
         // 界面自己会等 .stolnkStateDidChange。
-        Task { await environment.stolnk.start() }
+        Task {
+            // StoreKit may have an unfinished transaction to hand to the Worker.
+            // Bring the device session up first so that first delivery cannot
+            // lose a race with APIClient initialization and wait for relaunch.
+            await environment.stolnk.start()
+            await environment.storeKit.bootstrap()
+        }
         return true
     }
 

@@ -21,7 +21,8 @@ final class LocalDriveStore {
     /// 这里统一跳过点开头的条目，顺带也把 `.Trash/` 挡在外面。
     private func isHidden(_ name: String) -> Bool { name.hasPrefix(".") }
 
-    private static let trashFolder = ".Trash"
+    /// `trashUsage` 在后台线程上读它，所以不能跟着模块默认的 MainActor 隔离走。
+    private nonisolated static let trashFolder = ".Trash"
 
     init(root: URL? = nil) {
         self.root =
@@ -144,13 +145,24 @@ final class LocalDriveStore {
 
      真删是不可逆的，而这条路径连着的是别人发来的文件——误触的代价太高。移到
      `Documents/.Trash/`：点开头，所以不出现在树里，也不出现在「文件」App 里，
-     但东西还在。回收站界面在改造中被拆掉了，等它回来时这里不用改。
+     但东西还在。
+
+     移动本身不记录任何东西：`moveItem` 保留的是文件原来的修改时间，不是入站时间，
+     原路径更是直接丢掉。「还有 N 天」和「还原」两件事都要这两个信息，所以同时往
+     索引里写一条。见 `reconcileTrashIndex`。
      */
     func moveToTrash(_ node: DriveNode) throws {
-        let trash = root.appendingPathComponent(Self.trashFolder, isDirectory: true)
-        try fm.createDirectory(at: trash, withIntermediateDirectories: true)
-        let unique = FileNameSanitizer.uniqueName(for: node.name, in: trash)
-        try fm.moveItem(at: url(for: node.id), to: trash.appendingPathComponent(unique))
+        try fm.createDirectory(at: trashURL, withIntermediateDirectories: true)
+        let unique = FileNameSanitizer.uniqueName(for: node.name, in: trashURL)
+        try fm.moveItem(at: url(for: node.id), to: trashURL.appendingPathComponent(unique))
+        var index = readTrashIndex()
+        index[unique] = TrashIndexEntry(
+            name: node.name,
+            originParentID: node.parentId ?? Self.rootID,
+            isFolder: node.isFolder,
+            trashedAt: Date()
+        )
+        writeTrashIndex(index)
     }
 
     /// 系统「打开方式」送进来的文件：拷进树里，原文件不动。
@@ -166,6 +178,226 @@ final class LocalDriveStore {
         defer { if scoped { source.stopAccessingSecurityScopedResource() } }
         try fm.copyItem(at: source, to: target)
         return makeNode(at: target)!
+    }
+
+    // MARK: - 回收站
+
+    /**
+     保留期。
+
+     和系统「文件」App、iCloud、Finder 废纸篓一致，用户对这个数字有现成的预期。
+     `trash.notice` 里的天数由这里填，改一处就够。
+     */
+    static let trashRetentionDays = 30
+
+    private static let trashIndexFile = ".index.json"
+
+    /// 索引里一条。`storageName` 是 key，不进 value。
+    private struct TrashIndexEntry: Codable {
+        var name: String
+        var originParentID: String
+        var isFolder: Bool
+        var trashedAt: Date
+    }
+
+    private var trashURL: URL {
+        root.appendingPathComponent(Self.trashFolder, isDirectory: true)
+    }
+
+    /// 回收站内容，新删的在前——用户找的多半是刚误删的那个。
+    func trashItems() -> [TrashItem] {
+        reconcileTrashIndex()
+            .map { name, entry in
+                TrashItem(
+                    storageName: name,
+                    name: entry.name,
+                    originParentID: entry.originParentID,
+                    kind: entry.isFolder ? .folder : .file,
+                    size: Self.size(of: trashURL.appendingPathComponent(name)),
+                    trashedAt: entry.trashedAt
+                )
+            }
+            .sorted { $0.trashedAt > $1.trashedAt }
+    }
+
+    /**
+     还原。
+
+     原目录可能在这期间被删了或改了名。重建它会凭空造出一个用户已经不认识的文件夹，
+     所以回落到根目录：东西一定找得到，比「还原成功但不知道去了哪」好。返回值是真正
+     的落点，回落时它和 `originParentID` 不相等——目前还没有文案把这件事告诉用户。
+     */
+    @discardableResult
+    func restoreFromTrash(_ item: TrashItem) throws -> String {
+        var parentID = item.originParentID
+        var parent = url(for: parentID)
+        var isDirectory: ObjCBool = false
+        let exists = fm.fileExists(atPath: parent.path, isDirectory: &isDirectory)
+        if !exists || !isDirectory.boolValue {
+            parentID = Self.rootID
+            parent = root
+        }
+        let unique = FileNameSanitizer.uniqueName(for: item.name, in: parent)
+        try fm.moveItem(
+            at: trashURL.appendingPathComponent(item.storageName),
+            to: parent.appendingPathComponent(unique)
+        )
+        var index = readTrashIndex()
+        index.removeValue(forKey: item.storageName)
+        writeTrashIndex(index)
+        return parentID
+    }
+
+    func deleteFromTrash(_ item: TrashItem) throws {
+        try fm.removeItem(at: trashURL.appendingPathComponent(item.storageName))
+        var index = readTrashIndex()
+        index.removeValue(forKey: item.storageName)
+        writeTrashIndex(index)
+    }
+
+    /// 清空。索引整份丢掉，不逐条删——反正对账时磁盘说了算。
+    func emptyTrash() throws {
+        for name in trashContents() {
+            try fm.removeItem(at: trashURL.appendingPathComponent(name))
+        }
+        writeTrashIndex([:])
+    }
+
+    /**
+     删掉过了保留期的项，返回删了几个。
+
+     iOS 上没有能指望的后台定时器，所以这是惰性清理：app 启动时和进回收站页面时各扫
+     一次。长期不开 app 的话文件会多占一阵子空间，和 `trash.notice` 承诺的「N 天后」
+     有出入——系统「文件」App 同样如此，没有更好的办法。
+     */
+    @discardableResult
+    func purgeExpiredTrash(now: Date = Date()) -> Int {
+        var index = reconcileTrashIndex()
+        var removed = 0
+        for (name, entry) in index where Self.trashDaysLeft(since: entry.trashedAt, now: now) <= 0 {
+            do {
+                try fm.removeItem(at: trashURL.appendingPathComponent(name))
+                index.removeValue(forKey: name)
+                removed += 1
+            } catch {
+                AppLogger.error("清理过期回收站项目失败：\(name)", error: error)
+            }
+        }
+        if removed > 0 {
+            writeTrashIndex(index)
+            AppLogger.info("回收站清理了 \(removed) 项过期内容")
+        }
+        return removed
+    }
+
+    /**
+     还剩几天。
+
+     向上取整，且非零即至少 1：刚删的当天显示「还有 30 天」，最后一天显示「还有 1 天」，
+     返回 0 就是该删了。要是向下取整，东西还在列表里却写着「还有 0 天」。
+     */
+    static func trashDaysLeft(since trashedAt: Date, now: Date = Date()) -> Int {
+        let deadline = trashedAt.addingTimeInterval(TimeInterval(trashRetentionDays) * 86_400)
+        let remaining = deadline.timeIntervalSince(now)
+        guard remaining > 0 else { return 0 }
+        return max(1, Int((remaining / 86_400).rounded(.up)))
+    }
+
+    /**
+     项数与占用。
+
+     「我的」页要在后台线程上算，所以不碰实例状态，也不读索引——数量按磁盘上的条目数，
+     和列表看到的一致。
+     */
+    nonisolated static func trashUsage(at root: URL) -> (count: Int, bytes: Int64) {
+        let trash = root.appendingPathComponent(trashFolder, isDirectory: true)
+        let names = ((try? FileManager.default.contentsOfDirectory(atPath: trash.path)) ?? [])
+            .filter { !$0.hasPrefix(".") }
+        let bytes = names.reduce(into: Int64(0)) { total, name in
+            total += size(of: trash.appendingPathComponent(name))
+        }
+        return (names.count, bytes)
+    }
+
+    /**
+     索引和磁盘对账，磁盘说了算。
+
+     索引是后加的，`.Trash/` 里可能已经躺着旧版本丢进去的文件；开着
+     `UIFileSharingEnabled`，用户也可能从别处动过目录。条目对不上文件就丢掉，文件没有
+     条目就按它自己的修改时间补一条——原位置无从得知，还原只能回落到根目录。
+     */
+    private func reconcileTrashIndex() -> [String: TrashIndexEntry] {
+        var index = readTrashIndex()
+        let names = Set(trashContents())
+        var changed = false
+
+        for name in index.keys where !names.contains(name) {
+            index.removeValue(forKey: name)
+            changed = true
+        }
+        for name in names where index[name] == nil {
+            let url = trashURL.appendingPathComponent(name)
+            let values = try? url.resourceValues(
+                forKeys: [.isDirectoryKey, .contentModificationDateKey])
+            index[name] = TrashIndexEntry(
+                name: name,
+                originParentID: Self.rootID,
+                isFolder: values?.isDirectory ?? false,
+                trashedAt: values?.contentModificationDate ?? Date()
+            )
+            changed = true
+        }
+
+        if changed { writeTrashIndex(index) }
+        return index
+    }
+
+    /// `.Trash/` 下的条目名。索引文件自己是点开头的，顺带被挡掉。
+    private func trashContents() -> [String] {
+        ((try? fm.contentsOfDirectory(atPath: trashURL.path)) ?? [])
+            .filter { !isHidden($0) }
+    }
+
+    private func readTrashIndex() -> [String: TrashIndexEntry] {
+        let url = trashURL.appendingPathComponent(Self.trashIndexFile)
+        guard let data = try? Data(contentsOf: url) else { return [:] }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        do {
+            return try decoder.decode([String: TrashIndexEntry].self, from: data)
+        } catch {
+            // 索引坏了不是绝症：对账会按磁盘重建一份，代价只是丢掉原位置和入站时间。
+            AppLogger.error("回收站索引读取失败，按磁盘重建", error: error)
+            return [:]
+        }
+    }
+
+    private func writeTrashIndex(_ index: [String: TrashIndexEntry]) {
+        let url = trashURL.appendingPathComponent(Self.trashIndexFile)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        do {
+            try fm.createDirectory(at: trashURL, withIntermediateDirectories: true)
+            try encoder.encode(index).write(to: url, options: .atomic)
+        } catch {
+            AppLogger.error("回收站索引写入失败", error: error)
+        }
+    }
+
+    /// 文件夹要递归求和：`fileSize` 对目录只会给出目录项自己的大小。
+    private nonisolated static func size(of url: URL) -> Int64 {
+        let keys: [URLResourceKey] = [.isDirectoryKey, .isRegularFileKey, .fileSizeKey]
+        let values = try? url.resourceValues(forKeys: Set(keys))
+        guard values?.isDirectory == true else { return Int64(values?.fileSize ?? 0) }
+        guard let walker = FileManager.default.enumerator(at: url, includingPropertiesForKeys: keys)
+        else { return 0 }
+        var total: Int64 = 0
+        for case let child as URL in walker {
+            let childValues = try? child.resourceValues(forKeys: Set(keys))
+            guard childValues?.isRegularFile == true else { continue }
+            total += Int64(childValues?.fileSize ?? 0)
+        }
+        return total
     }
 
     // MARK: - 内部

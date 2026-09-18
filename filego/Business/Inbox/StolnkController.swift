@@ -182,6 +182,41 @@ final class StolnkController {
         return try? await api.nameAvailable(NameRules.normalise(candidate))
     }
 
+    /**
+     改名。
+
+     名字属于设备而不属于某一条 inbox，所以这台设备名下所有地址和分享链接跟着一起
+     搬家——服务端一条 `UPDATE devices` 就够了（worker `devices.ts` 的 names 路由）。
+     旧子域立刻停止解析，没有过渡跳转，旧名字当场回到公共池。
+
+     不碰注册：这里和 `setOrigin` 只有一字之差的表象，实质完全相反。换服务器必须
+     `forgetDevice()`，因为那边签的 token、那边的 inbox id 到这边一文不值；改名根本
+     没换服务器，设备 ID、token、密钥、文件夹绑定全都照旧成立，清掉任何一样都是白白
+     把用户踢回 onboarding。
+
+     不重拉 `/inboxes`：服务端已经把新名字下的整份列表一并返回了，理由和 `register`
+     里那条一样。`throws` 的理由和 `setSlug` 一样——调用方要把「这个名字被占了」和
+     别的错分开讲。
+     */
+    func rename(to chosen: String) async throws {
+        guard let api else { throw Self.notRegistered }
+        do {
+            let normalised = NameRules.normalise(chosen)
+            let list = try await api.rename(to: normalised)
+            name = normalised
+            inboxes = list
+            store.mutate {
+                $0.name = normalised
+                $0.inboxes = list
+            }
+            broadcast()
+        } catch {
+            handle(error)
+            broadcast()
+            throw error
+        }
+    }
+
     // MARK: - 接收
 
     private func buildReceiver(api: APIClient, keys: DeviceIdentity) {
@@ -326,6 +361,23 @@ final class StolnkController {
         if let state = try? await api.plan() {
             plan = state
             broadcast()
+        }
+    }
+
+    /// Sends an opaque StoreKit transaction id to the Worker. The Worker asks
+    /// Apple for the authoritative product, bundle and refund state before it
+    /// changes this device's entitlement.
+    func verifyApplePurchase(transactionID: UInt64) async throws -> PlanState {
+        guard let api else { throw Self.notRegistered }
+        do {
+            let state = try await api.verifyApplePurchase(transactionID: transactionID)
+            plan = state
+            broadcast()
+            return state
+        } catch {
+            handle(error)
+            broadcast()
+            throw error
         }
     }
 

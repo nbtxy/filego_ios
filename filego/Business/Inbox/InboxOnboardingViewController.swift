@@ -21,8 +21,8 @@ final class InboxOnboardingViewController: UIViewController {
     private let createButton = PaperButton.primary()
     private let spinner = UIActivityIndicatorView(style: .medium)
 
-    private var probe: Task<Void, Never>?
-    private var isAvailable = false
+    private var probe: NameAvailabilityProbe!
+    private var status: NameStatus = .empty
     /// 名字后面那截后缀。换服务器会改掉它，见 `stateDidChange()`。
     private var suffix = ""
 
@@ -43,6 +43,7 @@ final class InboxOnboardingViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = AppColor.background
         suffix = environment.stolnk.nameSuffix
+        buildProbe()
         buildLayout()
         updateState()
         NotificationCenter.default.addObserver(
@@ -184,52 +185,47 @@ final class InboxOnboardingViewController: UIViewController {
 
     // MARK: - 名字可用性
 
-    @objc private func nameChanged() {
-        probe?.cancel()
-        isAvailable = false
-        let raw = nameField.text ?? ""
-        let candidate = NameRules.normalise(raw)
+    /// 这一屏还没有名字可言，所以 `currentName` 是 nil——`.unchanged` 在这里不会出现。
+    private func buildProbe() {
+        probe = NameAvailabilityProbe(
+            check: { [environment] candidate in
+                await environment.stolnk.isNameAvailable(candidate)
+            },
+            update: { [weak self] status, _ in
+                self?.render(status)
+            }
+        )
+    }
 
-        if candidate.isEmpty {
-            statusLabel.text = nil
-            updateState()
-            return
-        }
-        if NameRules.problem(with: candidate) != nil {
+    @objc private func nameChanged() {
+        probe.evaluate(nameField.text ?? "")
+    }
+
+    private func render(_ status: NameStatus) {
+        self.status = status
+        switch status {
+        case .checking:
+            statusLabel.text = R.Strings.onboardingChecking.localizedString()
+            statusLabel.textColor = AppColor.textSecondary
+        case .available:
+            statusLabel.text = R.Strings.onboardingAvailable.localizedString()
+            statusLabel.textColor = AppColor.ink
+        case .taken:
+            statusLabel.text = R.Strings.onboardingTaken.localizedString()
+            statusLabel.textColor = AppColor.danger
+        case .invalid:
             statusLabel.text = R.Strings.onboardingInvalid.localizedString()
             statusLabel.textColor = AppColor.textSecondary
-            updateState()
-            return
+        // 问不到就什么都不说——绝不要把「问不出来」渲染成「已被占用」。
+        case .empty, .unchanged, .unknown:
+            statusLabel.text = nil
         }
-
-        statusLabel.text = R.Strings.onboardingChecking.localizedString()
-        statusLabel.textColor = AppColor.textSecondary
         updateState()
-
-        // 防抖：每敲一个字母打一次服务端，既费又会让结果乱序回来。
-        probe = Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(350))
-            guard !Task.isCancelled, let self else { return }
-            let answer = await self.environment.stolnk.isNameAvailable(candidate)
-            guard !Task.isCancelled else { return }
-            // 问不到就什么都不说——绝不要把「问不出来」渲染成「已被占用」。
-            guard let answer else {
-                self.statusLabel.text = nil
-                self.updateState()
-                return
-            }
-            self.isAvailable = answer
-            self.statusLabel.text = answer
-                ? R.Strings.onboardingAvailable.localizedString()
-                : R.Strings.onboardingTaken.localizedString()
-            self.statusLabel.textColor = answer ? AppColor.ink : AppColor.danger
-            self.updateState()
-        }
     }
 
     private func updateState() {
-        createButton.isEnabled = isAvailable
-        createButton.alpha = isAvailable ? 1 : 0.4
+        createButton.isEnabled = !status.blocksSubmission
+        createButton.alpha = createButton.isEnabled ? 1 : 0.4
     }
 
     // MARK: - 注册
@@ -260,7 +256,7 @@ final class InboxOnboardingViewController: UIViewController {
     private func setBusy(_ busy: Bool) {
         busy ? spinner.startAnimating() : spinner.stopAnimating()
         nameField.isEnabled = !busy
-        createButton.isEnabled = !busy && isAvailable
+        createButton.isEnabled = !busy && !status.blocksSubmission
         createButton.alpha = createButton.isEnabled ? 1 : 0.4
     }
 }
@@ -268,7 +264,7 @@ final class InboxOnboardingViewController: UIViewController {
 extension InboxOnboardingViewController: UITextFieldDelegate {
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         textField.resignFirstResponder()
-        if isAvailable { create() }
+        if !status.blocksSubmission { create() }
         return true
     }
 }

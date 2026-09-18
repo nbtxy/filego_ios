@@ -6,7 +6,8 @@ import UIKit
 private nonisolated enum Row: Hashable {
     case address
     case plan
-    case localStorage
+    case storage
+    case trash
     case deviceKey
     #if DEBUG
     case debugPanel
@@ -18,7 +19,7 @@ private nonisolated enum Row: Hashable {
 ///
 /// 改造后这里没有账号——身份就是 Secure Enclave 里那两把密钥，所以没有登录、
 /// 没有登出、没有邮箱。取而代之的一级信息是：这台设备的收件地址、当前档位与
-/// 本月中转用量、本机占用，以及密钥到底落在安全隔区还是软件里。
+/// 本月中转用量、本机存储空间，以及密钥到底落在安全隔区还是软件里。
 @MainActor
 final class MeViewController: UIViewController {
     private let environment: AppEnvironment
@@ -27,7 +28,7 @@ final class MeViewController: UIViewController {
     private var collectionView: UICollectionView!
     private var dataSource: UICollectionViewDiffableDataSource<Int, Row>!
 
-    private var localBytes: Int64 = 0
+    private var usage: LocalStorageUsage = .empty
 
     init(
         environment: AppEnvironment,
@@ -70,7 +71,7 @@ final class MeViewController: UIViewController {
 
     @objc private func filesDidLand() { reload() }
 
-    /// 抽屉调这个重算本机占用。见 `DrawerContainerViewController.setOpen`。
+    /// 抽屉调这个重算本机占用快照。见 `DrawerContainerViewController.setOpen`。
     func refresh() { reload() }
 
     // MARK: - 视图
@@ -122,6 +123,7 @@ final class MeViewController: UIViewController {
             cell.accessories = [.disclosureIndicator()]
 
         case .plan:
+            content.image = UIImage(systemName: "sparkles")
             content.text = R.Strings.mePlan.localizedString()
             if let plan = stolnk.plan {
                 let tier = plan.isPro
@@ -133,12 +135,28 @@ final class MeViewController: UIViewController {
                 )
                 content.secondaryText = "\(tier) · \(relay)"
             }
-            cell.accessories = []
+            cell.accessories = [.disclosureIndicator()]
 
-        case .localStorage:
-            content.text = R.Strings.meLocalStorage.localizedString()
-            content.secondaryText = ByteFormatting.storage(localBytes)
-            cell.accessories = []
+        case .storage:
+            content.image = UIImage(systemName: "internaldrive")
+            content.imageProperties.tintColor = AppColor.FileTile.mediaForeground
+            content.text = R.Strings.meStorageTitle.localizedString()
+            let used = ByteFormatting.storage(usage.usedBytes)
+            // 容量要等那次遍历回来才有。还没有的时候只说占用，别写成「180 MB / 0 字节」。
+            content.secondaryText = usage.capacityBytes > 0
+                ? R.Strings.meStorageValue.formatted(
+                    used, ByteFormatting.storage(usage.capacityBytes))
+                : used
+            cell.accessories = [PaperListCellStyle.disclosure]
+
+        case .trash:
+            content.image = UIImage(systemName: "trash")
+            content.text = R.Strings.trashTitle.localizedString()
+            // 报数量不报体积：体积在存储明细页有专门一行（`storage.category.trash`），
+            // 这里再说一遍没有增量信息。空的时候什么都不写——「0 项」是噪音。
+            content.secondaryText = usage.trashedCount > 0
+                ? String(usage.trashedCount) : nil
+            cell.accessories = [.disclosureIndicator()]
 
         case .deviceKey:
             content.text = R.Strings.meDeviceKey.localizedString()
@@ -171,34 +189,19 @@ final class MeViewController: UIViewController {
         // 目录遍历在大收件盘上不是瞬时的，别占主线程。
         let root = environment.drive.root
         Task.detached(priority: .utility) {
-            let bytes = Self.directorySize(of: root)
+            let scanned = LocalStorageUsage.scan(root: root)
             await MainActor.run { [weak self] in
-                self?.localBytes = bytes
+                self?.usage = scanned
                 self?.applySnapshot()
             }
         }
-    }
-
-    /// 递归统计占用。包含 `.Trash/`：那些文件确实还在占手机的空间，
-    /// 报一个不含它们的数字会和系统「设置」里看到的对不上。
-    private nonisolated static func directorySize(of root: URL) -> Int64 {
-        guard let walker = FileManager.default.enumerator(
-            at: root, includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey])
-        else { return 0 }
-        var total: Int64 = 0
-        for case let url as URL in walker {
-            let values = try? url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
-            guard values?.isRegularFile == true else { continue }
-            total += Int64(values?.fileSize ?? 0)
-        }
-        return total
     }
 
     private func applySnapshot() {
         guard dataSource != nil else { return }
         var snapshot = NSDiffableDataSourceSnapshot<Int, Row>()
         snapshot.appendSections([0])
-        snapshot.appendItems([.address, .plan, .localStorage, .deviceKey], toSection: 0)
+        snapshot.appendItems([.address, .plan, .storage, .trash, .deviceKey], toSection: 0)
         snapshot.appendSections([1])
         #if DEBUG
         snapshot.appendItems([.debugPanel, .version], toSection: 1)
@@ -237,7 +240,13 @@ extension MeViewController: UICollectionViewDelegate {
         case .debugPanel:
             navigate(DebugPanelViewController(environment: environment))
         #endif
-        case .plan, .localStorage, .deviceKey, .version:
+        case .plan:
+            navigate(ProUpgradeViewController(environment: environment))
+        case .storage:
+            navigate(StorageDetailViewController(environment: environment))
+        case .trash:
+            navigate(TrashViewController(environment: environment))
+        case .deviceKey, .version:
             break
         }
     }
