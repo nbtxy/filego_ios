@@ -43,6 +43,10 @@ final class HtmlPreviewController: UIViewController {
     private let errorLabel = UILabel()
     private let fallbackButton = UIButton(type: .system)
 
+    /// 「创建下载链接」。由 `PreviewCoordinator` 注入——这个控制器不认识
+    /// `AppEnvironment`，也不该为了一个菜单项去认识它。
+    var onCreateShareLink: ((UIViewController) -> Void)?
+
     init(file: PreviewTemporaryFile, title: String) {
         self.file = file
         super.init(nibName: nil, bundle: nil)
@@ -243,9 +247,19 @@ final class HtmlPreviewController: UIViewController {
             self?.presentShareSheet()
         }
 
+        var children = [remote, quickLook, share]
+        if let onCreateShareLink {
+            children.append(UIAction(
+                title: R.Strings.previewCreateShareLink.localizedString(),
+                image: UIImage(systemName: "link")
+            ) { [weak self] _ in
+                guard let self else { return }
+                onCreateShareLink(self)
+            })
+        }
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             image: UIImage(systemName: "ellipsis.circle"),
-            menu: UIMenu(children: [remote, quickLook, share])
+            menu: UIMenu(children: children)
         )
     }
 

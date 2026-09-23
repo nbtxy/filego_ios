@@ -814,7 +814,8 @@ final class DriveListViewController: UIViewController {
         // 就在本机，直接把原件借给预览器——`borrowing` 而不是 `init`，因为后者的
         // deinit 会删掉父目录，而这里的父目录是用户的收件文件夹。
         let file = PreviewTemporaryFile.borrowing(viewModel.fileURL(for: node))
-        router.push(PreviewCoordinator.makeViewController(for: node, file: file))
+        router.push(PreviewCoordinator.makeViewController(
+            for: node, file: file, environment: environment))
     }
 
     private func openBreadcrumb(_ node: DriveNode) {
@@ -838,6 +839,10 @@ final class DriveListViewController: UIViewController {
             children.append(UIAction(
                 title: R.Strings.driveCopy.localizedString(), image: UIImage(systemName: "doc.on.doc")
             ) { [weak self] _ in self?.pickFolder(for: node, copy: true) })
+            // 只给文件，不给文件夹：一条下载链接背后是一个文件，服务端也只收一个。
+            children.append(UIAction(
+                title: R.Strings.shareCreate.localizedString(), image: UIImage(systemName: "link")
+            ) { [weak self] _ in self?.createShareLink(for: node) })
         }
         // 移入回收站是可还原的，不做二次确认。
         let trash = UIAction(
@@ -849,6 +854,17 @@ final class DriveListViewController: UIViewController {
             UIMenu(options: .displayInline, children: children),
             UIMenu(options: .displayInline, children: [trash])
         ])
+    }
+
+    /// 把这个文件变成一条公开的下载链接。校验和表单都在 `ShareLauncher` 里——
+    /// 预览页那个入口要做的检查一模一样，两处各写一份就是它们开始走样的起点。
+    private func createShareLink(for node: DriveNode) {
+        ShareLauncher.start(
+            from: self,
+            environment: environment,
+            file: viewModel.fileURL(for: node),
+            filename: node.name,
+            size: node.size)
     }
 
     private func moveToTrash(_ node: DriveNode) {

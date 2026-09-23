@@ -49,6 +49,28 @@ final class StolnkController {
     private(set) var isEnclaveBacked = false
     private(set) var lastError: String?
 
+    /// 外发的下载链接。和 `inboxes` 同级：一个是别人发给你，一个是你发给别人。
+    private(set) var shares: [ShareSummary] = []
+
+    /**
+     正在上传的那一条下载链接。
+
+     刻意是单个 optional 而不是 Mac 端那样的数组：Mac 有常驻窗口，能同时列出好几条；
+     iOS 的上传是从一个还停在屏幕上的模态里驱动的，而且 App 一进后台就断
+     （`URLSession.shared` 不是 background session），所以第二条永远不会存在。
+     */
+    private(set) var shareUpload: ShareUpload?
+
+    /// 上一次广播出去的百分比。见 `upload(_:from:filename:)` 里的节流说明。
+    private var shareUploadPercent = 0
+
+    /// 上传进度。`fraction` 是整个文件的 0…1，不是单个 part 的。
+    struct ShareUpload: Sendable {
+        let shareID: String
+        let filename: String
+        var fraction: Double
+    }
+
     /// 没有 deviceID 就是还没注册过——onboarding 的唯一判据。
     var isRegistered: Bool { store.snapshot.deviceID != nil }
 
@@ -86,6 +108,7 @@ final class StolnkController {
     func start() async {
         recent = store.snapshot.recent
         inboxes = store.snapshot.inboxes
+        shares = store.snapshot.shares
         name = store.snapshot.name
 
         let keys: DeviceIdentity
@@ -115,6 +138,7 @@ final class StolnkController {
 
             if saved.deviceID != nil {
                 await refreshInboxes()
+                await refreshShares()
                 await refreshPlan()
                 connectSignalling()
                 await poll()
@@ -381,6 +405,209 @@ final class StolnkController {
         }
     }
 
+    // MARK: - 外发下载链接
+
+    /**
+     刷新链接列表。
+
+     和 `refreshInboxes` 一样失败不报错：它在每次进前台、每次建/删链接之后顺路跑，
+     为它弹一个错会盖住用户真正在做的那件事。
+
+     不用服务端返回的 name 覆盖本地的：`inboxes()` 已经在管这件事，两处都写只会让
+     「哪一次的答案是对的」取决于谁后回来。
+     */
+    func refreshShares() async {
+        guard let api else { return }
+        do {
+            let (_, list) = try await api.shares()
+            shares = list
+            store.mutate { $0.shares = list }
+            broadcast()
+        } catch {
+            handle(error)
+        }
+    }
+
+    /**
+     把一个本地文件变成一条公开的下载链接。
+
+     `throws` 而不是返回 Bool：调用方要把 402（档位不够）、409（路径被占）和 413
+     （空间满了）分成三句不同的话讲，而 `lastError` 那条通道会把它们压成同一句。
+
+     返回 `ShareHandle` 而不是 Bool：链接在**上传完成之前**就已经存在（`POST /shares`
+     在传第一个字节前就返回了 url），调用方要拿它去写剪贴板——而 `UIPasteboard` 加
+     `PaperToast` 需要一个 view，那是页面的事，不是这里的事。
+
+     没有 `startAccessingSecurityScopedResource`：文件来自 `LocalDriveStore`，就在
+     本 App 自己的 Documents 里。Mac 端要那一步是因为它的文件是 `NSOpenPanel` 授权
+     进来的，iOS 这条路上没有那回事。
+     */
+    func createShare(
+        file: URL, ttlHours: Double, maxDownloads: Int?, password: String?, code: String?
+    ) async throws -> ShareHandle {
+        guard let api else { throw Self.notRegistered }
+        do {
+            let values = try file.resourceValues(forKeys: [.fileSizeKey, .nameKey])
+            let filename = values.name ?? file.lastPathComponent
+            let size = values.fileSize ?? 0
+
+            // 发出去的是 PBKDF2 派生出来的 verifier，不是密码本身。盐由服务端给，
+            // 因为下载页的浏览器要用同一个盐算出同一个 verifier。
+            var verifier: String?
+            var salt: String?
+            if let password, !password.isEmpty {
+                let parameters = try await api.shareSalt()
+                salt = parameters.salt
+                verifier = try await SharePassword.derive(
+                    password, salt: parameters.salt, iterations: parameters.iterations)
+            }
+
+            let handle = try await api.createShare(
+                filename: filename, size: size, ttlHours: ttlHours, maxDownloads: maxDownloads,
+                password: verifier, passwordSalt: salt, code: code.map(ShareCodeRules.normalise))
+
+            try await upload(handle, from: file, filename: filename)
+            await refreshShares()
+            return handle
+        } catch {
+            shareUpload = nil
+            handle(error)
+            broadcast()
+            throw error
+        }
+    }
+
+    /**
+     把一条已经结束的链接重新填满，地址不变。
+
+     服务端只接受终态的行，且 `complete` 会拿旧的 sha256 校验——传错文件会被挡回来，
+     所以这里不做本地比对：服务端的判断是准的，而本地的猜测不是。
+     */
+    func restoreShare(_ share: ShareSummary, from file: URL) async throws {
+        guard let api else { throw Self.notRegistered }
+        do {
+            let handle = try await api.restoreShare(share.shareID)
+            try await upload(handle, from: file, filename: share.filename)
+            await refreshShares()
+        } catch {
+            shareUpload = nil
+            handle(error)
+            broadcast()
+            throw error
+        }
+    }
+
+    /**
+     上传字节，然后记住这条链接是从哪个文件来的。
+
+     进度广播必须节流。`broadcast()` 是 `NotificationCenter` 广播，四个页面都在听；
+     而 `uploadShare` 的 `onProgress` 跟着 `didSendBodyData` 走，一秒能回几百次。
+     所以 `fraction` 每次都更新（进度条自己读得到），但只有取整后的百分比变了才广播。
+
+     绑定放在上传**之后**：一条没传完的链接不该留下「它来自这个文件」的记录，那会让
+     「恢复」按钮出现在一个根本没生效过的链接上。
+     */
+    private func upload(_ handle: ShareHandle, from file: URL, filename: String) async throws {
+        shareUpload = ShareUpload(shareID: handle.shareID, filename: filename, fraction: 0)
+        shareUploadPercent = 0
+        broadcast()
+
+        // `guard let self` 落在外层闭包里而不是 Task 里：`[weak self]` 捕获的是一个
+        // 可变的可选绑定，让内层并发闭包再去读它，在 Swift 6 下是错误。先解成一个
+        // 不可变的强引用，内层捕获的就是它。
+        let shareID = handle.shareID
+        try await api?.uploadShare(handle, from: file) { [weak self] fraction in
+            guard let self else { return }
+            Task { @MainActor in self.advance(shareID, to: fraction) }
+        }
+
+        store.bindSource(shareID: handle.shareID, to: file)
+        shareUpload = nil
+    }
+
+    /// 进度回调的落点。单独一个方法，好让上面那句 `Task { @MainActor in }` 只剩一行。
+    private func advance(_ shareID: String, to fraction: Double) {
+        guard shareUpload?.shareID == shareID else { return }
+        shareUpload?.fraction = fraction
+        let percent = Int(fraction * 100)
+        guard percent != shareUploadPercent else { return }
+        shareUploadPercent = percent
+        broadcast()
+    }
+
+    /// `nil` 表示问不出来，绝不是答「已被占用」。和 `isNameAvailable` 同形。
+    ///
+    /// 改路径时必须带上 `forShare`：一条链接占着自己的路径，不排除它自己，服务端
+    /// 会对着提问的那一行答「已被占用」。
+    func isShareCodeAvailable(_ candidate: String, forShare shareID: String? = nil) async -> Bool? {
+        guard let api else { return nil }
+        return try? await api.shareCodeAvailable(
+            ShareCodeRules.normalise(candidate), forShare: shareID)
+    }
+
+    /// 换路径。旧链接当场失效。`throws` 的理由和 `setSlug` 相同：调用方要把
+    /// 「这个路径被占了」和别的错分开讲。
+    func setShareCode(_ share: ShareSummary, code: String) async throws {
+        guard let api else { throw Self.notRegistered }
+        do {
+            _ = try await api.updateShareCode(share.shareID, code: ShareCodeRules.normalise(code))
+            await refreshShares()
+        } catch {
+            handle(error)
+            broadcast()
+            throw error
+        }
+    }
+
+    /// 暂停 / 恢复。调用方是一个开关，失败要把它退回去，所以返回 Bool。
+    func setSharePaused(_ share: ShareSummary, paused: Bool) async -> Bool {
+        guard let api else { return false }
+        do {
+            _ = try await api.setSharePaused(share.shareID, paused: paused)
+            await refreshShares()
+            return true
+        } catch {
+            handle(error)
+            broadcast()
+            return false
+        }
+    }
+
+    /// 撤回：删掉文件，但留着记录和它占的路径。不可撤销——没有字节可以再打开了。
+    func revokeShare(_ share: ShareSummary) async -> Bool {
+        guard let api else { return false }
+        do {
+            try await api.revokeShare(share.shareID)
+            await refreshShares()
+            return true
+        } catch {
+            handle(error)
+            broadcast()
+            return false
+        }
+    }
+
+    /// 删除整条记录，路径一并释放。
+    ///
+    /// 同时解绑源文件，理由和 `deleteInbox` 调 `store.unbind(inboxID:)` 相同：
+    /// 记录没了就再没有东西引用这条绑定，留着只是 state.json 里的一行垃圾。
+    func deleteShare(_ share: ShareSummary) async -> Bool {
+        guard let api else { return false }
+        do {
+            try await api.deleteShare(share.shareID)
+            store.unbindSource(shareID: share.shareID)
+            await refreshShares()
+            return true
+        } catch {
+            handle(error)
+            broadcast()
+            return false
+        }
+    }
+
+    /// 这条链接当初是从哪个文件来的。`nil` 是正常答案——文件可能已经被删了。
+    func shareSource(for share: ShareSummary) -> URL? { store.source(for: share.shareID) }
+
     /**
      恢复接收。
 
@@ -618,7 +845,11 @@ final class StolnkController {
             state.token = nil
             state.name = nil
             state.inboxes = []
+            state.shares = []
             state.folders = [:]
+            // 和 folders 同理：键是那边的 share id，设备一没，这些绑定就只是
+            // state.json 里指着一个再也对不上任何链接的文件。
+            state.sources = [:]
             state.hasCompletedOnboarding = false
         }
         api = nil
@@ -628,6 +859,8 @@ final class StolnkController {
         pollTimer?.invalidate()
         pollTimer = nil
         inboxes = []
+        shares = []
+        shareUpload = nil
         name = nil
         status = .offline
         broadcast()

@@ -16,10 +16,16 @@ enum InboxPathField {
      「你在填的是一条 URL 的后半段」的东西。
 
      键盘一律关掉首字母大写、自动更正和拼写检查：路径只收小写字母、数字和连字符
-     （`PathRules`），这三样功能在这里只会制造非法输入。
+     （`PathRules`、`ShareCodeRules`），这三样功能在这里只会制造非法输入。
+
+     `placeholder` 有默认值，因为第三处调用方（外发下载链接的路径）要讲的是另一件
+     事：那里留空是合法的，意味着「服务端随机生成一个」，而收件地址的占位符
+     （一个示例路径）会把这件事说反。
      */
-    static func configure(_ field: UITextField, prefix: String?, text: String?) {
-        field.placeholder = R.Strings.driveImportPathPlaceholder.localizedString()
+    static func configure(
+        _ field: UITextField, prefix: String?, text: String?, placeholder: String? = nil
+    ) {
+        field.placeholder = placeholder ?? R.Strings.driveImportPathPlaceholder.localizedString()
         field.autocapitalizationType = .none
         field.autocorrectionType = .no
         field.spellCheckingType = .no

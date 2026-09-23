@@ -5,6 +5,7 @@ import UIKit
 /// 不显式写 `nonisolated` 的话 Hashable conformance 会带上主线程隔离，泛型约束就对不上。
 private nonisolated enum Row: Hashable {
     case address
+    case links
     case plan
     case storage
     case trash
@@ -122,6 +123,16 @@ final class MeViewController: UIViewController {
                 ?? R.Strings.meAddressNone.localizedString()
             cell.accessories = [.disclosureIndicator()]
 
+        case .links:
+            // 出向链接，紧挨着入向地址：一个是别人发给你，一个是你发给别人，同一层级。
+            content.image = UIImage(systemName: "link.badge.plus")
+            content.imageProperties.tintColor = AppColor.FileTile.documentForeground
+            content.text = R.Strings.meLinks.localizedString()
+            // 和 .trash 一样，空的时候什么都不写——「0 条」是噪音。
+            content.secondaryText = stolnk.shares.isEmpty
+                ? nil : String(stolnk.shares.count)
+            cell.accessories = [.disclosureIndicator()]
+
         case .plan:
             content.image = UIImage(systemName: "sparkles")
             content.text = R.Strings.mePlan.localizedString()
@@ -201,7 +212,8 @@ final class MeViewController: UIViewController {
         guard dataSource != nil else { return }
         var snapshot = NSDiffableDataSourceSnapshot<Int, Row>()
         snapshot.appendSections([0])
-        snapshot.appendItems([.address, .plan, .storage, .trash, .deviceKey], toSection: 0)
+        snapshot.appendItems(
+            [.address, .links, .plan, .storage, .trash, .deviceKey], toSection: 0)
         snapshot.appendSections([1])
         #if DEBUG
         snapshot.appendItems([.debugPanel, .version], toSection: 1)
@@ -236,6 +248,8 @@ extension MeViewController: UICollectionViewDelegate {
         switch row {
         case .address:
             navigate(InboxListViewController(environment: environment))
+        case .links:
+            navigate(ShareListViewController(environment: environment))
         #if DEBUG
         case .debugPanel:
             navigate(DebugPanelViewController(environment: environment))
