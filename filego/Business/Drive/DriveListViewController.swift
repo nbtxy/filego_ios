@@ -421,7 +421,7 @@ final class DriveListViewController: UIViewController {
         }
 
         emptyView.update(
-            glyph: searchQuery.isEmpty ? "▱" : "⌕",
+            symbol: searchQuery.isEmpty ? "folder" : "magnifyingglass",
             title: searchQuery.isEmpty
                 ? R.Strings.driveEmpty.localizedString()
                 : R.Strings.driveSearchEmpty.localizedString()

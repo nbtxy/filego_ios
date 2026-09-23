@@ -75,6 +75,17 @@ final class NewShareViewController: UIViewController {
         buildLayout()
         renderPath(.empty)
         updateWarnings()
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(keyboardDidShow),
+            name: UIResponder.keyboardDidShowNotification, object: nil)
+    }
+
+    /// 键盘弹出后把「创建链接」滚进可视区，输完路径就能直接点。
+    @objc private func keyboardDidShow() {
+        guard !createButton.isHidden else { return }
+        let rect = createButton.convert(createButton.bounds, to: scrollView)
+            .insetBy(dx: 0, dy: -AppSpacing.medium)
+        scrollView.scrollRectToVisible(rect, animated: true)
     }
 
     /**
@@ -205,11 +216,14 @@ final class NewShareViewController: UIViewController {
         scrollView.addSubview(stack)
         view.addSubview(scrollView)
 
+        // 键盘收起时保持原样贴到 view 底部，而不是停在 safe area 上。
+        view.keyboardLayoutGuide.usesBottomSafeArea = false
         NSLayoutConstraint.activate([
             scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            // 跟着键盘走：否则输入路径/密码时底部的「创建链接」被输入法盖住，滚也滚不到。
+            scrollView.bottomAnchor.constraint(equalTo: view.keyboardLayoutGuide.topAnchor),
 
             stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 24),
             stack.bottomAnchor.constraint(

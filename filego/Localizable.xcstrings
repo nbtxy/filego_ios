@@ -228,13 +228,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "JustFling"
+            "value": "Stolnk"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "JustFling"
+            "value": "Stolnk"
           }
         }
       }
@@ -1214,13 +1214,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Import to JustFling"
+            "value": "Import to Stolnk"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "导入到 JustFling"
+            "value": "导入到 Stolnk"
           }
         }
       }
@@ -2795,7 +2795,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign out of JustFling?"
+            "value": "Sign out of Stolnk?"
           }
         },
         "zh-Hans": {

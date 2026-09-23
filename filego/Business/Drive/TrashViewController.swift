@@ -15,7 +15,7 @@ final class TrashViewController: UIViewController {
     private let environment: AppEnvironment
     private let noticeLabel = UILabel()
     private let emptyView = PaperEmptyStateView(
-        glyph: "⌫", title: R.Strings.trashEmpty.localizedString())
+        symbol: "trash", title: R.Strings.trashEmpty.localizedString())
     private var collectionView: UICollectionView!
     private var dataSource: UICollectionViewDiffableDataSource<String, String>!
     private var emptyAllButton: UIBarButtonItem!

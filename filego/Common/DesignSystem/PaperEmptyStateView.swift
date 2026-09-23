@@ -1,16 +1,16 @@
 import UIKit
 
-/// 空状态。对齐网页 `.empty`：一块 96×96 的 paper-2 圆角图形位 + 紧字距标题
-/// （+ 可选副文案）。
+/// 空状态。对齐网页 `.empty`：一块 96×96 的 paper-2 圆角图形位（内放 SF Symbol）
+/// + 紧字距标题（+ 可选副文案）。
 ///
 /// 用作 `collectionView.backgroundView`，所以要能随时改文案而不重建。
 @MainActor
 final class PaperEmptyStateView: UIView {
-    private let art = UILabel()
+    private let art = UIImageView()
     private let titleLabel = UILabel()
     private let bodyLabel = UILabel()
 
-    init(glyph: String = "▱", title: String, body: String? = nil) {
+    init(symbol: String = "folder", title: String, body: String? = nil) {
         super.init(frame: .zero)
 
         let artContainer = UIView()
@@ -19,10 +19,9 @@ final class PaperEmptyStateView: UIView {
         artContainer.layer.cornerCurve = .continuous
         artContainer.translatesAutoresizingMaskIntoConstraints = false
 
-        art.text = glyph
-        art.font = .systemFont(ofSize: 34, weight: .regular)
-        art.textColor = AppColor.muted
-        art.textAlignment = .center
+        art.contentMode = .scaleAspectFit
+        art.tintColor = AppColor.muted
+        setSymbol(symbol)
         art.translatesAutoresizingMaskIntoConstraints = false
         artContainer.addSubview(art)
 
@@ -61,10 +60,17 @@ final class PaperEmptyStateView: UIView {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     /// 搜索无结果与目录为空共用一个实例，只换文案。
-    func update(glyph: String? = nil, title: String, body: String? = nil) {
-        if let glyph { art.text = glyph }
+    func update(symbol: String? = nil, title: String, body: String? = nil) {
+        if let symbol { setSymbol(symbol) }
         titleLabel.setTightText(title, font: AppTypography.emptyTitle, kernEm: -0.03)
         bodyLabel.text = body
         bodyLabel.isHidden = body == nil
+    }
+
+    private func setSymbol(_ name: String) {
+        art.image = UIImage(
+            systemName: name,
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: 36, weight: .regular)
+        )
     }
 }
