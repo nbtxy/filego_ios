@@ -2602,6 +2602,74 @@
         }
       }
     },
+    "me.deleteAccount": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete account"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除账号"
+          }
+        }
+      }
+    },
+    "me.deleteAccount.failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't delete your account"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除账号失败"
+          }
+        }
+      }
+    },
+    "me.deleteAccount.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your name is released, every receiving address and download link stops working at once, and files still waiting on the server are deleted. Files already saved on this iPhone stay here. A Pro purchase belongs to your Apple Account — after registering again, use Restore Purchases to get it back. This can't be undone."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的名字会被释放，所有收件地址和下载链接立即失效，服务器上尚未取走的文件会被删除。已经保存到这台 iPhone 上的文件会保留。Pro 购买属于你的 Apple 账户，重新注册后可通过「恢复购买」找回。此操作无法撤销。"
+          }
+        }
+      }
+    },
+    "me.deleteAccount.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete your Stolnk account?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要删除 Stolnk 账号吗？"
+          }
+        }
+      }
+    },
     "me.deviceKey": {
       "extractionState": "manual",
       "localizations": {

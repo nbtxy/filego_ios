@@ -241,6 +241,19 @@ final class StolnkController {
         }
     }
 
+    /// 删除账号（App Store 5.1.1(v)）。设备就是账号：服务端删掉设备，名字、地址、
+    /// 链接和还停在中转里的文件一起没了。本机已落地的文件不动——那是用户自己的。
+    /// 成功后走 `forgetDevice()`，根界面随注册通知换回 onboarding。
+    func deleteAccount() async throws {
+        guard let api else { throw Self.notRegistered }
+        do {
+            try await api.deleteDevice()
+        } catch let error as APIError where error.code == "unknown_device" {
+            // 服务端已经不认识这台设备，要的结果已经成立。
+        }
+        forgetDevice()
+    }
+
     // MARK: - 接收
 
     private func buildReceiver(api: APIClient, keys: DeviceIdentity) {

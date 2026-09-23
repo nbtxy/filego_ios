@@ -14,6 +14,7 @@ private nonisolated enum Row: Hashable {
     case debugPanel
     #endif
     case version
+    case deleteAccount
 }
 
 /// 「我的」页：只放入口，不铺细节。
@@ -189,6 +190,14 @@ final class MeViewController: UIViewController {
             content.secondaryText =
                 Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
             cell.accessories = []
+
+        case .deleteAccount:
+            content = UIListContentConfiguration.cell()
+            content.applyPaperColors()
+            content.text = R.Strings.meDeleteAccount.localizedString()
+            content.textProperties.color = .systemRed
+            content.textProperties.alignment = .center
+            cell.accessories = []
         }
         cell.contentConfiguration = content
     }
@@ -220,6 +229,11 @@ final class MeViewController: UIViewController {
         #else
         snapshot.appendItems([.version], toSection: 1)
         #endif
+        // 没注册就没有账号可删。
+        if environment.stolnk.name != nil {
+            snapshot.appendSections([2])
+            snapshot.appendItems([.deleteAccount], toSection: 2)
+        }
         // 行标识没有关联值，内容变了 identifier 也不变。不显式 reconfigure，diffable
         // 会比出「两次一模一样」然后什么都不做，cell 停在第一次建立时读到的值上——
         // 本机占用因此永远是那个还没算完的 0。
@@ -260,8 +274,39 @@ extension MeViewController: UICollectionViewDelegate {
             navigate(StorageDetailViewController(environment: environment))
         case .trash:
             navigate(TrashViewController(environment: environment))
+        case .deleteAccount:
+            confirmDeleteAccount()
         case .deviceKey, .version:
             break
         }
+    }
+
+    private func confirmDeleteAccount() {
+        let alert = UIAlertController(
+            title: R.Strings.meDeleteAccountTitle.localizedString(),
+            message: R.Strings.meDeleteAccountMessage.localizedString(),
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(
+            title: R.Strings.commonCancel.localizedString(), style: .cancel))
+        alert.addAction(UIAlertAction(
+            title: R.Strings.meDeleteAccount.localizedString(), style: .destructive
+        ) { [weak self] _ in
+            guard let self else { return }
+            Task {
+                do {
+                    try await self.environment.stolnk.deleteAccount()
+                } catch {
+                    let failure = UIAlertController(
+                        title: R.Strings.meDeleteAccountFailed.localizedString(),
+                        message: error.localizedDescription,
+                        preferredStyle: .alert)
+                    failure.addAction(UIAlertAction(
+                        title: R.Strings.commonOk.localizedString(), style: .default))
+                    self.present(failure, animated: true)
+                }
+            }
+        })
+        present(alert, animated: true)
     }
 }
