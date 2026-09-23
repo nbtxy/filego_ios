@@ -9,6 +9,7 @@ const limits = new Map([
   ["keywords.txt", 100],
   ["description.txt", 4_000],
   ["promotional_text.txt", 170],
+  ["release_notes.txt", 4_000],
 ]);
 let failed = false;
 
@@ -17,9 +18,10 @@ for (const locale of readdirSync(root, { withFileTypes: true }).filter((entry) =
   for (const [filename, limit] of limits) {
     const value = readFileSync(join(root, locale.name, filename), "utf8").trim();
     const length = [...value].length;
-    const status = length <= limit ? "OK" : "超限";
+    const ok = length > 0 && length <= limit;
+    const status = ok ? "OK" : length === 0 ? "缺失" : "超限";
     console.log(`${status.padEnd(4)} ${locale.name}/${filename}: ${length}/${limit}`);
-    if (length > limit) failed = true;
+    if (!ok) failed = true;
   }
 }
 

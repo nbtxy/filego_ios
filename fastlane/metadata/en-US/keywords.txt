@@ -1,1 +1,1 @@
-transfer,receive files,file request,upload link,share,cross device,file manager,folder,large files
+receive files,file request,upload link,inbox,transfer,encrypted,share link,download link,large files

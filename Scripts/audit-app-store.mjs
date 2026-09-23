@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const APP_ID = "6798472788";
-const VERSION = "1.0";
+const VERSION = process.env.APP_VERSION ?? "1.0.1";
 const APPLY_REVIEW = process.argv.includes("--apply-review");
 const SELECT_BUILD = process.argv
   .find((argument) => argument.startsWith("--select-build="))

@@ -4,7 +4,7 @@ import { basename, resolve } from "node:path";
 import { readFileSync } from "node:fs";
 
 const IAP_ID = "6812208070";
-const IMAGE_PATH = resolve("fastlane/screenshots/zh-Hans/04-pro-lifetime.png");
+const IMAGE_PATH = resolve("fastlane/review_screenshots/pro-lifetime.png");
 const image = readFileSync(IMAGE_PATH);
 const checksum = createHash("md5").update(image).digest("hex");
 

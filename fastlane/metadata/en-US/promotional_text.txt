@@ -1,1 +1,1 @@
-Receive files with one link, organize them in folders, then download, open, or share them when needed. Senders need no app or account.
+Turn a folder into a link. Anyone can drop files into it from a browser — no app, no account — and they're encrypted before they leave.

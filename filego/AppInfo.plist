@@ -40,7 +40,7 @@
 	     declared as using encryption so the TestFlight upload asks the export
 	     question rather than silently answering it wrong. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
-	<true/>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>

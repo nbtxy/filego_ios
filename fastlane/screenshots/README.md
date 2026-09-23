@@ -1,16 +1,18 @@
 # App Store screenshots
 
-Export iPhone screenshots at **1290 × 2796**, one of the dimensions accepted by the
-App Store Connect 6.7-inch slot. Save each localized set in `en-US/`, `zh-Hans/`,
-and `zh-Hant/` with numeric filenames (`01.png` … `04.png`). The app currently
-falls back to English on Traditional Chinese systems, so `zh-Hant` deliberately
-reuses the English screenshots.
+Raw iPhone 17 Pro Max simulator captures at **1320 × 2868** (App Store Connect 6.9-inch
+slot), status bar overridden to 9:41 with `xcrun simctl status_bar`. Captured from a Release
+build against production with a throwaway name (`maya`), which was deleted afterwards with
+Me → Delete account. The app has no Traditional Chinese localization, so `zh-Hant`
+deliberately reuses the English screenshots.
 
-| # | Screen | en-US | zh-Hans | zh-Hant |
-|---|---|---|---|---|
-| 1 | Import-address dialog with the link visible | Send them a link. Get their files. | 发条链接，文件自己就来了 | English fallback |
-| 2 | File grid | See every file clearly. | 文件一目了然 | English fallback |
-| 3 | File list | Everything in one place. | 文件都在一个地方 | English fallback |
-| 4 | Pro paywall | 50 GB, flexible links, 5 GB direct uploads. | 50 GB、灵活有效期、单文件 5 GB 直传 | English fallback |
+| # | Screen |
+|---|---|
+| 1 | "Choose this folder's address" dialog with `maya.stolnk.com/client-a` |
+| 2 | Client A folder after two files were sent from a browser |
+| 3 | Receiving address detail (copy / share / QR, path, pause) |
+| 4 | Download link detail |
+| 5 | Files root |
+| 6 | Receiving address QR code |
 
-For screenshot 4, select `filego/Resources/FileGo.storekit` under Scheme → Run → Options → StoreKit Configuration before launching the app.
+The 1.0 (JustFling) set is kept in `fastlane/rejected_screenshots/legacy-1.0/`.

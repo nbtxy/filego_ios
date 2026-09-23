@@ -1,26 +1,28 @@
-JustFling is your private space for files in motion. Receive with one link, organize everything into folders, then download, open, or share files whenever you need them.
+Stolnk turns a folder into an inbox. Pick a name, choose a folder, and you get an address like yourname.stolnk.com/clients. Anyone can open it in a browser and send you files — no app to install, no account to create.
 
 RECEIVE
-Open any folder and tap "Get File Import Address" to create a public upload link with an expiry. Senders need no app or account: they open the link in a browser, choose files, and everything lands in the folder you selected.
-
-You can also take photos or video, import from Photos or Files, or choose "Open in JustFling" from another app. Terminal users can upload through the same address with curl.
-
-ORGANIZE
-• Browse as a list or grid, then find files with breadcrumbs, search, and sorting
-• Star, rename, move, or duplicate files so everything lands where it belongs
-• Preview images, video, audio, PDFs, text, archives, Markdown, and HTML
-• Keep deleted items in Trash for 30 days and see storage use by file type
+• Every file is encrypted in the sender's browser before it leaves, and only your iPhone holds the key to open it
+• Files land straight in the folder you chose, inside the app
+• If your phone is away, files wait safely and arrive the next time you open Stolnk
+• Pause an address, protect it with a password, change its path, or reset it — the old address stops working at once
+• Show the address as a QR code for someone standing next to you
 
 SEND
-Download files, open them in another app, or copy a temporary share link that expires after one day. No permanent public door is left behind.
+• Share any file as a download link that works in any browser
+• Choose how long it lasts and how many downloads it allows
+• Pause, revoke, or delete a link at any time
 
-SAFE AND CONTROLLED
-Each import address leads only to the folder you choose. Anyone with the address can upload, but cannot see, download, or delete existing files. Reset it when you're done and the old address stops working immediately.
+YOUR FILES, ON YOUR PHONE
+• Browse as a list or grid, sort, rename, and move files between folders
+• Import from Photos or Files
+• Preview images, video, audio, PDFs, text, Markdown, and HTML
+• Deleted items stay in Trash for 30 days, and you can see what's using storage
 
 PRIVACY
-Sign in with Apple, and that's the only account there is. No ads. No tracking. No analytics SDKs — we didn't ship any. You can delete your account, and everything in it, from inside the app.
+No sign-in, no email, no password. Your identity is a name and a key kept in your iPhone's Secure Enclave. No ads, no tracking, no analytics SDKs. You can delete your account from inside the app at any time.
 
-JUSTFLING PRO
-The free plan includes 200 MB, unlimited import addresses, and 7-day expiry. Pro includes 50 GB, unlimited import addresses, flexible expiry of 1, 7, 30 or 90 days or never, and direct uploads up to 5 GB per file.
+STOLNK PRO
+Free includes one receiving address, files up to 2 GB each, 3 GB of relay per month, and one download link at a time. Pro is a one-time purchase — no subscription — that unlocks unlimited addresses, files up to 20 GB each, 300 GB of relay per month, more and longer-lasting download links, and password-protected links.
 
-Terms of Use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacy Policy: https://stolnk.com/privacy
+Terms of Use: https://stolnk.com/terms
