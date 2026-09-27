@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		5C10000030200001000000A3 /* StolnkCore in Frameworks */ = {isa = PBXBuildFile; productRef = 5C10000030200001000000A2 /* StolnkCore */; };
+		5C10000030200001000000B3 /* StolnkLAN in Frameworks */ = {isa = PBXBuildFile; productRef = 5C10000030200001000000B2 /* StolnkLAN */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,6 +45,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5C10000030200001000000A3 /* StolnkCore in Frameworks */,
+				5C10000030200001000000B3 /* StolnkLAN in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -90,6 +92,7 @@
 			name = filego;
 			packageProductDependencies = (
 				5C10000030200001000000A2 /* StolnkCore */,
+				5C10000030200001000000B2 /* StolnkLAN */,
 			);
 			productName = filego;
 			productReference = 3D80CCD83019E16100B72EF3 /* filego.app */;
@@ -421,6 +424,10 @@
 		5C10000030200001000000A2 /* StolnkCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = StolnkCore;
+		};
+		5C10000030200001000000B2 /* StolnkLAN */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = StolnkLAN;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

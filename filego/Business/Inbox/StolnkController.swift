@@ -1,5 +1,6 @@
 import Foundation
 import StolnkCore
+import StolnkLAN
 import UIKit
 
 /// 连接状态。与 Mac 端 `ConnectionStatus` 同形，少了 `.receiving` 之外的差别。
@@ -18,6 +19,39 @@ extension Notification.Name {
     static let stolnkDidLandFiles = Notification.Name("stolnk.did-land-files")
     /// 设备注册状态变化——注册成功，或服务端不再认识这台设备。
     static let stolnkRegistrationDidChange = Notification.Name("stolnk.registration-did-change")
+    /// 在途文件（`StolnkController.incoming`）增、删，或某一条的整数百分比变了。
+    static let stolnkIncomingDidChange = Notification.Name("stolnk.incoming-did-change")
+}
+
+/**
+ 一个正在路上的文件：目标文件夹里那个半透明的占位。
+
+ 两段拼成一根进度条——对方上传占前一半，本机下载占后一半。上传段只能按 64 MiB
+ 的 part 前进（浏览器自己也只知道这么细），下载段按字节走。
+ */
+struct IncomingTransfer: Equatable, Sendable {
+    let fileID: String
+    let name: String
+    let size: Int
+    let folder: URL
+    /// 对方已传到中转的比例，0…1。
+    var uploadFraction: Double
+    /// 本机已写下的明文字节。nil 表示还在上传段。
+    var downloadedBytes: Int?
+    /// 局域网直传：没有「对方上传到中转」那一段，整根进度条都是本机接收。
+    var isDirect = false
+
+    var overall: Double {
+        if isDirect {
+            return min(1, Double(downloadedBytes ?? 0) / Double(max(size, 1)))
+        }
+        if let downloadedBytes {
+            return 0.5 + 0.5 * min(1, Double(downloadedBytes) / Double(max(size, 1)))
+        }
+        return 0.5 * min(1, uploadFraction)
+    }
+
+    var percent: Int { Int(overall * 100) }
 }
 
 /**
@@ -37,6 +71,15 @@ final class StolnkController {
     private var api: APIClient?
     private var receiver: Receiver?
     private var signalling: SignallingClient?
+    /// 建 `LanReceiver` 时复用：直传落地和中转落地走同一套回调。
+    private var receiverEvents: ReceiverEvents?
+    /**
+     PRD 8.2 的应答方。和 Mac 端 `AppState.lanReceiver` 同一个写法、同一个理由：
+     只在主线程写，但 signalling 的回调要在跳上主线程**之前**读它——offer 的 payload
+     是 JSON 字典，跨不过 actor 边界，协商也在跟发送页的超时赛跑。`LanReceiver`
+     自己加锁。
+     */
+    private nonisolated(unsafe) var lanReceiver: LanReceiver?
     private var identityKeys: DeviceIdentity?
     private var pollTimer: Timer?
     private var socketConnected = false
@@ -63,6 +106,10 @@ final class StolnkController {
 
     /// 上一次广播出去的百分比。见 `upload(_:from:filename:)` 里的节流说明。
     private var shareUploadPercent = 0
+
+    /// 在途文件，以 file id 为键。只在内存里：App 重开后靠 `/incoming` 和
+    /// `/pending` 重新拼出来，持久化只会留下永远走不完的占位。
+    private(set) var incoming: [String: IncomingTransfer] = [:]
 
     /// 上传进度。`fraction` 是整个文件的 0…1，不是单个 part 的。
     struct ShareUpload: Sendable {
@@ -141,6 +188,7 @@ final class StolnkController {
                 await refreshShares()
                 await refreshPlan()
                 connectSignalling()
+                await refreshIncoming()
                 await poll()
                 startForegroundPolling()
             }
@@ -258,12 +306,13 @@ final class StolnkController {
 
     private func buildReceiver(api: APIClient, keys: DeviceIdentity) {
         let events = ReceiverEvents(
-            progress: { [weak self] _, received, total in
+            progress: { [weak self] fileID, received, total in
                 Task { @MainActor [weak self] in
                     guard let self, total > 0 else { return }
                     let fraction = Double(received) / Double(total)
                     self.status = fraction >= 1 ? .ready : .receiving(progress: fraction)
                     self.broadcast()
+                    self.advanceDownload(fileID, to: received)
                 }
             },
             landed: { [weak self] files in
@@ -272,16 +321,19 @@ final class StolnkController {
                     self.recent = self.store.snapshot.recent
                     self.status = .ready
                     self.broadcast()
+                    // 一般早在 `advanceDownload` 走到 100% 时就摘掉了，这里兜底。
+                    self.removeIncoming(files.map(\.id))
                     NotificationCenter.default.post(
                         name: .stolnkDidLandFiles, object: nil, userInfo: ["files": files])
                 }
             },
-            failed: { [weak self] _, _, error in
+            failed: { [weak self] file, _, error in
                 Task { @MainActor [weak self] in
                     guard let self else { return }
                     self.status = .ready
                     self.handle(error)
                     self.broadcast()
+                    self.removeIncoming([file.fileID])
                 }
             },
             inboxUnavailable: { [weak self] _, _ in
@@ -291,26 +343,136 @@ final class StolnkController {
                     await self.refreshInboxes()
                     self.broadcast()
                 }
+            },
+            started: { [weak self] file, name, folder in
+                Task { @MainActor [weak self] in
+                    self?.beginDownload(file, name: name, folder: folder)
+                }
             }
         )
         receiver = Receiver(api: api, identity: keys, store: store, events: events)
+        receiverEvents = events
+    }
+
+    // MARK: - 在途文件（占位）
+
+    /// 某个文件夹里正在路上的文件，按名字排。列表把它们固定放在最前。
+    func incoming(in folder: URL) -> [IncomingTransfer] {
+        let here = folder.standardizedFileURL
+        return incoming.values
+            .filter { $0.folder.standardizedFileURL == here }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+
+    /**
+     对方开始上传，或者 `/incoming` 里补回来的一条。
+
+     找不到落地目录就不显示：这条地址会在文件真正到来时被 `Receiver` 暂停
+     （PRD 12.5），为一个不会落地的文件画占位只会误导。已经在下载段的不回退。
+     */
+    private func announce(_ file: IncomingFile) {
+        guard incoming[file.fileID]?.downloadedBytes == nil,
+              let keys = identityKeys,
+              let folder = store.folder(for: file.inboxID),
+              let name = try? Receiver.displayName(of: file, identity: keys)
+        else { return }
+        let fraction = file.cipherSize > 0 ? Double(file.uploaded) / Double(file.cipherSize) : 0
+        setIncoming(IncomingTransfer(
+            fileID: file.fileID, name: name, size: file.size, folder: folder,
+            uploadFraction: fraction, downloadedBytes: nil))
+    }
+
+    private func advanceUpload(_ fileID: String, uploaded: Int, total: Int) {
+        guard var entry = incoming[fileID] else {
+            // 错过了 `file.incoming`（比如那一刻 socket 正在重连），问一次全量。
+            Task { await refreshIncoming() }
+            return
+        }
+        guard entry.downloadedBytes == nil, total > 0 else { return }
+        entry.uploadFraction = Double(uploaded) / Double(total)
+        setIncoming(entry)
+    }
+
+    /// 局域网直传开始。名字和目录同样来自 `Receiver.prepare`。
+    private func beginDirect(_ file: PendingFile, name: String, folder: URL) {
+        setIncoming(IncomingTransfer(
+            fileID: file.fileID, name: name, size: file.size, folder: folder,
+            uploadFraction: 1, downloadedBytes: 0, isDirect: true))
+    }
+
+    /// 名字和目录以 `Receiver` 为准：它刚刚真的解开了信封、找到了文件夹。
+    private func beginDownload(_ file: PendingFile, name: String, folder: URL) {
+        setIncoming(IncomingTransfer(
+            fileID: file.fileID, name: name, size: file.size, folder: folder,
+            uploadFraction: 1, downloadedBytes: 0))
+    }
+
+    /**
+     下载段前进。
+
+     走到头就摘掉占位：`land` 在报最后这一次之前已经把文件挪到了正式名字下，此刻
+     列表重读磁盘就能看到它。不等 `landed`——那是整轮 `poll` 结束才一次性发的，
+     同一轮里先到的文件不该陪着后面的一起挂在 100%。
+     */
+    private func advanceDownload(_ fileID: String, to received: Int) {
+        guard var entry = incoming[fileID] else { return }
+        if received >= entry.size {
+            removeIncoming([fileID])
+            return
+        }
+        entry.downloadedBytes = received
+        setIncoming(entry)
+    }
+
+    /**
+     拉一次 `/incoming` 对账。
+
+     不在列表里的上传段条目删掉——它要么被取消了，要么已经传完进了 `/pending`。后者
+     的例外是已经传满的（`uploadFraction >= 1`）：它马上会被 `poll` 接走，删了再加
+     会闪一下。下载段的条目不归这里管，它们的结局由 `Receiver` 报。
+     */
+    func refreshIncoming() async {
+        guard let api, let files = try? await api.incoming() else { return }
+        let listed = Set(files.map(\.fileID))
+        let stale = incoming.values
+            .filter { $0.downloadedBytes == nil && $0.uploadFraction < 1 && !listed.contains($0.fileID) }
+            .map(\.fileID)
+        removeIncoming(stale)
+        for file in files { announce(file) }
+    }
+
+    /// 写入一条，只有增删或整数百分比变了才广播，理由同 `advance(_:to:)`。
+    private func setIncoming(_ entry: IncomingTransfer) {
+        let previous = incoming.updateValue(entry, forKey: entry.fileID)
+        guard previous?.percent != entry.percent else { return }
+        NotificationCenter.default.post(name: .stolnkIncomingDidChange, object: nil)
+    }
+
+    private func removeIncoming(_ fileIDs: [String]) {
+        let removed = fileIDs.compactMap { incoming.removeValue(forKey: $0) }
+        guard !removed.isEmpty else { return }
+        NotificationCenter.default.post(name: .stolnkIncomingDidChange, object: nil)
     }
 
     private func connectSignalling() {
         signalling?.stop()
+        lanReceiver?.stopAll()
         let client = SignallingClient(
             urlProvider: { [weak self] in
                 guard let api = await self?.api else { return nil }
                 return await api.signallingURL()
             },
             onEvent: { [weak self] event in
+                // 在跳主线程之前处理：理由见 `lanReceiver` 的注释。
+                if case .signal(let session, let payload) = event {
+                    self?.lanReceiver?.handle(session: session, payload: payload)
+                    return
+                }
                 Task { @MainActor [weak self] in
                     guard let self else { return }
                     switch event {
                     case .signal:
-                        // LAN 直传不在 iOS 上：发送方不在这台手机的网络里，
-                        // 而 WebRTC 是 28 MB 的依赖。信令来了也没人接。
-                        break
+                        break  // 上面已经处理。
                     case .connected:
                         self.socketConnected = true
                         if case .receiving = self.status {} else { self.status = .ready }
@@ -321,11 +483,46 @@ final class StolnkController {
                         self.broadcast()
                     case .fileReady:
                         await self.poll()
+                    case .fileIncoming(let file):
+                        self.announce(file)
+                    case .fileUploadProgress(let fileID, let uploaded, let total):
+                        self.advanceUpload(fileID, uploaded: uploaded, total: total)
+                    case .fileCancelled(let fileID):
+                        self.lanReceiver?.cancel(fileID: fileID)
+                        self.removeIncoming([fileID])
                     }
                 }
             }
         )
         signalling = client
+
+        /*
+         PRD 8.2 —— 局域网直传，挂在同一条 socket 上。
+
+         共用 `Receiver`：从 DataChannel 来的文件和从中转拉的文件，由同一段代码
+         净化文件名、找目录、原子落地、ACK。区别只在字节从哪里来。
+         */
+        if let receiver, let api, let events = receiverEvents {
+            lanReceiver = LanReceiver(
+                receiver: receiver,
+                api: api,
+                answer: { [weak client] session, payload in
+                    client?.sendSignal(session: session, payload: payload)
+                },
+                onLanded: { landed in events.landed(landed) },
+                onStarted: { [weak self] file, name, folder in
+                    Task { @MainActor [weak self] in
+                        self?.beginDirect(file, name: name, folder: folder)
+                    }
+                },
+                // 走中转那条进度回调：状态栏的「接收中」和占位进度一起更新。
+                onProgress: { fileID, written, total in events.progress(fileID, written, total) },
+                onEnded: { [weak self] fileID in
+                    Task { @MainActor [weak self] in self?.removeIncoming([fileID]) }
+                }
+            )
+        }
+
         client.start()
     }
 
@@ -336,6 +533,18 @@ final class StolnkController {
      `reconnectNow()` 而不是「检查一下还活着吗」——回到前台时那条连接基本必死。
      */
     private func observeForeground() {
+        /*
+         进后台就把直传断掉。系统很快会掐掉 socket 和 DataChannel，与其留一个
+         不会再有字节进来的 `.part` 和一个永远停在半截的占位，不如现在干净地收掉；
+         发送页看到通道关闭会回落中转。
+         */
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didEnterBackgroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.lanReceiver?.stopAll() }
+        }
         NotificationCenter.default.addObserver(
             forName: UIApplication.didBecomeActiveNotification,
             object: nil,
@@ -344,6 +553,8 @@ final class StolnkController {
             Task { @MainActor [weak self] in
                 guard let self, self.isRegistered else { return }
                 self.signalling?.reconnectNow()
+                // 后台期间 socket 是死的，推送全丢了：先把在途的补回来，再接已传完的。
+                await self.refreshIncoming()
                 await self.poll()
             }
         }
@@ -867,6 +1078,9 @@ final class StolnkController {
         }
         api = nil
         receiver = nil
+        receiverEvents = nil
+        lanReceiver?.stopAll()
+        lanReceiver = nil
         signalling?.stop()
         signalling = nil
         pollTimer?.invalidate()
@@ -874,6 +1088,7 @@ final class StolnkController {
         inboxes = []
         shares = []
         shareUpload = nil
+        removeIncoming(Array(incoming.keys))
         name = nil
         status = .offline
         broadcast()

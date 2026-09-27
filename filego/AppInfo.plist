@@ -47,6 +47,15 @@
 	<true/>
 	<key>UIFileSharingEnabled</key>
 	<true/>
+	<!-- LAN direct: answering a send page on the same Wi-Fi over WebRTC needs
+	     the local network. The Bonjour entry is only there so the one-off
+	     permission nudge in LocalNetworkPermission can browse something. -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Receive files directly from a sender on the same Wi-Fi — faster, and never through our servers.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_stolnk._tcp</string>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

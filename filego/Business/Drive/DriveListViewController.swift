@@ -52,6 +52,20 @@ final class DriveListViewController: UIViewController {
         return searchResults
     }
 
+    /// 占位的 item id 前缀。节点 id 是相对路径，永远不以 `/` 开头，所以撞不上。
+    private static let incomingPrefix = "/incoming/"
+
+    /// 本文件夹里正在路上的文件。搜索态不显示：搜的是已经在盘上的东西。
+    private var visibleIncoming: [IncomingTransfer] {
+        guard searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return [] }
+        return environment.stolnk.incoming(in: environment.drive.url(for: folderId))
+    }
+
+    /// 占位在前、节点在后，和 `applySnapshot` 里的顺序一致。
+    private var visibleItemIDs: [String] {
+        visibleIncoming.map { Self.incomingPrefix + $0.fileID } + visibleNodes.map(\.id)
+    }
+
     init(
         environment: AppEnvironment,
         router: Router,
@@ -78,12 +92,14 @@ final class DriveListViewController: UIViewController {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     private var landedObserver: (any NSObjectProtocol)?
+    private var incomingObserver: (any NSObjectProtocol)?
 
     deinit {
         openFileTask?.cancel()
         searchTask?.cancel()
         // 基于 block 的观察者以 token 为键，`removeObserver(self)` 摘不掉它。
         if let landedObserver { NotificationCenter.default.removeObserver(landedObserver) }
+        if let incomingObserver { NotificationCenter.default.removeObserver(incomingObserver) }
     }
 
     override func viewDidLoad() {
@@ -114,6 +130,23 @@ final class DriveListViewController: UIViewController {
             queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.reload() }
+        }
+        /*
+         占位的增删和进度。有占位消失时重读磁盘：它多半是刚落地了，真文件要在同一次
+         apply 里顶上它的位置，否则中间会空一下。只是进度变了就不碰磁盘。
+         */
+        incomingObserver = NotificationCenter.default.addObserver(
+            forName: .stolnkIncomingDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                let shown = Set(self.dataSource.snapshot().itemIdentifiers
+                    .filter { $0.hasPrefix(Self.incomingPrefix) })
+                let now = Set(self.visibleIncoming.map { Self.incomingPrefix + $0.fileID })
+                if shown.isSubset(of: now) { self.applySnapshot() } else { self.reload() }
+            }
         }
     }
 
@@ -265,8 +298,23 @@ final class DriveListViewController: UIViewController {
         dataSource = UICollectionViewDiffableDataSource<String, String>(
             collectionView: collectionView
         ) { [weak self] collectionView, indexPath, id in
-            guard let self,
-                  let node = visibleNodes.first(where: { $0.id == id }),
+            guard let self else { return nil }
+            let ids = visibleItemIDs
+            if id.hasPrefix(Self.incomingPrefix) {
+                let fileID = String(id.dropFirst(Self.incomingPrefix.count))
+                guard let transfer = visibleIncoming.first(where: { $0.fileID == fileID }),
+                      let cell = collectionView.dequeueReusableCell(
+                        withReuseIdentifier: "node", for: indexPath
+                      ) as? DriveNodeCell else { return nil }
+                cell.configure(
+                    incoming: transfer,
+                    grid: isGrid,
+                    isFirst: id == ids.first,
+                    isLast: id == ids.last
+                )
+                return cell
+            }
+            guard let node = visibleNodes.first(where: { $0.id == id }),
                   let cell = collectionView.dequeueReusableCell(
                     withReuseIdentifier: "node", for: indexPath
                   ) as? DriveNodeCell else { return nil }
@@ -274,8 +322,8 @@ final class DriveListViewController: UIViewController {
                 with: node,
                 menu: actions(for: node),
                 grid: isGrid,
-                isFirst: id == visibleNodes.first?.id,
-                isLast: id == visibleNodes.last?.id
+                isFirst: id == ids.first,
+                isLast: id == ids.last
             )
             return cell
         }
@@ -394,15 +442,14 @@ final class DriveListViewController: UIViewController {
 
         // 网页 `.rows`：整段套一张白卡。
         return PaperSectionBackgroundView.makeListLayout { [weak self] _ in
-            self?.visibleNodes.count ?? 0
+            self?.visibleItemIDs.count ?? 0
         }
     }
 
     private func applySnapshot() {
         var snapshot = NSDiffableDataSourceSnapshot<String, String>()
         snapshot.appendSections(["main"])
-        let nodes = visibleNodes
-        let ids = nodes.map(\.id)
+        let ids = visibleItemIDs
         snapshot.appendItems(ids)
         // id 不变但内容变了（改名后大小/时间刷新等）时 diff 为空，需显式 reconfigure 才会重建 cell。
         let previousIDs = dataSource.snapshot().itemIdentifiers
@@ -426,7 +473,7 @@ final class DriveListViewController: UIViewController {
                 ? R.Strings.driveEmpty.localizedString()
                 : R.Strings.driveSearchEmpty.localizedString()
         )
-        emptyView.isHidden = isSearchLoading || !nodes.isEmpty
+        emptyView.isHidden = isSearchLoading || !ids.isEmpty
         breadcrumbBar.configure(nodes: viewModel.ancestors)
     }
 
@@ -712,6 +759,9 @@ final class DriveListViewController: UIViewController {
                 presentToast(R.Strings.driveImportCreated.localizedString())
                 HapticManager.notification(.success)
                 presentImportAddress(inbox)
+                // 有了地址，同 Wi-Fi 的发送方就可能直传过来。趁现在把本地网络权限问掉，
+                // 别让第一次直传卡在系统弹框上回落中转。
+                LocalNetworkPermission.requestOnce(preferences: environment.keyValueStore)
             } catch {
                 showImportAddressError(error)
             }

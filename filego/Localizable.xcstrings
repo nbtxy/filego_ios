@@ -1242,6 +1242,57 @@
         }
       }
     },
+    "drive.incoming.direct": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct over Wi-Fi · %@ of %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "局域网直传 · %@ / %@"
+          }
+        }
+      }
+    },
+    "drive.incoming.receiving": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Receiving · %@ of %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在接收 · %@ / %@"
+          }
+        }
+      }
+    },
+    "drive.incoming.uploading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sender uploading · %lld%%"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "对方上传中 · %lld%%"
+          }
+        }
+      }
+    },
     "drive.move": {
       "extractionState": "manual",
       "localizations": {

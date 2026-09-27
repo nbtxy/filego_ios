@@ -28,6 +28,23 @@
           }
         }
       }
+    },
+    "NSLocalNetworkUsageDescription" : {
+      "comment" : "Local network permission prompt (LAN direct transfer)",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receive files directly from a sender on the same Wi-Fi — faster, and never through our servers."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用于直接接收同一 Wi-Fi 下发送方的文件，更快，且不经过我们的服务器。"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

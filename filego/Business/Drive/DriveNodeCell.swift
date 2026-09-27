@@ -18,6 +18,10 @@ final class DriveNodeCell: UICollectionViewCell {
     private let moreButton = UIButton(type: .system)
     private let textStack = UIStackView()
     private let separator = UIView()
+    /// 在途占位的进度条。平时隐藏，stack 不给它留位置。
+    private let progressView = UIProgressView(progressViewStyle: .bar)
+    /// 当前显示的是哪个在途文件。换了文件（或第一次）时进度直接落位，不从旧值动画过去。
+    private var incomingFileID: String?
     private let listHighlightView = UIView()
     private var listConstraints: [NSLayoutConstraint] = []
     private var gridConstraints: [NSLayoutConstraint] = []
@@ -73,8 +77,16 @@ final class DriveNodeCell: UICollectionViewCell {
         listHighlightView.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(listHighlightView)
 
+        progressView.progressTintColor = AppColor.accent
+        progressView.trackTintColor = AppColor.paper2
+        progressView.layer.cornerRadius = 1.5
+        progressView.clipsToBounds = true
+        progressView.isHidden = true
+        progressView.heightAnchor.constraint(equalToConstant: 3).isActive = true
+
         textStack.addArrangedSubview(nameLabel)
         textStack.addArrangedSubview(detailLabel)
+        textStack.addArrangedSubview(progressView)
         textStack.axis = .vertical
         textStack.spacing = 3
         textStack.alignment = .fill
@@ -120,7 +132,9 @@ final class DriveNodeCell: UICollectionViewCell {
             textStack.topAnchor.constraint(greaterThanOrEqualTo: contentView.topAnchor, constant: 10),
             textStack.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -10),
             textStack.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            textStack.trailingAnchor.constraint(lessThanOrEqualTo: moreButton.leadingAnchor, constant: -8),
+            // 等式而不是「不大于」：在途占位的进度条要铺满文字列，而不是只有名字那么宽。
+            // 标签本身左对齐，普通行看不出区别。
+            textStack.trailingAnchor.constraint(equalTo: moreButton.leadingAnchor, constant: -8),
             moreButton.trailingAnchor.constraint(
                 equalTo: contentView.trailingAnchor, constant: -(rowInset - moreOverhang)
             ),
@@ -168,6 +182,57 @@ final class DriveNodeCell: UICollectionViewCell {
     override func prepareForReuse() {
         super.prepareForReuse()
         moreButton.menu = nil
+        resetIncoming()
+    }
+
+    /// 在途占位留下的样子全部复位。cell 是复用的，普通条目不能继承半透明。
+    private func resetIncoming() {
+        incomingFileID = nil
+        progressView.isHidden = true
+        progressView.setProgress(0, animated: false)
+        listIcon.alpha = 1
+        gridIcon.alpha = 1
+        nameLabel.alpha = 1
+        moreButton.isHidden = false
+    }
+
+    /**
+     正在路上的文件：半透明的图标和名字，下面一根进度条。
+
+     没有 ⋯ 菜单——文件还不存在，能对它做的事一件也没有。
+     */
+    func configure(incoming transfer: IncomingTransfer, grid: Bool, isFirst: Bool, isLast: Bool) {
+        let placeholder = DriveNode(
+            id: transfer.fileID, parentId: nil, kind: .file,
+            name: transfer.name, size: Int64(transfer.size), updatedAt: Date())
+        listIcon.configure(with: placeholder)
+        gridIcon.configure(with: placeholder)
+        listIcon.alpha = 0.4
+        gridIcon.alpha = 0.4
+        nameLabel.text = transfer.name
+        nameLabel.alpha = 0.6
+        moreButton.menu = nil
+        moreButton.isHidden = true
+
+        if transfer.isDirect {
+            detailLabel.text = R.Strings.driveIncomingDirect.formatted(
+                ByteFormatting.storage(Int64(transfer.downloadedBytes ?? 0)),
+                ByteFormatting.storage(Int64(transfer.size)))
+        } else if let downloaded = transfer.downloadedBytes {
+            detailLabel.text = R.Strings.driveIncomingReceiving.formatted(
+                ByteFormatting.storage(Int64(downloaded)),
+                ByteFormatting.storage(Int64(transfer.size)))
+        } else {
+            detailLabel.text = R.Strings.driveIncomingUploading.formatted(
+                Int64(transfer.uploadFraction * 100))
+        }
+
+        let isSameFile = incomingFileID == transfer.fileID
+        incomingFileID = transfer.fileID
+        progressView.isHidden = false
+        progressView.setProgress(Float(transfer.overall), animated: isSameFile)
+
+        apply(grid: grid, isFirst: isFirst, isLast: isLast)
     }
 
     /// - Parameters:
@@ -182,6 +247,7 @@ final class DriveNodeCell: UICollectionViewCell {
         isFirst: Bool = false,
         isLast: Bool = false
     ) {
+        resetIncoming()
         listIcon.configure(with: node)
         gridIcon.configure(with: node)
         nameLabel.text = node.name
