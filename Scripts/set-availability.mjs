@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Configure JustFling for every App Store territory except China mainland.
+ * Configure Stolnk for every App Store territory, China mainland included (ICP filed).
  *
  * Required environment variables:
  *   ASC_KEY_ID  ASC_ISSUER_ID  ASC_KEY_FILEPATH
@@ -14,7 +14,7 @@ import { readFileSync } from "node:fs";
 
 const APPLY = process.argv.includes("--apply");
 const APP_ID = "6798472788";
-const EXCLUDED = new Set(["CHN"]);
+const EXCLUDED = new Set();
 
 function b64url(value) {
   return Buffer.from(value).toString("base64")
@@ -124,7 +124,7 @@ function createBody(territoryIds) {
   return {
     data: {
       type: "appAvailabilities",
-      attributes: { availableInNewTerritories: false },
+      attributes: { availableInNewTerritories: true },
       relationships: {
         app: { data: { type: "apps", id: APP_ID } },
         territoryAvailabilities: {
@@ -145,19 +145,19 @@ async function main() {
   const territories = await asc("GET", "/v1/territories?limit=200");
   const allTerritoryIds = (territories.data ?? []).map((item) => item.id).sort();
   const targetIds = allTerritoryIds.filter((id) => !EXCLUDED.has(id));
-  if (targetIds.length === 0 || targetIds.includes("CHN")) {
+  if (targetIds.length === 0) {
     throw new Error("地区列表异常，拒绝生成上架请求");
   }
 
   const current = await currentAvailability();
   const target = new Set(targetIds);
-  if (current && !current.availableInNewTerritories && setsEqual(current.available, target)) {
-    console.log(`已是目标状态：${target.size} 个地区，排除 CHN，未来新地区不自动上架。`);
+  if (current && current.availableInNewTerritories && setsEqual(current.available, target)) {
+    console.log(`已是目标状态：${target.size} 个地区（含 CHN），未来新地区自动上架。`);
     return;
   }
 
   const body = createBody(allTerritoryIds);
-  console.log(`目标：${targetIds.length} 个地区；排除：${[...EXCLUDED].join(", ")}`);
+  console.log(`目标：${targetIds.length} 个地区（全部）`);
   console.log(JSON.stringify(body, null, 2));
   if (!APPLY) {
     console.log("\ndry-run：未修改 App Store Connect。确认后添加 --apply。 ");
@@ -166,10 +166,10 @@ async function main() {
 
   await asc("POST", "/v2/appAvailabilities", body);
   const verified = await currentAvailability();
-  if (!verified || verified.availableInNewTerritories || !setsEqual(verified.available, target)) {
+  if (!verified || !verified.availableInNewTerritories || !setsEqual(verified.available, target)) {
     throw new Error("请求已发送，但回读状态与目标不一致；请到 App Store Connect 网页核对。");
   }
-  console.log(`已应用并回读确认：${verified.available.size} 个地区，CHN 未上架。`);
+  console.log(`已应用并回读确认：${verified.available.size} 个地区（含 CHN）。`);
 }
 
 main().catch((error) => {

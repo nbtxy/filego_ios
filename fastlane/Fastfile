@@ -25,7 +25,7 @@ platform :ios do
     deliver(
       api_key: connect_api_key,
       app_identifier: "com.nbtxy.filego",
-      app_version: ENV.fetch("APP_VERSION", "1.0.1"),
+      app_version: ENV.fetch("APP_VERSION", "1.0.2"),
       metadata_path: File.join(PROJECT_ROOT, "fastlane/metadata"),
       screenshots_path: File.join(PROJECT_ROOT, "fastlane/screenshots"),
       skip_binary_upload: true,
@@ -42,7 +42,7 @@ platform :ios do
     deliver(
       api_key: connect_api_key,
       app_identifier: "com.nbtxy.filego",
-      app_version: ENV.fetch("APP_VERSION", "1.0.1"),
+      app_version: ENV.fetch("APP_VERSION", "1.0.2"),
       screenshots_path: File.join(PROJECT_ROOT, "fastlane/screenshots"),
       skip_binary_upload: true,
       skip_metadata: true,
@@ -96,13 +96,13 @@ platform :ios do
     upload_to_app_store(
       api_key: connect_api_key,
       app_identifier: "com.nbtxy.filego",
-      app_version: ENV.fetch("APP_VERSION", "1.0.1"),
+      app_version: ENV.fetch("APP_VERSION", "1.0.2"),
       build_number: ENV.fetch("ASC_BUILD_NUMBER"),
       skip_binary_upload: true,
       skip_metadata: true,
       skip_screenshots: true,
       submit_for_review: true,
-      automatic_release: false,
+      automatic_release: true,
       force: true,
       run_precheck_before_submit: true,
       precheck_include_in_app_purchases: false,

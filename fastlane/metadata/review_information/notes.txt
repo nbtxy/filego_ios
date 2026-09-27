@@ -8,7 +8,7 @@ ENGLISH
 6. HTML and Markdown preview is a local file preview, not a web browser. Remote content is blocked by default; the user must explicitly allow it or confirm each link.
 7. No ads, no ATT prompt, no analytics SDK, no third-party tracking. The backend is https://stolnk.com, operated by the developer on Cloudflare.
 8. Encryption: the app uses only standard algorithms provided by Apple's CryptoKit (P-256, AES-GCM, HKDF) for end-to-end encryption of user files, which qualifies for the export exemption.
-9. This version renames the app from JustFling to Stolnk and replaces the previous backend and subscription with the features above.
+9. New in 1.0.2: (a) LAN direct transfer — when the sender's browser is on the same Wi-Fi, the file goes straight to the iPhone over the local network, so the app asks for Local Network permission; declining falls back to the normal relay. (b) Videos support picture-in-picture and background playback of their sound; this is the only use of the "audio" background mode. (c) Transfer progress is shown in the file list.
 
 中文
 
@@ -20,4 +20,4 @@ ENGLISH
 6. HTML 与 Markdown 预览仅用于本地文件，不是网页浏览器。默认禁止远程内容，需用户明确允许或逐个确认链接。
 7. 无广告、无 ATT、无统计 SDK、无第三方追踪。后端为 https://stolnk.com，由开发者在 Cloudflare 上运营。
 8. 加密：App 仅使用 Apple CryptoKit 提供的标准算法（P-256、AES-GCM、HKDF）对用户文件做端到端加密，符合出口豁免条件。
-9. 本版本将 App 从 JustFling 更名为 Stolnk，并以上述功能替换了原有后端与订阅。
+9. 1.0.2 新增：(a) 局域网直传——发送方浏览器与 iPhone 在同一 Wi-Fi 时，文件经本地网络直接传到 iPhone，因此 App 会请求「本地网络」权限；拒绝后自动回退为普通中转。(b) 视频支持画中画与退到后台继续播放声音，这是「audio」后台模式的唯一用途。(c) 文件列表显示传输进度。

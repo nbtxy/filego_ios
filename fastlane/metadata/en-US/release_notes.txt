@@ -1,8 +1,3 @@
-JustFling is now Stolnk — rebuilt around one idea: turn a folder into an inbox.
-
-• Pick a name and give any folder its own address, like yourname.stolnk.com/clients
-• Files are encrypted in the sender's browser and only your iPhone can open them
-• Share any file as a download link with its own expiry and download limit
-• No sign-in: your identity is a key kept in your iPhone's Secure Enclave
-• Pro is now a one-time purchase, not a subscription
-• Delete your account at any time from Me
+• LAN direct: when the sender is on the same Wi-Fi, files come straight to your iPhone — faster, and never through our servers
+• Live transfer progress in the file list
+• Videos: picture-in-picture, and rotate to fullscreen
