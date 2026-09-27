@@ -2,13 +2,15 @@ import UIKit
 
 /// 按文件类型分发到对应的预览控制器。
 ///
-/// 目前 Markdown 与 HTML 有专用渲染器，其余一律走 QuickLook 兜底。
-/// 后续要接 image / video / PDF 专用预览时，在这里加分支即可，调用方不用动。
+/// Markdown、HTML 与 AVPlayer 能播的视频有专用控制器，其余一律走 QuickLook 兜底。
+/// 后续要接 image / PDF 专用预览时，在这里加分支即可，调用方不用动。
 ///
 /// 三条分支都挂上「创建下载链接」，入口才是一致的。QuickLook 那条没法直接挂——
 /// 工具栏是它自己的——所以套了一层 `FilePreviewContainerViewController`，理由写在
 /// 那个类的注释里。
 enum PreviewCoordinator {
+    private static let playableVideoExtensions: Set<String> = ["mp4", "mov", "m4v"]
+
     @MainActor
     static func makeViewController(
         for node: DriveNode,
@@ -35,6 +37,12 @@ enum PreviewCoordinator {
             let controller = HtmlPreviewController(file: file, title: node.name)
             controller.onCreateShareLink = createShareLink
             return controller
+        // 只接 AVPlayer 播得了的容器。`FileKind.video` 里的 avi / mkv 它打不开，
+        // 那两种继续走 QuickLook，行为和以前一样。
+        case .video where playableVideoExtensions.contains(
+            URL(fileURLWithPath: node.name).pathExtension.lowercased()):
+            return VideoPreviewController(
+                file: file, title: node.name, onCreateShareLink: createShareLink)
         default:
             return FilePreviewContainerViewController(
                 file: file, title: node.name, onCreateShareLink: createShareLink)

@@ -56,6 +56,12 @@
 	<array>
 		<string>_stolnk._tcp</string>
 	</array>
+	<!-- Video preview: picture-in-picture, and keeping sound when the app goes
+	     to the background, both require the audio background mode. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

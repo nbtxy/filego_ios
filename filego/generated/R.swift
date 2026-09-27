@@ -220,6 +220,8 @@ nonisolated enum R {
         static let previewMarkdownViewSource = "preview.markdown.viewSource"
         static let previewOpenInQuickLook = "preview.openInQuickLook"
         static let previewShareOriginalFile = "preview.shareOriginalFile"
+        static let previewVideoLandscape = "preview.video.landscape"
+        static let previewVideoPortrait = "preview.video.portrait"
         static let proBenefitFiles = "pro.benefit.files"
         static let proBenefitFree = "pro.benefit.free"
         static let proBenefitInboxes = "pro.benefit.inboxes"
