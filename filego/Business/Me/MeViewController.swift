@@ -269,7 +269,7 @@ extension MeViewController: UICollectionViewDelegate {
             navigate(DebugPanelViewController(environment: environment))
         #endif
         case .plan:
-            navigate(ProUpgradeViewController(environment: environment))
+            navigate(PlanViewController(environment: environment))
         case .storage:
             navigate(StorageDetailViewController(environment: environment))
         case .trash:

@@ -3877,23 +3877,6 @@
         }
       }
     },
-    "pro.cta.buy": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Unlock forever · %@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "永久解锁 · %@"
-          }
-        }
-      }
-    },
     "pro.cta.manage": {
       "extractionState": "manual",
       "localizations": {
@@ -3907,23 +3890,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "管理订阅"
-          }
-        }
-      }
-    },
-    "pro.cta.restore": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Restore purchases"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "恢复购买"
           }
         }
       }
@@ -4019,64 +3985,64 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pro, for good"
+            "value": "Everything, included"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "一次购买，永久 Pro"
+            "value": "全部功能，已包含"
           }
         }
       }
     },
-    "pro.legal": {
+    "pro.included.active": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "One-time purchase. No subscription and no recurring charge. The price shown above is provided by the App Store for your region."
+            "value": "Pro is active on this device"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "一次性购买，无订阅、无续费。以上价格由 App Store 根据你所在地区提供。"
+            "value": "本设备已开通 Pro"
           }
         }
       }
     },
-    "pro.lifetime.active": {
+    "pro.included.pending": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Purchased · Lifetime access"
+            "value": "Pro hasn't been activated on this device yet. Check your connection and sync again."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已购买 · 永久有效"
+            "value": "本设备尚未开通 Pro，请检查网络后重新同步。"
           }
         }
       }
     },
-    "pro.lifetime.owned": {
+    "pro.limit.reached": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pro unlocked"
+            "value": "You've reached the limit for this plan."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已解锁 Pro"
+            "value": "已达到当前套餐的上限。"
           }
         }
       }
@@ -4094,108 +4060,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "隐私政策"
-          }
-        }
-      }
-    },
-    "pro.products.unavailable": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Couldn't load subscription options. Please try again later."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "暂时无法加载订阅商品，请稍后再试。"
-          }
-        }
-      }
-    },
-    "pro.purchase.failed": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Purchase didn't complete"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "购买未完成"
-          }
-        }
-      }
-    },
-    "pro.purchase.pending": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your purchase is pending approval. It'll activate automatically once confirmed."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "购买待确认，完成后会自动开通。"
-          }
-        }
-      }
-    },
-    "pro.purchase.pendingSync": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Payment received — syncing. It'll activate automatically once you're back online."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已付款，正在同步。网络恢复后会自动开通。"
-          }
-        }
-      }
-    },
-    "pro.purchase.success": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Stolnk Pro is unlocked for good."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Stolnk Pro 已永久解锁"
-          }
-        }
-      }
-    },
-    "pro.restore.none": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No previous Pro purchase was found"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "没有找到可恢复的 Pro 购买"
           }
         }
       }
@@ -4257,13 +4121,64 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "More addresses, larger files, longer-lived links, and no recurring charge."
+            "value": "Stolnk is a paid download. Every feature is yours — no in-app purchases, no subscription."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "更多地址、更大文件、更长有效期，没有循环扣费。"
+            "value": "Stolnk 是付费下载应用，安装即享全部功能，没有内购，也没有订阅。"
+          }
+        }
+      }
+    },
+    "pro.sync": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync again"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新同步"
+          }
+        }
+      }
+    },
+    "pro.sync.failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't activate Pro"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂时无法开通 Pro"
+          }
+        }
+      }
+    },
+    "pro.sync.retry": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pro is now active. Please try again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pro 已开通，请再试一次。"
           }
         }
       }

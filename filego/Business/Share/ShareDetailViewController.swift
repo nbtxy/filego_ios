@@ -468,15 +468,12 @@ extension ShareDetailViewController {
         present(alert, animated: true)
     }
 
-    /// 和创建页同一套映射：402 推付费页，409 单独讲，413 单独讲。服务端的 message
+    /// 和创建页同一套映射：402 走 `handleUpgradeRequired`，409 单独讲，413 单独讲。服务端的 message
     /// 是写给 Mac 的，只有认不出的 code 才退回去渲染它。
     private func showError(_ error: Error?) {
         if let apiError = error as? APIError {
             if apiError.isUpgradeRequired {
-                return present(
-                    UINavigationController(rootViewController: ProUpgradeViewController(
-                        environment: environment)),
-                    animated: true)
+                return PlanViewController.handleUpgradeRequired(on: self, environment: environment)
             }
             if apiError.code == "code_taken" {
                 return showMessage(

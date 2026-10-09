@@ -3,7 +3,7 @@ ENGLISH
 1. No sign-in and no demo account are needed. On first launch, pick any available name (3–20 lowercase letters, digits or hyphens). The identity is a key pair generated on the device; there is no email or password.
 2. To test receiving: open a folder in the app, tap the + button → Get File Import Address, and choose a path. Open that address (e.g. https://yourname.stolnk.com/folder) in Safari on any device or computer and upload a file. It is encrypted in the browser and appears in the chosen folder in the app; keep the app in the foreground.
 3. To test sending: tap ⋯ next to a file → Create download link. The resulting https://yourname.stolnk.com/~code link downloads the file in any browser. Download links are not end-to-end encrypted, and the app says so on the form.
-4. Stolnk Pro is a non-consumable, one-time In-App Purchase (com.nbtxy.filego.pro.lifetime). Entry: Me → Plan, or any Pro-only option. Restore Purchases is on the same screen. It unlocks unlimited addresses, files up to 20 GB, 300 GB monthly relay, more and longer download links, and password-protected links.
+4. The app is a paid download and contains no In-App Purchases or subscriptions. Every install gets Stolnk Pro automatically (Me → Plan shows it): unlimited addresses, files up to 20 GB, 300 GB monthly relay, more and longer download links, and password-protected links. The former in-app purchase com.nbtxy.filego.pro.lifetime has been removed from sale; earlier buyers keep Pro.
 5. Account deletion: Me → Delete account. It deletes the name, every address and link, and all server-side data for the device immediately.
 6. HTML and Markdown preview is a local file preview, not a web browser. Remote content is blocked by default; the user must explicitly allow it or confirm each link.
 7. No ads, no ATT prompt, no analytics SDK, no third-party tracking. The backend is https://stolnk.com, operated by the developer on Cloudflare.
@@ -15,7 +15,7 @@ ENGLISH
 1. 无需登录，也无需演示账号。首次启动时任选一个可用名字（3–20 位小写字母、数字或连字符）即可。身份是设备上生成的密钥对，没有邮箱或密码。
 2. 测试接收：在 App 中打开一个文件夹，点右下角 + → 获取文件导入地址，填写路径。在任意设备的 Safari 中打开该地址（如 https://yourname.stolnk.com/folder）上传文件，文件会在浏览器中加密，并出现在 App 中选定的文件夹里；请保持 App 在前台。
 3. 测试发送：点文件右侧的 ⋯ → 创建下载链接。生成的 https://yourname.stolnk.com/~code 链接可在任意浏览器下载。下载链接不是端到端加密的，表单上已明确说明。
-4. Stolnk Pro 是一次性非消耗型内购（com.nbtxy.filego.pro.lifetime）。入口：我的 → 套餐，或任何 Pro 专属选项。同一页面提供「恢复购买」。解锁不限收件地址、单文件 20 GB、每月 300 GB 中转、更多更长效的下载链接与带密码链接。
+4. 本 App 为付费下载，不含任何内购或订阅。每次安装都会自动开通 Stolnk Pro（我的 → 套餐可查看）：不限收件地址、单文件 20 GB、每月 300 GB 中转、更多更长效的下载链接与带密码链接。原内购 com.nbtxy.filego.pro.lifetime 已下架，此前购买的用户保留 Pro。
 5. 删除账号：我的 → 删除账号。立即删除名字、所有地址与链接，以及该设备在服务器上的全部数据。
 6. HTML 与 Markdown 预览仅用于本地文件，不是网页浏览器。默认禁止远程内容，需用户明确允许或逐个确认链接。
 7. 无广告、无 ATT、无统计 SDK、无第三方追踪。后端为 https://stolnk.com，由开发者在 Cloudflare 上运营。

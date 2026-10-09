@@ -1,17 +1,15 @@
-import StoreKit
 import StolnkCore
 import UIKit
 
-/// A compact paywall for the non-consumable Pro unlock. The localized price is
-/// always StoreKit's `displayPrice`; no currency amount is embedded in the app.
+/// 「我的 → 套餐」。App 是付费下载，这里没有购买：只展示已包含的权益，
+/// 万一本设备还没在 Worker 上开通（比如首次启动时断网），给一个重新同步的按钮。
 @MainActor
-final class ProUpgradeViewController: UIViewController {
+final class PlanViewController: UIViewController {
     private let environment: AppEnvironment
     private let scrollView = UIScrollView()
     private let stack = UIStackView()
     private let statusLabel = UILabel()
-    private let buyButton = PaperButton.primary()
-    private let restoreButton = PaperButton.secondary(title: R.Strings.proCtaRestore.localizedString())
+    private let syncButton = PaperButton.primary(title: R.Strings.proSync.localizedString())
     private let activity = UIActivityIndicatorView(style: .medium)
 
     init(environment: AppEnvironment) {
@@ -31,19 +29,13 @@ final class ProUpgradeViewController: UIViewController {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(stateDidChange),
-            name: .stolnkStoreKitDidChange,
-            object: nil
-        )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(stateDidChange),
             name: .stolnkStateDidChange,
             object: nil
         )
         render()
         Task {
-            await environment.storeKit.loadProduct(force: true)
             await environment.stolnk.refreshPlan()
+            await environment.appUnlock.claimIfNeeded()
             render()
         }
     }
@@ -117,15 +109,8 @@ final class ProUpgradeViewController: UIViewController {
         activity.hidesWhenStopped = true
         stack.addArrangedSubview(activity)
 
-        buyButton.addAction(UIAction { [weak self] _ in self?.buy() }, for: .touchUpInside)
-        restoreButton.addAction(UIAction { [weak self] _ in self?.restore() }, for: .touchUpInside)
-        stack.addArrangedSubview(buyButton)
-        stack.addArrangedSubview(restoreButton)
-
-        let legal = label(R.Strings.proLegal.localizedString(), font: AppTypography.caption)
-        legal.textColor = AppColor.textSecondary
-        legal.textAlignment = .center
-        stack.addArrangedSubview(legal)
+        syncButton.addAction(UIAction { [weak self] _ in self?.sync() }, for: .touchUpInside)
+        stack.addArrangedSubview(syncButton)
     }
 
     private func label(_ text: String, font: UIFont) -> UILabel {
@@ -154,59 +139,29 @@ final class ProUpgradeViewController: UIViewController {
     @objc private func stateDidChange() { render() }
 
     private func render() {
-        let purchased = environment.stolnk.plan?.isPro == true
-        if purchased {
-            statusLabel.text = R.Strings.proLifetimeActive.localizedString()
-            buyButton.configuration?.title = R.Strings.proLifetimeOwned.localizedString()
-            buyButton.isEnabled = false
-            restoreButton.isHidden = true
-        } else {
-            statusLabel.text = environment.storeKit.lastError
-            let price = environment.storeKit.product?.displayPrice ?? "—"
-            buyButton.configuration?.title = R.Strings.proCtaBuy.formatted(price)
-            buyButton.isEnabled = environment.storeKit.product != nil && !environment.storeKit.isLoading
-            restoreButton.isHidden = false
-        }
-        environment.storeKit.isLoading ? activity.startAnimating() : activity.stopAnimating()
+        let active = environment.stolnk.plan?.isPro == true
+        statusLabel.text = active
+            ? R.Strings.proIncludedActive.localizedString()
+            : R.Strings.proIncludedPending.localizedString()
+        syncButton.isHidden = active
     }
 
-    private func setBusy(_ busy: Bool) {
-        busy ? activity.startAnimating() : activity.stopAnimating()
-        buyButton.isEnabled = !busy && environment.storeKit.product != nil
-        restoreButton.isEnabled = !busy
-    }
-
-    private func buy() {
-        setBusy(true)
+    private func sync() {
+        activity.startAnimating()
+        syncButton.isEnabled = false
         Task {
-            let outcome = await environment.storeKit.purchase()
-            setBusy(false)
-            handle(outcome)
-            render()
-        }
-    }
-
-    private func restore() {
-        setBusy(true)
-        Task {
-            let outcome = await environment.storeKit.restore()
-            setBusy(false)
-            handle(outcome)
-            render()
-        }
-    }
-
-    private func handle(_ outcome: StoreKitService.Outcome) {
-        switch outcome {
-        case .success:
-            HapticManager.notification(.success)
-            PaperToast.show(R.Strings.proPurchaseSuccess.localizedString(), in: view)
-        case .cancelled:
-            break
-        case .pending:
-            presentMessage(R.Strings.proPurchasePending.localizedString())
-        case let .failed(message):
-            presentMessage(message, title: R.Strings.proPurchaseFailed.localizedString())
+            defer {
+                activity.stopAnimating()
+                syncButton.isEnabled = true
+                render()
+            }
+            do {
+                if try await environment.appUnlock.claim() {
+                    HapticManager.notification(.success)
+                }
+            } catch {
+                presentMessage(error.localizedDescription, title: R.Strings.proSyncFailed.localizedString())
+            }
         }
     }
 
@@ -214,5 +169,33 @@ final class ProUpgradeViewController: UIViewController {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: R.Strings.commonOk.localizedString(), style: .default))
         present(alert, animated: true)
+    }
+}
+
+extension PlanViewController {
+    /**
+     402（`upgrade_required`）和本地判定的 Pro 门槛的统一出口。
+
+     付费下载下没有付费墙可推：还不是 Pro 多半是首次认领没成功，先补一次认领，成了就请用户
+     重试；认领失败才打开套餐页让用户自己重新同步。已经是 Pro 还撞上，就是 Pro 自己的上限。
+     */
+    static func handleUpgradeRequired(on presenter: UIViewController, environment: AppEnvironment) {
+        func alert(_ title: String?, _ message: String) {
+            let controller = UIAlertController(title: title, message: message, preferredStyle: .alert)
+            controller.addAction(UIAlertAction(title: R.Strings.commonOk.localizedString(), style: .default))
+            presenter.present(controller, animated: true)
+        }
+        if environment.stolnk.plan?.isPro == true {
+            return alert(nil, R.Strings.proLimitReached.localizedString())
+        }
+        Task { @MainActor in
+            if (try? await environment.appUnlock.claim()) == true {
+                alert(nil, R.Strings.proSyncRetry.localizedString())
+            } else {
+                presenter.present(
+                    UINavigationController(rootViewController: PlanViewController(environment: environment)),
+                    animated: true)
+            }
+        }
     }
 }

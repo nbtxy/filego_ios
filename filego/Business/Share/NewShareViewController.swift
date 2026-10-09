@@ -277,10 +277,7 @@ final class NewShareViewController: UIViewController {
     }
 
     @objc private func showUpgrade() {
-        present(
-            UINavigationController(rootViewController: ProUpgradeViewController(
-                environment: environment)),
-            animated: true)
+        PlanViewController.handleUpgradeRequired(on: self, environment: environment)
     }
 
     // MARK: - 路径可用性
@@ -413,8 +410,8 @@ final class NewShareViewController: UIViewController {
     /**
      报错。
 
-     402 不弹 alert 而是直接推付费页：它有三种成因（时长超档、密码要 Pro、条数用完），
-     三者的答案是同一个，把它写成一句话只会比付费页本身更含糊。409 和 413 则必须分开
+     402 统一交给 `PlanViewController.handleUpgradeRequired`：它有三种成因（时长超档、密码要 Pro、
+     条数用完），付费下载下答案都是「先补一次 Pro 认领」，认领过了才是真的到顶。409 和 413 则必须分开
      讲——一个是「换个路径」，一个是「撤回一条再传」，建议完全不同。
      */
     private func showError(_ error: Error) {

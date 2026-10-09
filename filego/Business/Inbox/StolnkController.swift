@@ -612,13 +612,11 @@ final class StolnkController {
         }
     }
 
-    /// Sends an opaque StoreKit transaction id to the Worker. The Worker asks
-    /// Apple for the authoritative product, bundle and refund state before it
-    /// changes this device's entitlement.
-    func verifyApplePurchase(transactionID: UInt64) async throws -> PlanState {
+    /// 付费下载即 Pro：让 Worker 给本设备记一笔 App Store 解锁。幂等，重复调用无副作用。
+    func claimAppStoreUnlock() async throws -> PlanState {
         guard let api else { throw Self.notRegistered }
         do {
-            let state = try await api.verifyApplePurchase(transactionID: transactionID)
+            let state = try await api.claimAppStoreUnlock()
             plan = state
             broadcast()
             return state

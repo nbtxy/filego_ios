@@ -73,10 +73,7 @@ enum ShareLauncher {
     }
 
     private static func showUpgrade(on presenter: UIViewController, environment: AppEnvironment) {
-        presenter.present(
-            UINavigationController(
-                rootViewController: ProUpgradeViewController(environment: environment)),
-            animated: true)
+        PlanViewController.handleUpgradeRequired(on: presenter, environment: environment)
     }
 
     private static func alert(on presenter: UIViewController, title: String, message: String) {

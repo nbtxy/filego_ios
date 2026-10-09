@@ -21,11 +21,9 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         // 不 await：取密钥可能弹系统提示，注册要走网络，任何一个卡住都不该拖住首屏。
         // 界面自己会等 .stolnkStateDidChange。
         Task {
-            // StoreKit may have an unfinished transaction to hand to the Worker.
-            // Bring the device session up first so that first delivery cannot
-            // lose a race with APIClient initialization and wait for relaunch.
+            // 付费下载即 Pro：设备会话起来之后再去 Worker 认领，否则 api 还是 nil。
             await environment.stolnk.start()
-            await environment.storeKit.bootstrap()
+            await environment.appUnlock.bootstrap()
         }
         return true
     }
