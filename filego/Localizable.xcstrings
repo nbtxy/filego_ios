@@ -2693,13 +2693,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your name is released, every receiving address and download link stops working at once, and files still waiting on the server are deleted. Files already saved on this iPhone stay here. A Pro purchase belongs to your Apple Account — after registering again, use Restore Purchases to get it back. This can't be undone."
+            "value": "Your name is released, every receiving address and download link stops working at once, and files still waiting on the server are deleted. Files already saved on this iPhone stay here. If you register again, the included features are turned back on automatically. This can't be undone."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的名字会被释放，所有收件地址和下载链接立即失效，服务器上尚未取走的文件会被删除。已经保存到这台 iPhone 上的文件会保留。Pro 购买属于你的 Apple 账户，重新注册后可通过「恢复购买」找回。此操作无法撤销。"
+            "value": "你的名字会被释放，所有收件地址和下载链接立即失效，服务器上尚未取走的文件会被删除。已经保存到这台 iPhone 上的文件会保留。重新注册后，已包含的功能会自动重新开通。此操作无法撤销。"
           }
         }
       }
@@ -2829,13 +2829,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plan"
+            "value": "Included features"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "方案"
+            "value": "已包含的功能"
           }
         }
       }
@@ -2846,13 +2846,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Free"
+            "value": "Not activated"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "免费"
+            "value": "未开通"
           }
         }
       }
@@ -2863,13 +2863,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pro"
+            "value": "Active"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "专业版"
+            "value": "已开通"
           }
         }
       }
@@ -4002,13 +4002,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pro is active on this device"
+            "value": "All included features are active on this device"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "本设备已开通 Pro"
+            "value": "本设备已开通全部已包含的功能"
           }
         }
       }
@@ -4019,13 +4019,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pro hasn't been activated on this device yet. Check your connection and sync again."
+            "value": "The included features haven't been activated on this device yet. Check your connection and sync again."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "本设备尚未开通 Pro，请检查网络后重新同步。"
+            "value": "本设备尚未开通已包含的功能，请检查网络后重新同步。"
           }
         }
       }
@@ -4036,13 +4036,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You've reached the limit for this plan."
+            "value": "You've reached the limit of the included features."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已达到当前套餐的上限。"
+            "value": "已达到已包含功能的上限。"
           }
         }
       }
@@ -4155,13 +4155,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn't activate Pro"
+            "value": "Couldn't activate the included features"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "暂时无法开通 Pro"
+            "value": "暂时无法开通已包含的功能"
           }
         }
       }
@@ -4172,13 +4172,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pro is now active. Please try again."
+            "value": "The included features are now active. Please try again."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pro 已开通，请再试一次。"
+            "value": "已包含的功能已开通，请再试一次。"
           }
         }
       }
@@ -4325,13 +4325,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stolnk Pro"
+            "value": "Included features"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stolnk Pro"
+            "value": "已包含的功能"
           }
         }
       }
@@ -5039,13 +5039,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Password protection is part of Pro"
+            "value": "Password protection is an included feature"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "密码保护是 Pro 功能"
+            "value": "密码保护属于已包含的功能"
           }
         }
       }
@@ -5413,13 +5413,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Files over %@ can't be shared on your plan."
+            "value": "Files over %@ can't be shared."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "当前档位无法分享超过 %@ 的文件。"
+            "value": "无法分享超过 %@ 的文件。"
           }
         }
       }
@@ -5515,13 +5515,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ — Pro"
+            "value": "%@ — included feature"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ · Pro"
+            "value": "%@ · 已包含的功能"
           }
         }
       }
