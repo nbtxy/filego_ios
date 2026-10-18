@@ -1,1 +1,2 @@
-• Stolnk is now a paid download: every feature is included, with no in-app purchases and no subscription. Everyone who already has the app gets Pro for free.
+• A refreshed, tactile look: cards gently lift off the page, buttons press down when you tap them, and text fields sit slightly recessed.
+• The file list now leaves more room below the navigation bar, and the cards fit their rows more snugly.

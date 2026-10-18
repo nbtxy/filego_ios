@@ -15,7 +15,7 @@ import UIKit
 final class InboxOnboardingViewController: UIViewController {
     private let environment: AppEnvironment
 
-    private let nameField = UITextField()
+    private let nameField = PaperTextField()
     private let suffixLabel = UILabel()
     private let statusLabel = UILabel()
     private let createButton = PaperButton.primary()
@@ -90,7 +90,6 @@ final class InboxOnboardingViewController: UIViewController {
         nameField.spellCheckingType = .no
         nameField.textContentType = .username
         nameField.returnKeyType = .done
-        nameField.borderStyle = .roundedRect
         nameField.textColor = AppColor.ink
         nameField.addTarget(self, action: #selector(nameChanged), for: .editingChanged)
         nameField.delegate = self

@@ -92,11 +92,7 @@ final class PlanViewController: UIViewController {
         benefits.spacing = 12
         benefits.isLayoutMarginsRelativeArrangement = true
         benefits.directionalLayoutMargins = .init(top: 18, leading: 18, bottom: 18, trailing: 18)
-        benefits.backgroundColor = AppColor.surface
-        benefits.layer.cornerRadius = AppRadius.card
-        benefits.layer.cornerCurve = .continuous
-        benefits.layer.borderColor = AppColor.line.cgColor
-        benefits.layer.borderWidth = 1
+        AppMaterial.raise(benefits, radius: AppRadius.card)
         stack.setCustomSpacing(AppSpacing.large, after: subtitle)
         stack.addArrangedSubview(benefits)
 

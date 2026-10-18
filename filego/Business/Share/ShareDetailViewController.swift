@@ -96,7 +96,7 @@ final class ShareDetailViewController: UIViewController {
         let configuration = UICollectionLayoutListConfiguration.paperInsetGrouped()
         collectionView = UICollectionView(
             frame: .zero,
-            collectionViewLayout: UICollectionViewCompositionalLayout.list(using: configuration)
+            collectionViewLayout: PaperInsetGroupedLayout.make(configuration)
         )
         collectionView.backgroundColor = AppColor.background
         collectionView.delegate = self

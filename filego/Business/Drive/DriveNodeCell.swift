@@ -13,6 +13,8 @@ final class DriveNodeCell: UICollectionViewCell {
     private let listIcon = FileIconTile(size: .small)
     private let gridIcon = FileIconTile(size: .large)
     private let thumbHolder = UIView()
+    /// 宫格模式下的那张独立凸起白卡。列表模式隐藏——列表行躺在整段共用的白卡上。
+    private let gridCard = MaterialView(surface: .paper, elevation: .card)
     private let nameLabel = UILabel()
     private let detailLabel = UILabel()
     private let moreButton = UIButton(type: .system)
@@ -33,7 +35,13 @@ final class DriveNodeCell: UICollectionViewCell {
         listIcon.translatesAutoresizingMaskIntoConstraints = false
 
         // 宫格的缩略图位：paper-2 底的圆角块，中间摆文件图标。网页 `.card-thumb`。
-        thumbHolder.backgroundColor = AppColor.paper2
+        gridCard.frame = contentView.bounds
+        gridCard.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        gridCard.cornerRadius = AppRadius.card
+        contentView.addSubview(gridCard)
+
+        // 缩略图位是卡片上压下去的一块凹槽色。
+        thumbHolder.backgroundColor = AppColor.well
         thumbHolder.layer.cornerRadius = AppRadius.tile
         thumbHolder.layer.cornerCurve = .continuous
         thumbHolder.clipsToBounds = true
@@ -278,12 +286,9 @@ final class DriveNodeCell: UICollectionViewCell {
         nameLabel.numberOfLines = grid ? 2 : 1
         nameLabel.lineBreakMode = grid ? .byTruncatingTail : .byTruncatingMiddle
 
-        // 宫格是一张独立的白卡；列表行躺在整段共用的白卡上，自己不要底色。
-        contentView.backgroundColor = grid ? AppColor.surface : .clear
-        contentView.layer.cornerRadius = grid ? AppRadius.card : 0
-        contentView.layer.cornerCurve = .continuous
-        contentView.layer.borderWidth = grid ? 1 : 0
-        contentView.layer.borderColor = AppColor.line.cgColor
+        // 宫格是一张独立的凸起白卡；列表行躺在整段共用的白卡上，自己不要底色。
+        gridCard.isHidden = !grid
+        contentView.backgroundColor = .clear
 
         listHighlightView.layer.cornerRadius = AppRadius.card
         listHighlightView.layer.cornerCurve = .continuous

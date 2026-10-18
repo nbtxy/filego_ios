@@ -2,8 +2,9 @@ import UIKit
 
 /// 设计 token。
 ///
-/// 逐字对齐网页版的 `src/web/app.client.css` 的 `:root`——两端是同一个产品，
-/// 改动任何一个值都要两边一起改，否则从网页点进 App 会看出两种气质。
+/// 配色逐字对齐网页版的 `src/web/app.client.css` 的 `:root`——两端是同一个产品，
+/// 改动任何一个配色值都要两边一起改。材质（渐变、高光、双层阴影，见 `AppMaterial`）
+/// 是 iOS 独有的轻拟物层，不跟网页走。
 ///
 /// **刻意【不做深色模式】**：网页那套是固定的纸色底，App 跟着锁浅色
 /// （见 `AppInfo.plist` 的 `UIUserInterfaceStyle` 与 `SceneDelegate`）。
@@ -51,6 +52,25 @@ enum AppColor {
     static let accent = ink
     /// 链接色。与网页 `md-viewer.client.css` 的 `--fgColor-accent` 同源。
     static let link = blue
+
+    // MARK: 材质（只有 iOS 有）
+    //
+    // 轻拟物那一层：渐变、高光、凹槽。网页仍是扁平的，所以这几个值**不用**和
+    // `app.client.css` 对齐；上面的配色 token 照旧两边一起改。
+
+    /// 白卡渐变的上端。
+    static let surfaceTop = white
+    /// 白卡渐变的下端：往纸色偏一点点，卡片才有「受光面在上」的体积。
+    static let surfaceBottom = UIColor(hex: 0xFBF9F3)
+    /// 凸起面顶边那道 1px 内高光。
+    static let highlight = UIColor(white: 1, alpha: 0.9)
+    /// 主按钮渐变：上浅下深的墨绿。
+    static let inkTop = UIColor(hex: 0x22332B)
+    static let inkBottom = UIColor(hex: 0x101A16)
+    /// 破坏性提示的渐变上端。
+    static let dangerTop = UIColor(hex: 0xD6563E)
+    /// 凹槽底色：输入框、进度条轨道。比 paper-2 再暖一点，压进纸里的感觉。
+    static let well = UIColor(hex: 0xEFEBE0)
 
     // MARK: 文件图标分类色
     //

@@ -18,7 +18,9 @@ enum AppAppearance {
         let standard = UINavigationBarAppearance()
         standard.configureWithOpaqueBackground()
         standard.backgroundColor = AppColor.paper
-        standard.shadowColor = AppColor.line
+        // 顶栏浮在内容上：用一道柔和的墨绿渐变投影代替硬发丝线。
+        standard.shadowColor = nil
+        standard.shadowImage = softShadowImage()
         standard.titleTextAttributes = titleAttributes(
             font: .systemFont(ofSize: 17, weight: .bold),
             em: -0.03
@@ -31,6 +33,7 @@ enum AppAppearance {
         // 滚到顶时不要那条线——网页的顶栏与内容之间只有滚动后才需要分界。
         let scrollEdge = standard.copy()
         scrollEdge.shadowColor = .clear
+        scrollEdge.shadowImage = nil
 
         let buttonAppearance = UIBarButtonItemAppearance(style: .plain)
         buttonAppearance.normal.titleTextAttributes = [
@@ -54,8 +57,25 @@ enum AppAppearance {
         UIRefreshControl.appearance().tintColor = AppColor.muted
         // `.storage-bar`：柠檬绿进度 + paper-2 轨道。
         UIProgressView.appearance().progressTintColor = AppColor.lime
-        UIProgressView.appearance().trackTintColor = AppColor.paper2
+        UIProgressView.appearance().trackTintColor = AppColor.well
         UIActivityIndicatorView.appearance().color = AppColor.muted
+    }
+
+    /// 1pt 宽、6pt 高的竖向渐变：墨绿 6% → 透明。导航栏会把它横向拉满。
+    private static func softShadowImage() -> UIImage {
+        let size = CGSize(width: 1, height: 6)
+        return UIGraphicsImageRenderer(size: size).image { context in
+            let colors = [
+                AppColor.ink.withAlphaComponent(0.06).cgColor,
+                AppColor.ink.withAlphaComponent(0).cgColor
+            ] as CFArray
+            guard let gradient = CGGradient(
+                colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 1]
+            ) else { return }
+            context.cgContext.drawLinearGradient(
+                gradient, start: .zero, end: CGPoint(x: 0, y: size.height), options: []
+            )
+        }
     }
 
     private static func titleAttributes(

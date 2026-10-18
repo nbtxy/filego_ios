@@ -14,7 +14,7 @@ final class DriveListViewController: UIViewController {
     private let viewModel: DriveListViewModel
     private let breadcrumbBar = BreadcrumbBar()
     private let emptyView = PaperEmptyStateView(title: R.Strings.driveEmpty.localizedString())
-    private let addFolderButton = UIButton(type: .system)
+    private let addFolderButton = PaperButton.primary()
     private let fileActivityIndicator = UIActivityIndicatorView(style: .medium)
     private let activityBackdrop = UIView()
     private var collectionView: UICollectionView!
@@ -31,15 +31,12 @@ final class DriveListViewController: UIViewController {
         searchBar.placeholder = R.Strings.driveSearchPlaceholder.localizedString()
         searchBar.searchBarStyle = .minimal
         searchBar.showsCancelButton = true
-        // 网页 `.search-wrap .input`：白底胶囊 + `--line` 描边。
+        // 网页 `.search-wrap .input` 的胶囊形状，做成压进纸里的凹槽。
+        // 先清掉系统那层圆角灰底，否则它会盖在凹槽上面。
+        searchBar.setSearchFieldBackgroundImage(UIImage(), for: .normal)
         let field = searchBar.searchTextField
-        field.backgroundColor = AppColor.surface
         field.textColor = AppColor.textPrimary
-        field.layer.cornerRadius = 18
-        field.layer.cornerCurve = .continuous
-        field.layer.borderWidth = 1
-        field.layer.borderColor = AppColor.line.cgColor
-        field.clipsToBounds = true
+        AppMaterial.inset(field, radius: 18)
         return searchBar
     }()
     private var isGrid: Bool {
@@ -330,16 +327,17 @@ final class DriveListViewController: UIViewController {
     }
 
     private func configureAddFolderButton() {
-        var configuration = UIButton.Configuration.filled()
+        var configuration = addFolderButton.configuration ?? .plain()
+        configuration.contentInsets = .zero
         configuration.image = UIImage(
             systemName: "plus",
             withConfiguration: UIImage.SymbolConfiguration(pointSize: 22, weight: .semibold)
         )
-        // 与网页 `.seg button.active` / `.nav-item.active` 同一套：墨绿底 + 柠檬绿图形。
-        configuration.baseBackgroundColor = AppColor.ink
+        // 与网页 `.seg button.active` / `.nav-item.active` 同一套：墨绿底 + 柠檬绿图形，
+        // 底是 `PaperButton.primary` 那张凸起的墨绿渐变。
         configuration.baseForegroundColor = AppColor.lime
-        configuration.cornerStyle = .capsule
         addFolderButton.configuration = configuration
+        addFolderButton.cornerRadius = AppRadius.capsule
         addFolderButton.accessibilityLabel = R.Strings.driveAdd.localizedString()
         addFolderButton.menu = UIMenu(children: [
             UIMenu(options: .displayInline, children: [
@@ -366,7 +364,6 @@ final class DriveListViewController: UIViewController {
             ])
         ])
         addFolderButton.showsMenuAsPrimaryAction = true
-        AppShadow.raisedButton(addFolderButton)
         addFolderButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(addFolderButton)
 
@@ -379,15 +376,10 @@ final class DriveListViewController: UIViewController {
     }
 
     private func configureFileActivityIndicator() {
-        // 白卡 + `--line` 描边 + `--shadow-sm`，与列表里的卡片同一套质感。
-        activityBackdrop.backgroundColor = AppColor.surface
-        activityBackdrop.layer.cornerRadius = AppRadius.tile
-        activityBackdrop.layer.cornerCurve = .continuous
-        activityBackdrop.layer.borderWidth = 1
-        activityBackdrop.layer.borderColor = AppColor.line.cgColor
+        // 凸起白卡，浮在内容上，与 Toast 同一档高度。
+        AppMaterial.raise(activityBackdrop, radius: AppRadius.tile, elevation: .floating)
         activityBackdrop.isHidden = true
         activityBackdrop.translatesAutoresizingMaskIntoConstraints = false
-        AppShadow.small(activityBackdrop)
 
         fileActivityIndicator.hidesWhenStopped = true
         fileActivityIndicator.color = AppColor.muted
@@ -440,8 +432,10 @@ final class DriveListViewController: UIViewController {
             return UICollectionViewCompositionalLayout(section: section)
         }
 
-        // 网页 `.rows`：整段套一张白卡。
-        return PaperSectionBackgroundView.makeListLayout { [weak self] _ in
+        // 网页 `.rows`：整段套一张白卡。子文件夹上面已经有一条面包屑隔开导航栏，只留一点缝。
+        return PaperSectionBackgroundView.makeListLayout(
+            topInset: folderId == rootId ? 16 : 4
+        ) { [weak self] _ in
             self?.visibleItemIDs.count ?? 0
         }
     }

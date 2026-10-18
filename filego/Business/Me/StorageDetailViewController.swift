@@ -56,7 +56,7 @@ final class StorageDetailViewController: UIViewController {
         configuration.headerMode = .supplementary
         collectionView = UICollectionView(
             frame: .zero,
-            collectionViewLayout: UICollectionViewCompositionalLayout.list(using: configuration)
+            collectionViewLayout: PaperInsetGroupedLayout.make(configuration)
         )
         collectionView.backgroundColor = AppColor.background
         collectionView.delegate = self
@@ -234,6 +234,7 @@ private final class StorageOverviewCell: UICollectionViewListCell {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
+        PaperListCellStyle.apply(to: self)
         setUpViews()
     }
 
@@ -297,7 +298,10 @@ private final class StackedBarView: UIView {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        backgroundColor = AppColor.paper2
+        // 凹槽轨道：分段色条像是嵌在槽里。
+        backgroundColor = AppColor.well
+        layer.borderWidth = 0.5
+        layer.borderColor = AppColor.line.withAlphaComponent(0.55).cgColor
         clipsToBounds = true
     }
 

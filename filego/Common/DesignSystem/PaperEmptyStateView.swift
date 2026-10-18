@@ -1,6 +1,6 @@
 import UIKit
 
-/// 空状态。对齐网页 `.empty`：一块 96×96 的 paper-2 圆角图形位（内放 SF Symbol）
+/// 空状态。对齐网页 `.empty`：一块 96×96 的凹槽圆角图形位（内放 SF Symbol）
 /// + 紧字距标题（+ 可选副文案）。
 ///
 /// 用作 `collectionView.backgroundView`，所以要能随时改文案而不重建。
@@ -14,9 +14,8 @@ final class PaperEmptyStateView: UIView {
         super.init(frame: .zero)
 
         let artContainer = UIView()
-        artContainer.backgroundColor = AppColor.paper2
-        artContainer.layer.cornerRadius = 28
-        artContainer.layer.cornerCurve = .continuous
+        // 一块压进纸里的凹槽，图形像是印在槽底。
+        AppMaterial.inset(artContainer, radius: 28)
         artContainer.translatesAutoresizingMaskIntoConstraints = false
 
         art.contentMode = .scaleAspectFit

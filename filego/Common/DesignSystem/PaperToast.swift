@@ -1,6 +1,6 @@
 import UIKit
 
-/// 一次性反馈的浮层提示。对齐网页 `.toast`：墨绿胶囊、白字、居中偏下、自己消失。
+/// 一次性反馈的浮层提示。对齐网页 `.toast`：墨绿胶囊（凸起材质）、白字、居中偏下、自己消失。
 ///
 /// 之前 `DriveListViewController` 与 `AccountDetailViewController` 各写了一份
 /// 几乎逐行相同的毛玻璃版本，现在统一走这里。
@@ -15,13 +15,17 @@ enum PaperToast {
 
         let container = UIView()
         container.tag = tag
-        container.backgroundColor = isError ? AppColor.danger : AppColor.ink
-        container.layer.cornerCurve = .continuous
         container.alpha = 0
         // 提示只是路过，别挡住底下的点击。
         container.isUserInteractionEnabled = false
         container.translatesAutoresizingMaskIntoConstraints = false
-        AppShadow.small(container)
+        // 胶囊半径交给 `MaterialView` 按实际高度去夹，Dynamic Type 下也不会画不出来。
+        AppMaterial.raise(
+            container,
+            radius: AppRadius.capsule,
+            surface: isError ? .danger : .ink,
+            elevation: .floating
+        )
 
         let label = UILabel()
         label.text = message
@@ -50,11 +54,7 @@ enum PaperToast {
             )
         ])
 
-        // 胶囊圆角要等布局出来再定：高度随 Dynamic Type 变，写死的半径一旦超过高度的
-        // 一半，`.continuous` 的圆角路径就构造不出来，图层什么都不画——提示会「成功
-        // 显示」却整条看不见（在窗口里、不透明、在最上层，就是没有像素）。
         view.layoutIfNeeded()
-        container.layer.cornerRadius = container.bounds.height / 2
 
         // 网页的 `rise` 动画：从下方 10px 淡入。
         container.transform = CGAffineTransform(translationX: 0, y: 10)

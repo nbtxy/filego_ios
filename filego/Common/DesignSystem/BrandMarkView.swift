@@ -43,6 +43,21 @@ final class BrandMarkView: UIView {
         arrow.textAlignment = .center
         arrow.translatesAutoresizingMaskIntoConstraints = false
 
+        // 轻拟物：主体顶上一层淡淡的顶光，整枚标贴地投一小片影子。
+        let gloss = CAGradientLayer()
+        gloss.colors = [UIColor(white: 1, alpha: 0.18).cgColor, UIColor(white: 1, alpha: 0).cgColor]
+        gloss.locations = [0, 0.6]
+        // body 的尺寸在下面的约束里是写死的，所以直接按那个尺寸摆，不必等布局。
+        gloss.frame = CGRect(x: 0, y: 0, width: 35 * scale, height: 30 * scale)
+        gloss.cornerRadius = 8 * scale
+        gloss.cornerCurve = .continuous
+        gloss.masksToBounds = true
+        body.layer.addSublayer(gloss)
+        container.layer.shadowColor = AppColor.ink.cgColor
+        container.layer.shadowOffset = CGSize(width: 0, height: 3 * scale)
+        container.layer.shadowRadius = 4 * scale
+        container.layer.shadowOpacity = 0.22
+
         addSubview(container)
         container.addSubview(tab)
         container.addSubview(body)

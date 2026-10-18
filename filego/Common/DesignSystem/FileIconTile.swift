@@ -3,6 +3,9 @@ import UIKit
 /// 文件类型色块。对齐网页 `.file-icon`：一个圆角色块，里面是**大写扩展名文字**
 /// （文件夹例外，放 folder 图标）。
 ///
+/// 轻拟物：色块上叠一层顶光渐变 + 0.5pt 白色内缘 + 一层贴地小阴影，像压出来的凸面。
+/// 因为要投阴影，色块本身**不裁切**（文字与图标都约束在边界内，用不着）。
+///
 /// 分类判定复用 `FileKind`，配色对应网页 `app.client.js` 的 `fileClass()`：
 /// 图片走 `.photo`、音视频走 `.media`、其余（含无扩展名）走默认的文档色。
 @MainActor
@@ -19,6 +22,7 @@ final class FileIconTile: UIView {
         var glyphSize: CGFloat { self == .large ? 22 : 18 }
     }
 
+    private let gloss = CAGradientLayer()
     private let label = UILabel()
     private let glyph = UIImageView()
     private let size: Size
@@ -29,7 +33,19 @@ final class FileIconTile: UIView {
 
         layer.cornerRadius = size.radius
         layer.cornerCurve = .continuous
-        clipsToBounds = true
+        layer.borderWidth = 0.5
+        layer.borderColor = UIColor(white: 1, alpha: 0.6).cgColor
+        layer.shadowColor = AppColor.ink.cgColor
+        layer.shadowOffset = CGSize(width: 0, height: 2)
+        layer.shadowRadius = 2.5
+        layer.shadowOpacity = 0.12
+
+        gloss.colors = [UIColor(white: 1, alpha: 0.4).cgColor, UIColor(white: 1, alpha: 0).cgColor]
+        gloss.locations = [0, 0.55]
+        gloss.cornerCurve = .continuous
+        gloss.cornerRadius = size.radius
+        gloss.masksToBounds = true
+        layer.insertSublayer(gloss, at: 0)
 
         label.textAlignment = .center
         label.font = .systemFont(ofSize: size.labelSize, weight: .bold)
@@ -56,6 +72,15 @@ final class FileIconTile: UIView {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        gloss.frame = bounds
+        layer.shadowPath = UIBezierPath(roundedRect: bounds, cornerRadius: size.radius).cgPath
+        CATransaction.commit()
+    }
 
     func configure(with node: DriveNode) {
         let kind = FileKind(node: node)

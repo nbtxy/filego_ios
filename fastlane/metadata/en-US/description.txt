@@ -21,8 +21,8 @@ YOUR FILES, ON YOUR PHONE
 PRIVACY
 No sign-in, no email, no password. Your identity is a name and a key kept in your iPhone's Secure Enclave. No ads, no tracking, no analytics SDKs. You can delete your account from inside the app at any time.
 
-STOLNK PRO
-Stolnk is a paid download — no in-app purchases, no subscription. Every Pro feature is included from the moment you install: unlimited addresses, files up to 20 GB each, 300 GB of relay per month, more and longer-lasting download links, and password-protected links.
+EVERYTHING INCLUDED
+Stolnk is a paid download — no in-app purchases, no subscription. Every feature is included from the moment you install: unlimited addresses, files up to 20 GB each, 300 GB of relay per month, more and longer-lasting download links, and password-protected links.
 
 Privacy Policy: https://stolnk.com/privacy
 Terms of Use: https://stolnk.com/terms

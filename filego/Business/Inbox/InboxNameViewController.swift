@@ -17,7 +17,7 @@ final class InboxNameViewController: UIViewController {
     private let environment: AppEnvironment
 
     private let currentLabel = UILabel()
-    private let nameField = UITextField()
+    private let nameField = PaperTextField()
     private let suffixLabel = UILabel()
     private let statusLabel = UILabel()
     private let saveButton = PaperButton.primary()
@@ -90,7 +90,6 @@ final class InboxNameViewController: UIViewController {
         nameField.spellCheckingType = .no
         nameField.textContentType = .username
         nameField.returnKeyType = .done
-        nameField.borderStyle = .roundedRect
         nameField.textColor = AppColor.ink
         nameField.clearButtonMode = .whileEditing
         nameField.addTarget(self, action: #selector(nameChanged), for: .editingChanged)

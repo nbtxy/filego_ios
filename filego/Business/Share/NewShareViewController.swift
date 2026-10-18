@@ -24,9 +24,9 @@ final class NewShareViewController: UIViewController {
         items: ShareTTL.presets.map { ShareTTL.label($0) })
     private let downloadsControl = UISegmentedControl(
         items: ShareDownloads.presets.map { ShareDownloads.label($0) })
-    private let passwordField = UITextField()
+    private let passwordField = PaperTextField()
     private let passwordProButton = PaperButton.secondary()
-    private let pathField = UITextField()
+    private let pathField = PaperTextField()
     private let pathStatusLabel = UILabel()
     private let guessableWarning = UILabel()
     private let downloadCountWarning = UILabel()
@@ -131,7 +131,6 @@ final class NewShareViewController: UIViewController {
 
         passwordField.placeholder = R.Strings.sharePasswordPlaceholder.localizedString()
         passwordField.isSecureTextEntry = true
-        passwordField.borderStyle = .roundedRect
         passwordField.textColor = AppColor.ink
         passwordField.autocapitalizationType = .none
         passwordField.autocorrectionType = .no
@@ -147,7 +146,6 @@ final class NewShareViewController: UIViewController {
             prefix: environment.stolnk.addressPrefix.map { $0 + "~" },
             text: nil,
             placeholder: R.Strings.sharePathPlaceholder.localizedString())
-        pathField.borderStyle = .roundedRect
         pathField.textColor = AppColor.ink
         pathField.addTarget(self, action: #selector(pathChanged), for: .editingChanged)
 
