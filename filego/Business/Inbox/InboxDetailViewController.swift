@@ -4,7 +4,6 @@ import UIKit
 private nonisolated enum Section: Hashable {
     case link
     case naming
-    case folder
     case options
     case danger
 }
@@ -14,45 +13,44 @@ private nonisolated enum Row: Hashable {
     case copy
     case share
     case qr
+    /// 子域名（`ryan`），带上状态文案，改名或到期天数变了才会重绘。
+    case name(String)
+    case nameNote(String)
+    /// 地址已失效时唯一的动作：重新设置子域名。
+    case setName
     case senderName
-    case path
-    case pathNote
-    case folder
     case sizeLimit
     case password
     case pause
     case pauseNote
-    case reset
     case clear
-    case delete
     case dangerNote
 }
 
 /**
- 一条收件地址的详情与管理。对应 Mac 端 `InboxLinksView` 的右半边。
+ 收件设置：这台设备唯一的收件地址 `<name>.stolnk.com`。
 
- 只记 `inboxID`，每次渲染都从 `environment.stolnk.inboxes` 里现查那条 `InboxSummary`。
- 存下结构体是不行的：改完路径后 `refreshInboxes()` 会整个换掉数组，手里那份立刻过期，
- 页面会理直气壮地继续显示一条已经失效的地址。查不到就说明它被删了（可能是在这台设备上，
- 也可能是别处），直接退回列表。
+ 单一收件地址之后没有路径、没有「哪个文件夹」、也没有重置和删除——地址就是名字，
+ 它永远落在接收文件夹里。这里管的是：复制/分享/二维码、子域名（改名与到期状态）、
+ 发件人看到的名字、暂停，以及清掉传输记录。入口是接收文件夹导航栏上的地址按钮和
+ 「我的 → 收件地址」。
+
+ 每次渲染都从 `environment.stolnk.inbox` 现查，不存结构体：改名或暂停之后
+ `refreshInboxes()` 会整个换掉它。
  */
 @MainActor
 final class InboxDetailViewController: UIViewController {
     private let environment: AppEnvironment
-    private let inboxID: String
 
     private var collectionView: UICollectionView!
     private var dataSource: UICollectionViewDiffableDataSource<Section, Row>!
     private let pauseSwitch = UISwitch()
 
-    /// 当前这条地址。删掉之后为 nil。
-    private var inbox: InboxSummary? {
-        environment.stolnk.inboxes.first { $0.inboxID == inboxID }
-    }
+    /// 这台设备唯一的地址。还没拉到（刚注册、离线）时为 nil。
+    private var inbox: InboxSummary? { environment.stolnk.inbox }
 
-    init(environment: AppEnvironment, inbox: InboxSummary) {
+    init(environment: AppEnvironment) {
         self.environment = environment
-        self.inboxID = inbox.inboxID
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -71,16 +69,13 @@ final class InboxDetailViewController: UIViewController {
             self, selector: #selector(stateDidChange),
             name: .stolnkStateDidChange, object: nil)
         applySnapshot()
+        Task {
+            await environment.stolnk.refreshInboxes()
+            await environment.stolnk.refreshPlan()
+        }
     }
 
-    /// 地址没了就没什么可管理的了。退回列表，那里会显示空状态。
-    @objc private func stateDidChange() {
-        guard inbox != nil else {
-            navigationController?.popViewController(animated: true)
-            return
-        }
-        applySnapshot()
-    }
+    @objc private func stateDidChange() { applySnapshot() }
 
     // MARK: - 视图
 
@@ -115,6 +110,28 @@ final class InboxDetailViewController: UIViewController {
 
     private func configure(_ cell: UICollectionViewListCell, for row: Row) {
         PaperListCellStyle.apply(to: cell)
+        // 子域名状态与「设置子域名」在没有地址时也要显示，所以先处理这三行。
+        switch row {
+        case .name(let status):
+            var content = UIListContentConfiguration.valueCell()
+            content.applyPaperColors()
+            content.text = R.Strings.nameStatusRow.localizedString()
+            content.secondaryText = status
+            cell.contentConfiguration = content
+            cell.accessories = [PaperListCellStyle.disclosure]
+            return
+        case .nameNote(let text):
+            cell.contentConfiguration = note(text)
+            cell.accessories = []
+            return
+        case .setName:
+            cell.contentConfiguration = action(
+                R.Strings.nameSetNew.localizedString(), icon: "at")
+            cell.accessories = []
+            return
+        default:
+            break
+        }
         guard let inbox else { return }
 
         switch row {
@@ -144,34 +161,13 @@ final class InboxDetailViewController: UIViewController {
                 R.Strings.inboxQr.localizedString(), icon: "qrcode")
             cell.accessories = []
 
+        // 这三行在上面已经处理过；这里只为让第二个 switch 保持穷尽。
+        case .name, .nameNote, .setName:
+            break
+
         case .senderName:
             cell.contentConfiguration = value(
                 R.Strings.inboxDetailSenderName.localizedString(), inbox.displayName)
-            cell.accessories = [PaperListCellStyle.disclosure]
-
-        case .path:
-            cell.contentConfiguration = value(
-                R.Strings.inboxDetailPath.localizedString(), inbox.slug)
-            cell.accessories = [PaperListCellStyle.disclosure]
-
-        case .pathNote:
-            cell.contentConfiguration = note(R.Strings.inboxDetailPathHint.localizedString())
-            cell.accessories = []
-
-        case .folder:
-            // PRD 12.5 —— 落地目录够不到时接收会被暂停，而不是把文件放到别处去，
-            // 所以「未绑定」得用警示色说出来，不能和普通副标题一个样。
-            let folder = environment.stolnk.folder(for: inboxID)
-                .flatMap { environment.drive.id(for: $0) }
-            var content = UIListContentConfiguration.valueCell()
-            content.applyPaperColors()
-            content.text = R.Strings.inboxDetailLandsIn.localizedString()
-            content.secondaryText = folder.map { $0.nilIfEmpty ?? R.Strings.tabFiles.localizedString() }
-                ?? R.Strings.inboxFolderUnset.localizedString()
-            content.secondaryTextProperties.color = folder == nil
-                ? AppColor.danger
-                : AppColor.textSecondary
-            cell.contentConfiguration = content
             cell.accessories = [PaperListCellStyle.disclosure]
 
         case .sizeLimit:
@@ -200,19 +196,9 @@ final class InboxDetailViewController: UIViewController {
             cell.contentConfiguration = note(R.Strings.inboxDetailPauseHint.localizedString())
             cell.accessories = []
 
-        case .reset:
-            cell.contentConfiguration = action(
-                R.Strings.inboxReset.localizedString(), icon: "arrow.triangle.2.circlepath")
-            cell.accessories = []
-
         case .clear:
             cell.contentConfiguration = action(
                 R.Strings.inboxClear.localizedString(), icon: "clock.arrow.circlepath")
-            cell.accessories = []
-
-        case .delete:
-            cell.contentConfiguration = action(
-                R.Strings.inboxDelete.localizedString(), icon: "trash", destructive: true)
             cell.accessories = []
 
         case .dangerNote:
@@ -256,18 +242,26 @@ final class InboxDetailViewController: UIViewController {
     // MARK: - 数据
 
     private func applySnapshot() {
-        guard dataSource != nil, let inbox else { return }
+        guard dataSource != nil else { return }
+        let status = NameStatusText.make(environment: environment)
         var snapshot = NSDiffableDataSourceSnapshot<Section, Row>()
-        snapshot.appendSections([.link, .naming, .folder, .options, .danger])
-        snapshot.appendItems([.address, .copy, .share, .qr], toSection: .link)
-        snapshot.appendItems([.senderName, .path, .pathNote], toSection: .naming)
-        snapshot.appendItems([.folder], toSection: .folder)
-        snapshot.appendItems(
-            inbox.hasPassword
-                ? [.sizeLimit, .password, .pause, .pauseNote]
-                : [.sizeLimit, .pause, .pauseNote],
-            toSection: .options)
-        snapshot.appendItems([.reset, .clear, .delete, .dangerNote], toSection: .danger)
+        if let inbox {
+            snapshot.appendSections([.link, .naming, .options, .danger])
+            snapshot.appendItems([.address, .copy, .share, .qr], toSection: .link)
+            snapshot.appendItems(
+                [.name(status.short), .nameNote(status.detail), .senderName], toSection: .naming)
+            snapshot.appendItems(
+                inbox.hasPassword
+                    ? [.sizeLimit, .password, .pause, .pauseNote]
+                    : [.sizeLimit, .pause, .pauseNote],
+                toSection: .options)
+            snapshot.appendItems([.clear, .dangerNote], toSection: .danger)
+        } else {
+            // 没有可用地址：只说明状态并给出「设置子域名」。
+            snapshot.appendSections([.naming])
+            snapshot.appendItems(
+                [.name(status.short), .nameNote(status.detail), .setName], toSection: .naming)
+        }
 
         // 和 `MeViewController` 同样的理由：行标识不带内容，光 apply 一次相同的 snapshot
         // diffable 会认定无事发生，cell 停在旧值上。只 reconfigure 本来就在的行——
@@ -357,78 +351,6 @@ extension InboxDetailViewController {
         present(alert, animated: true)
     }
 
-    private func changePath() {
-        guard let inbox else { return }
-        let alert = UIAlertController(
-            title: R.Strings.inboxPathTitle.localizedString(),
-            message: R.Strings.inboxPathMessage.localizedString(),
-            preferredStyle: .alert
-        )
-        alert.addTextField { [weak self] field in
-            InboxPathField.configure(
-                field,
-                prefix: self?.environment.stolnk.addressPrefix,
-                text: inbox.slug
-            )
-        }
-        alert.addAction(UIAlertAction(
-            title: R.Strings.commonCancel.localizedString(), style: .cancel))
-        alert.addAction(UIAlertAction(
-            title: R.Strings.inboxPathSave.localizedString(), style: .default
-        ) { [weak self, weak alert] _ in
-            guard let self else { return }
-            let raw = alert?.textFields?.first?.text ?? ""
-            guard PathRules.problem(with: raw) == nil else {
-                self.showMessage(
-                    title: R.Strings.inboxPathTitle.localizedString(),
-                    message: R.Strings.driveImportPathInvalid.localizedString())
-                return
-            }
-            Task {
-                do { try await self.environment.stolnk.setSlug(inbox, slug: raw) }
-                catch { self.showError(error) }
-            }
-        })
-        present(alert, animated: true)
-    }
-
-    /// 换落地目录。纯本地操作——绑定是这台手机自己的账本，服务端不知道也不需要知道。
-    private func changeFolder() {
-        let picker = FolderPickerNavigationController.make(
-            environment: environment,
-            rootId: LocalDriveStore.rootID,
-            excludedNodeId: nil,
-            confirmTitle: R.Strings.inboxFolderPick.localizedString()
-        ) { [weak self] targetId in
-            guard let self else { return }
-            dismiss(animated: true)
-            environment.stolnk.bind(
-                inboxID: inboxID, to: environment.drive.url(for: targetId))
-            applySnapshot()
-            PaperToast.show(R.Strings.inboxFolderChanged.localizedString(), in: view)
-            HapticManager.notification(.success)
-        }
-        present(picker, animated: true)
-    }
-
-    private func confirmReset() {
-        guard let inbox else { return }
-        confirm(
-            title: R.Strings.inboxResetTitle.localizedString(),
-            message: R.Strings.inboxResetMessage.localizedString(),
-            confirmTitle: R.Strings.inboxResetConfirm.localizedString()
-        ) { [weak self] in
-            guard let self else { return }
-            Task {
-                do {
-                    try await self.environment.stolnk.resetInbox(inbox)
-                    PaperToast.show(R.Strings.inboxResetDone.localizedString(), in: self.view)
-                    HapticManager.notification(.success)
-                } catch { self.showError(error) }
-            }
-        }
-    }
-
     private func confirmClear() {
         guard let inbox else { return }
         confirm(
@@ -444,25 +366,6 @@ extension InboxDetailViewController {
                     PaperToast.show(
                         R.Strings.inboxClearDone.formatted(cleared), in: self.view)
                     HapticManager.notification(.success)
-                } catch { self.showError(error) }
-            }
-        }
-    }
-
-    private func confirmDelete() {
-        guard let inbox else { return }
-        confirm(
-            title: R.Strings.inboxDeleteTitle.formatted(inbox.displayName),
-            message: R.Strings.inboxDeleteMessage.localizedString(),
-            confirmTitle: R.Strings.inboxDeleteConfirm.localizedString()
-        ) { [weak self] in
-            guard let self else { return }
-            Task {
-                do {
-                    try await self.environment.stolnk.deleteInbox(inbox)
-                    HapticManager.notification(.success)
-                    // 退回列表由 `stateDidChange` 负责：refreshInboxes 之后这条地址
-                    // 就查不到了，那里统一处理，不用在这里再 pop 一次。
                 } catch { self.showError(error) }
             }
         }
@@ -496,17 +399,15 @@ extension InboxDetailViewController {
      */
     private func showError(_ error: Error?) {
         if let apiError = error as? APIError {
-            if apiError.isQuota || apiError.isUpgradeRequired {
+            // 设密码是会员功能，402 应该把人带到会员页。
+            if apiError.isUpgradeRequired {
+                return PlanViewController.handleUpgradeRequired(
+                    on: self, environment: environment)
+            }
+            if apiError.isQuota {
                 showMessage(
                     title: R.Strings.quotaExceededTitle.localizedString(),
                     message: R.Strings.quotaExceededMessage.localizedString())
-                return
-            }
-            // 换路径撞车是这个页面最容易碰到的 400，单独讲清楚。
-            if apiError.status == 400 {
-                showMessage(
-                    title: R.Strings.commonError.localizedString(),
-                    message: R.Strings.driveImportPathRefused.localizedString())
                 return
             }
         }
@@ -527,12 +428,10 @@ extension InboxDetailViewController: UICollectionViewDelegate {
         case .share: shareAddress(from: collectionView.cellForItem(at: indexPath))
         case .qr: showQRCode()
         case .senderName: renameSenderName()
-        case .path: changePath()
-        case .folder: changeFolder()
-        case .reset: confirmReset()
+        case .name, .setName: navigationController?.pushViewController(
+            InboxNameViewController(environment: environment), animated: true)
         case .clear: confirmClear()
-        case .delete: confirmDelete()
-        case .address, .pathNote, .sizeLimit, .password, .pause, .pauseNote, .dangerNote:
+        case .address, .nameNote, .sizeLimit, .password, .pause, .pauseNote, .dangerNote:
             break
         }
     }
@@ -542,7 +441,7 @@ extension InboxDetailViewController: UICollectionViewDelegate {
         _ collectionView: UICollectionView, shouldHighlightItemAt indexPath: IndexPath
     ) -> Bool {
         switch dataSource.itemIdentifier(for: indexPath) {
-        case .address, .pathNote, .sizeLimit, .password, .pause, .pauseNote, .dangerNote:
+        case .address, .nameNote, .sizeLimit, .password, .pause, .pauseNote, .dangerNote:
             return false
         default:
             return true

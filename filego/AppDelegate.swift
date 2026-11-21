@@ -20,10 +20,13 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         environment.drive.purgeExpiredTrash()
         // 不 await：取密钥可能弹系统提示，注册要走网络，任何一个卡住都不该拖住首屏。
         // 界面自己会等 .stolnkStateDidChange。
+        //
+        // 会员监听先开：`Transaction.updates` 会补投上次没上报成功的交易。对账
+        // （currentEntitlements）要等设备会话起来，否则 api 还是 nil、上报必然失败。
         Task {
-            // 付费下载即 Pro：设备会话起来之后再去 Worker 认领，否则 api 还是 nil。
+            environment.membership.startObservingTransactions()
             await environment.stolnk.start()
-            await environment.appUnlock.bootstrap()
+            await environment.membership.bootstrap()
         }
         return true
     }

@@ -9,7 +9,7 @@ import UIKit
  （理由见 `refuseEmpty` 上的注释），它的代价最贵。
 
  所有检查都在本地，一个网络请求都不发：这些答案本地全都有，为了一句「文件是空的」
- 去 round-trip 一次，还要在免费档上烧掉那唯一的额度，是说不过去的。
+ 去 round-trip 一次是说不过去的。
  */
 @MainActor
 enum ShareLauncher {
@@ -35,8 +35,30 @@ enum ShareLauncher {
         }
 
         let stolnk = environment.stolnk
-        // plan 缺失就不预判任何事，让 402 自然到来——`PlanState.shareLimit` 的文档
-        // 注释就是这么要求的，而 `refreshPlan()` 是 try?，plan 真的可能是 nil。
+        // 创建下载链接是会员功能。服务端对非会员的 `POST /shares` 同样回 402，这里只是
+        // 不让人白白填一遍表单；402 仍由 `handleUpgradeRequired` 兜底。
+        guard stolnk.plan?.isPro == true else {
+            return showUpgrade(on: presenter, environment: environment)
+        }
+        // 会员也可能没有地址：子域名到期后才订阅，需要先设置一个新名字。
+        if stolnk.plan?.addressActive == false {
+            let alert = UIAlertController(
+                title: R.Strings.nameStatusExpired.localizedString(),
+                message: R.Strings.nameStatusExpiredDetail.localizedString(),
+                preferredStyle: .alert)
+            alert.addAction(UIAlertAction(
+                title: R.Strings.nameSetNew.localizedString(), style: .default
+            ) { _ in
+                presenter.navigationController?.pushViewController(
+                    InboxNameViewController(environment: environment), animated: true)
+            })
+            alert.addAction(UIAlertAction(
+                title: R.Strings.commonOk.localizedString(), style: .cancel))
+            presenter.present(alert, animated: true)
+            return
+        }
+        // 到这里已经是会员（或至少 plan 说它是）。下面的额度检查只是提前给答案；
+        // 服务端的 402 仍然是最终裁决，`refreshPlan()` 是 try?，plan 可能还没到。
         if let plan = stolnk.plan {
             // 条数上限。服务端统计的是**全部**记录，不过滤状态，所以已撤回和已过期的
             // 也算在内——这条本地判断和它数的是同一群。

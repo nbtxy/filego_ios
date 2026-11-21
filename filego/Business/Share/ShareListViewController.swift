@@ -8,20 +8,20 @@ private nonisolated enum Section: Hashable {
 
 private nonisolated enum Row: Hashable {
     /// 带上整条 summary，否则改完路径、暂停或撤回之后这一行不会重绘：diffable 只认
-    /// item 本身的相等性，一个只带 id 的行在前后是同一个 item。和 `InboxListViewController`
-    /// 里 `.name(String)` 同一个理由。
+    /// item 本身的相等性，一个只带 id 的行在前后是同一个 item。
     case share(ShareSummary)
     case note
     case empty
+    /// 非会员：链接是会员功能，给一个去订阅的入口。
+    case memberGate
 }
 
 /**
  这台设备发出去的下载链接。对应 Mac 端 `SharesView` 的一级列表。
 
- 是 `InboxListViewController` 的出向孪生：那边是别人发给你，这边是你发给别人。
- 创建入口不在这里——一条链接背后总得有个文件，所以建链接在「文件」里（长按菜单
- 和预览页），这一页只管已经存在的那些。和 `StolnkController.createInbox` 注释里
- 「没有文件夹的时候根本无话可说」是同一个论证。
+ 收件地址的出向孪生：那边是别人发给你，这边是你发给别人。创建入口不在这里——
+ 一条链接背后总得有个文件，所以建链接在「文件」里（长按菜单和预览页），这一页
+ 只管已经存在的那些。创建链接是会员功能：非会员在这里看到的是订阅入口。
 
  底部固定一条说明：这些链接不是端到端加密的。`docs/wire-format.md` 要求创建页
  披露这件事，而一个月后回来看列表的人未必记得当初那一屏，所以这里也挂着。
@@ -110,6 +110,18 @@ final class ShareListViewController: UIViewController {
             cell.contentConfiguration = content
             cell.accessories = []
 
+        case .memberGate:
+            var content = UIListContentConfiguration.subtitleCell()
+            content.applyPaperColors()
+            content.image = UIImage(systemName: "sparkles")
+            content.text = R.Strings.shareMemberOnlyTitle.localizedString()
+            content.textProperties.font = AppTypography.rowName
+            content.secondaryText = R.Strings.shareMemberOnlyMessage.localizedString()
+            content.secondaryTextProperties.color = AppColor.textSecondary
+            cell.contentConfiguration = content
+            cell.accessories = [.label(text: R.Strings.memberSubscribeShort.localizedString()),
+                                .disclosureIndicator()]
+
         case .empty:
             var content = UIListContentConfiguration.cell()
             content.applyPaperColors()
@@ -125,8 +137,10 @@ final class ShareListViewController: UIViewController {
         let shares = environment.stolnk.shares
         var snapshot = NSDiffableDataSourceSnapshot<Section, Row>()
         snapshot.appendSections([.shares, .note])
-        snapshot.appendItems(
-            shares.isEmpty ? [.empty] : shares.map(Row.share), toSection: .shares)
+        let member = environment.stolnk.plan?.isPro == true
+        var rows = shares.map(Row.share)
+        if !member { rows.insert(.memberGate, at: 0) } else if rows.isEmpty { rows = [.empty] }
+        snapshot.appendItems(rows, toSection: .shares)
         snapshot.appendItems([.note], toSection: .note)
         dataSource.apply(snapshot, animatingDifferences: false)
     }
@@ -135,6 +149,9 @@ final class ShareListViewController: UIViewController {
 extension ShareListViewController: UICollectionViewDelegate {
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         collectionView.deselectItem(at: indexPath, animated: true)
+        if case .memberGate = dataSource.itemIdentifier(for: indexPath) {
+            return PlanViewController.present(from: self, environment: environment)
+        }
         guard case .share(let share) = dataSource.itemIdentifier(for: indexPath) else { return }
         navigationController?.pushViewController(
             ShareDetailViewController(environment: environment, share: share), animated: true)
@@ -143,8 +160,10 @@ extension ShareListViewController: UICollectionViewDelegate {
     func collectionView(
         _ collectionView: UICollectionView, shouldHighlightItemAt indexPath: IndexPath
     ) -> Bool {
-        if case .share = dataSource.itemIdentifier(for: indexPath) { return true }
-        return false
+        switch dataSource.itemIdentifier(for: indexPath) {
+        case .share, .memberGate: return true
+        default: return false
+        }
     }
 
     /// 长按直接给「复制链接」。和收件地址那边一样的理由：复制是这个页面上最高频的
@@ -156,7 +175,9 @@ extension ShareListViewController: UICollectionViewDelegate {
     ) -> UIContextMenuConfiguration? {
         guard case .share(let share) = dataSource.itemIdentifier(for: indexPath),
               share.isLive else { return nil }
-        return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { _ in
+        // The menu provider and the action below are nested closures; both must
+        // capture self the same way, or Swift 6 warns about mismatched ownership.
+        return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak self] _ in
             UIMenu(children: [UIAction(
                 title: R.Strings.shareCopy.localizedString(),
                 image: UIImage(systemName: "doc.on.doc")

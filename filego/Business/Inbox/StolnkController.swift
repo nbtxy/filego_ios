@@ -21,6 +21,8 @@ extension Notification.Name {
     static let stolnkRegistrationDidChange = Notification.Name("stolnk.registration-did-change")
     /// 在途文件（`StolnkController.incoming`）增、删，或某一条的整数百分比变了。
     static let stolnkIncomingDidChange = Notification.Name("stolnk.incoming-did-change")
+    /// 非会员的自定义子域名到期，服务端释放了名字，设备暂时没有可用地址。
+    static let stolnkAddressDidExpire = Notification.Name("stolnk.address-did-expire")
 }
 
 /**
@@ -118,13 +120,24 @@ final class StolnkController {
         var fraction: Double
     }
 
+    /**
+     专属接收文件夹（`Documents/Received`）。由 `AppEnvironment` 在启动时设好。
+
+     单一收件地址之后每台设备只有一个 inbox，它永远落在这里——不再有「给某个文件夹
+     取一条地址」这回事，所以绑定也不再是用户的操作，而是这里自己维持的不变量。
+     */
+    var receiveFolder: URL?
+
+    /// 这台设备唯一的收件地址。服务端只返回一个；旧服务端若返回多个，取第一个。
+    var inbox: InboxSummary? { inboxes.first }
+
     /// 没有 deviceID 就是还没注册过——onboarding 的唯一判据。
     var isRegistered: Bool { store.snapshot.deviceID != nil }
 
     /// `.stolnk.com`，name 输入框后面跟着的那截。
     var nameSuffix: String { SiteAddress.suffix(baseHost: store.snapshot.baseHost) }
 
-    /// `ryan.stolnk.com/`，路径输入框前面钉着的那截。还没注册时为 nil。
+    /// `https://ryan.stolnk.com/~`，下载链接路径输入框前面钉着的那截。还没注册时为 nil。
     ///
     /// 单独一个属性而不是让调用方拼：`store` 是 private，外面拿不到 baseHost，
     /// 而 `nameSuffix` 是给 name 输入框用的，形状不对。
@@ -206,9 +219,8 @@ final class StolnkController {
      PRD 7.1 —— 注册是一屏一次调用。name 不是随机地址的升级版，它**就是**身份，
      所以和公钥一起上行：重名以 409 失败且什么都不创建，这才让换个名字重试是干净的。
 
-     只上行名字，不带 slug：这一屏只确定根域名，不产生任何链接。路径是给**文件夹**
-     取的名字，而此刻还没有任何文件夹被选中，所以它属于 `createInbox`。在那之前，
-     这台设备名下一个 inbox 也没有——那不是半成品状态，只是还没取地址。
+     只上行名字：服务端注册时自动建好唯一的根 inbox（`<name>.stolnk.com`），注册完
+     拉一次 `/inboxes` 把它绑到接收文件夹上。
      */
     func register(name chosen: String) async -> Bool {
         guard let keys = identityKeys ?? (try? DeviceIdentity.loadOrCreate()) else {
@@ -224,8 +236,6 @@ final class StolnkController {
         do {
             let result = try await client.register(name: NameRules.normalise(chosen))
             name = result.name
-            // 不再拉一次 /inboxes：名字已经在 result 里，列表则已知为空。
-            inboxes = []
             store.mutate { state in
                 state.deviceID = result.deviceID
                 state.name = result.name
@@ -235,6 +245,9 @@ final class StolnkController {
             }
 
             buildReceiver(api: client, keys: keys)
+            // 根 inbox 是服务端注册时建的，拉回来绑到接收文件夹，顺带拿到套餐与子域名期限。
+            await refreshInboxes()
+            await refreshPlan()
             connectSignalling()
             startForegroundPolling()
             status = .ready
@@ -266,9 +279,9 @@ final class StolnkController {
      没换服务器，设备 ID、token、密钥、文件夹绑定全都照旧成立，清掉任何一样都是白白
      把用户踢回 onboarding。
 
-     不重拉 `/inboxes`：服务端已经把新名字下的整份列表一并返回了，理由和 `register`
-     里那条一样。`throws` 的理由和 `setSlug` 一样——调用方要把「这个名字被占了」和
-     别的错分开讲。
+     不重拉 `/inboxes`：服务端已经把新名字下的整份列表一并返回了。`throws`：调用方要把
+     「这个名字被占了」和别的错分开讲。改完刷新套餐——新名字的过期时间（非会员 7 天）
+     在 `PlanState.nameExpiresAt` 里。
      */
     func rename(to chosen: String) async throws {
         guard let api else { throw Self.notRegistered }
@@ -281,6 +294,8 @@ final class StolnkController {
                 $0.name = normalised
                 $0.inboxes = list
             }
+            bindReceiveFolder()
+            await refreshPlan()
             broadcast()
         } catch {
             handle(error)
@@ -581,6 +596,11 @@ final class StolnkController {
         }
         // 刚落地的文件花掉了额度，顺路刷新，免得配额显示滞后一个周期。
         await refreshPlan()
+        // 子域名到期后服务端的 cron 会释放名字、让地址失效。到点了就重拉一次，
+        // 好让首页、「我的」和接收文件夹显示「已到期」而不是一个已经无效的地址。
+        if let expiry = plan?.nameExpiryDate, expiry <= Date() {
+            await refreshInboxes()
+        }
         broadcast()
     }
 
@@ -590,14 +610,23 @@ final class StolnkController {
         guard let api else { return }
         do {
             let (currentName, list) = try await api.inboxes()
+            let previous = name
             name = currentName
-            inboxes = list
+            // 没有地址时服务端返回空列表；设备本身还在，接收文件夹也还在。
+            let live = currentName == nil ? [] : Array(list.prefix(1))
+            inboxes = live
             store.mutate {
                 $0.name = currentName
-                $0.inboxes = list
+                $0.inboxes = live
             }
-            if list.allSatisfy({ $0.paused }), !list.isEmpty { status = .paused }
+            bindReceiveFolder()
+            if inbox?.paused == true { status = .paused }
             broadcast()
+            // 从“有地址”变成“没有地址”：只可能是 7 天到期后服务端释放了名字。
+            if previous != nil, currentName == nil {
+                NotificationCenter.default.post(name: .stolnkAddressDidExpire, object: nil)
+                await refreshPlan()
+            }
         } catch {
             handle(error)
         }
@@ -605,18 +634,22 @@ final class StolnkController {
 
     /// 失败不报错：配额是顺路刷新的，为它弹一个错会盖住真正的操作结果。
     func refreshPlan() async {
-        guard let api else { return }
-        if let state = try? await api.plan() {
-            plan = state
-            broadcast()
+        guard let api, let state = try? await api.plan() else { return }
+        // 地址从“可用”变成“已失效”：服务端的清扫任务已经释放了名字。重拉一次地址，
+        // 好把本机缓存的旧名字和 inbox 清掉——否则界面会继续显示一条 404 的地址。
+        let wasActive = plan?.addressActive ?? true
+        plan = state
+        broadcast()
+        if wasActive, state.addressActive == false {
+            await refreshInboxes()
         }
     }
 
-    /// 付费下载即 Pro：让 Worker 给本设备记一笔 App Store 解锁。幂等，重复调用无副作用。
-    func claimAppStoreUnlock() async throws -> PlanState {
+    /// 会员订阅交易交给 Worker 回查 Apple。返回 Worker 判定后的套餐。
+    func verifySubscription(transactionID: UInt64) async throws -> PlanState {
         guard let api else { throw Self.notRegistered }
         do {
-            let state = try await api.claimAppStoreUnlock()
+            let state = try await api.verifySubscription(transactionID: transactionID)
             plan = state
             broadcast()
             return state
@@ -653,7 +686,7 @@ final class StolnkController {
     /**
      把一个本地文件变成一条公开的下载链接。
 
-     `throws` 而不是返回 Bool：调用方要把 402（档位不够）、409（路径被占）和 413
+     `throws` 而不是返回 Bool：调用方要把 402（不是会员）、409（路径被占）和 413
      （空间满了）分成三句不同的话讲，而 `lastError` 那条通道会把它们压成同一句。
 
      返回 `ShareHandle` 而不是 Bool：链接在**上传完成之前**就已经存在（`POST /shares`
@@ -767,8 +800,7 @@ final class StolnkController {
             ShareCodeRules.normalise(candidate), forShare: shareID)
     }
 
-    /// 换路径。旧链接当场失效。`throws` 的理由和 `setSlug` 相同：调用方要把
-    /// 「这个路径被占了」和别的错分开讲。
+    /// 换路径。旧链接当场失效。`throws`：调用方要把「这个路径被占了」和别的错分开讲。
     func setShareCode(_ share: ShareSummary, code: String) async throws {
         guard let api else { throw Self.notRegistered }
         do {
@@ -811,8 +843,7 @@ final class StolnkController {
 
     /// 删除整条记录，路径一并释放。
     ///
-    /// 同时解绑源文件，理由和 `deleteInbox` 调 `store.unbind(inboxID:)` 相同：
-    /// 记录没了就再没有东西引用这条绑定，留着只是 state.json 里的一行垃圾。
+    /// 同时解绑源文件：记录没了就再没有东西引用这条绑定，留着只是 state.json 里的一行垃圾。
     func deleteShare(_ share: ShareSummary) async -> Bool {
         guard let api else { return false }
         do {
@@ -855,32 +886,6 @@ final class StolnkController {
         }
     }
 
-    /**
-     给一个文件夹取一条收件地址。
-
-     路径在这里才出现，而不是在 onboarding：它是给这个文件夹取的名字，没有文件夹
-     的时候根本无话可说。创建和绑定是一步：一条没绑定落地目录的地址收到文件只会
-     把自己暂停（`Receiver.prepare`，PRD 12.5），那是个没人想要的中间态。
-
-     `throws` 而不是返回 Bool：调用方要分开处理 402（免费版只能有一条）和 400
-     （路径被占），而 `lastError` 那条通道会把两者压成同一句话。报错前先过一道
-     `handle(_:)`，否则会漏掉它对 `unknown_device` 的处理。
-     */
-    func createInbox(slug: String, displayName: String, folder: URL) async throws -> InboxSummary {
-        guard let api else { throw Self.notRegistered }
-        do {
-            let inbox = try await api.createInbox(
-                slug: PathRules.normalise(slug), displayName: displayName)
-            store.bind(inboxID: inbox.inboxID, to: folder)
-            await refreshInboxes()
-            return inbox
-        } catch {
-            handle(error)
-            broadcast()
-            throw error
-        }
-    }
-
     // MARK: - 改一条地址
 
     /**
@@ -904,43 +909,12 @@ final class StolnkController {
         }
     }
 
-    /**
-     换路径。
-
-     旧地址立刻失效，服务端不留过渡期（见 worker `inboxes.ts` 的 reset 注释）。
-     `throws` 的理由和 `createInbox` 相同：调用方要把「这个路径被占了」和别的错分开讲。
-     */
-    func setSlug(_ inbox: InboxSummary, slug: String) async throws {
-        guard let api else { throw Self.notRegistered }
-        do {
-            _ = try await api.updateInbox(inbox.inboxID, slug: PathRules.normalise(slug))
-            await refreshInboxes()
-        } catch {
-            handle(error)
-            broadcast()
-            throw error
-        }
-    }
-
-    /// 发件人在上传页看到的名字。和地址无关——地址是「名字 + 路径」，两半都在别处改。
+    /// 发件人在上传页看到的名字。和地址无关——地址就是 `<name>.stolnk.com`。
     func setDisplayName(_ inbox: InboxSummary, to value: String) async throws {
         guard let api else { throw Self.notRegistered }
         do {
             _ = try await api.updateInbox(
                 inbox.inboxID, displayName: DisplayNameRules.normalise(value))
-            await refreshInboxes()
-        } catch {
-            handle(error)
-            broadcast()
-            throw error
-        }
-    }
-
-    /// 换一条随机路径。只有路径变——名字是设备身份，重置一条地址从来不是改它的理由。
-    func resetInbox(_ inbox: InboxSummary) async throws {
-        guard let api else { throw Self.notRegistered }
-        do {
-            _ = try await api.resetInbox(inbox.inboxID)
             await refreshInboxes()
         } catch {
             handle(error)
@@ -968,35 +942,46 @@ final class StolnkController {
         }
     }
 
-    /**
-     删掉一条地址。
-
-     服务端会级联掉它的传输记录和还停在中转站的文件，路径随之释放。本地的文件夹
-     绑定必须一起解开：它以 inbox id 为键，而那个 id 已经不存在了，留着只会让下一条
-     恰好复用该 id 的地址继承一个谁也没选过的落地目录。`store` 是 private，所以这件事
-     只能在这里做。
-     */
-    func deleteInbox(_ inbox: InboxSummary) async throws {
-        guard let api else { throw Self.notRegistered }
-        do {
-            try await api.deleteInbox(inbox.inboxID)
-            store.unbind(inboxID: inbox.inboxID)
-            await receiver?.clearPauseMemo(for: inbox.inboxID)
-            await refreshInboxes()
-        } catch {
-            handle(error)
-            broadcast()
-            throw error
-        }
-    }
-
     private static var notRegistered: APIError {
         APIError(status: 0, code: "no_device", message: "还没有注册。")
     }
 
     func folder(for inboxID: String) -> URL? { store.folder(for: inboxID) }
 
-    func bind(inboxID: String, to folder: URL) { store.bind(inboxID: inboxID, to: folder) }
+    /**
+     把唯一的 inbox 绑到接收文件夹，并维持这个不变量。
+
+     老数据迁移：旧版本里一个 inbox 可以绑到任意文件夹。服务端保留的那个 inbox 若绑在
+     根目录下的某个子文件夹上、而 `Received` 还不存在，就把那个文件夹直接改名为
+     `Received`——用户之前收到的东西原样跟过来。绑在根目录或 `Received` 已存在时只改绑，
+     文件一律不动。其余 inbox 的绑定解开（服务端已经把它们退役了），原文件夹作为普通
+     文件夹留着。
+     */
+    private func bindReceiveFolder() {
+        guard let receiveFolder, let inbox else { return }
+        let fm = FileManager.default
+        let target = receiveFolder.standardizedFileURL
+        let root = target.deletingLastPathComponent().standardizedFileURL
+
+        if let old = store.folder(for: inbox.inboxID)?.standardizedFileURL,
+           old != target,
+           old.path.hasPrefix(root.path + "/"),
+           !fm.fileExists(atPath: target.path) {
+            do {
+                try fm.moveItem(at: old, to: target)
+                AppLogger.info("旧收件文件夹已迁移为接收文件夹：\(old.lastPathComponent)")
+            } catch {
+                AppLogger.error("迁移旧收件文件夹失败", error: error)
+            }
+        }
+        try? fm.createDirectory(at: target, withIntermediateDirectories: true)
+        if store.folder(for: inbox.inboxID)?.standardizedFileURL != target {
+            store.bind(inboxID: inbox.inboxID, to: target)
+        }
+        for stale in store.snapshot.folders.keys where stale != inbox.inboxID {
+            store.unbind(inboxID: stale)
+        }
+    }
 
     // MARK: - 服务器地址
 

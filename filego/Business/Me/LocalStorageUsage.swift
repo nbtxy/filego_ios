@@ -56,7 +56,7 @@ nonisolated struct LocalStorageUsage {
     /**
      走一遍 `Documents/`。
 
-     `.Trash/` 不在这里展开：回收站的口径已经由
+     `.StolnkTrash/` 不在这里展开：回收站的口径已经由
      `LocalDriveStore.trashUsage(at:)` 定下（只数顶层条目、跳过 `.index.json`），
      两处各走一遍必然对不上。这里直接用它的结果。
      */
@@ -79,7 +79,7 @@ nonisolated struct LocalStorageUsage {
                 let hidden = name.hasPrefix(".")
 
                 if values?.isDirectory == true {
-                    // 点开头的目录（`.Trash/` 在内）对用户不可见，也不该计进文件夹数。
+                    // 点开头的目录（回收站在内）对用户不可见，也不该计进文件夹数。
                     if hidden { walker.skipDescendants() } else { usage.folders += 1 }
                     continue
                 }

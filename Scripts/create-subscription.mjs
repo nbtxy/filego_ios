@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 在 App Store Connect 建 JustFling Pro 月度订阅。
+ * 在 App Store Connect 建 Stolnk 会员年度订阅（自动续期，$1.99/年）。
  *
  * 为什么不用 fastlane：fastlane 没有任何内购/订阅 action，spaceship 里唯一的
  * create_iap! 走的是已废弃的私有 iTunes Connect 接口（ra/apps/{id}/iaps/...），
@@ -23,31 +23,32 @@ import { createSign, createPrivateKey } from "node:crypto";
 const APPLY = process.argv.includes("--apply");
 
 const APP_ID = "6798472788";                            // com.nbtxy.filego
-const PRODUCT_ID = "com.nbtxy.filego.pro.monthly";      // 与 filego/src/lib/plans.ts 的 PRO_PRODUCT_ID 一致
+const PRODUCT_ID = "com.nbtxy.filego.member.yearly";   // 与 MembershipService.productID 一致
 const BASE_TERRITORY = "USA";
-const TARGET_PRICE = "2.99";
+const TARGET_PRICE = "1.99";
 
 // 内部名（referenceName / name）不对用户可见，只在 ASC 后台和报表里出现。
-const GROUP_REFERENCE_NAME = "JustFling Pro";
-const SUBSCRIPTION_REFERENCE_NAME = "JustFling Pro Monthly";
+const GROUP_REFERENCE_NAME = "Stolnk Membership";
+const SUBSCRIPTION_REFERENCE_NAME = "Stolnk Membership Yearly";
 
 // 用户可见：订阅组名出现在系统「管理订阅」页；商品名与描述出现在购买弹窗与订阅列表。
 // Apple 限长：name ≤ 30 字符，description ≤ 45 字符。
 const GROUP_LOCALIZATIONS = [
-  { locale: "zh-Hans", name: "JustFling 会员" },
-  { locale: "zh-Hant", name: "JustFling 會員" },
-  { locale: "en-US",   name: "JustFling Membership" },
+  { locale: "zh-Hans", name: "Stolnk 会员" },
+  { locale: "zh-Hant", name: "Stolnk 會員" },
+  { locale: "en-US",   name: "Stolnk Membership" },
 ];
 const SUBSCRIPTION_LOCALIZATIONS = [
-  { locale: "zh-Hans", name: "Pro 会员",   description: "50 GB、导入地址不限量、永久有效、单文件 5 GB 直传" },
-  { locale: "zh-Hant", name: "Pro 會員",   description: "50 GB、匯入地址不限量、永久有效、單檔 5 GB 直傳" },
-  { locale: "en-US",   name: "JustFling Pro", description: "50 GB, unlimited links, 5 GB direct uploads." },
+  { locale: "zh-Hans", name: "Stolnk 会员",   description: "下载链接与永久子域名，每年 $1.99" },
+  { locale: "zh-Hant", name: "Stolnk 會員",   description: "下載連結與永久子網域，每年 $1.99" },
+  { locale: "en-US",   name: "Stolnk Membership", description: "Download links and a permanent subdomain." },
 ];
 
 const REVIEW_NOTE =
-  "Auto-renewable subscription: 50 GB storage, unlimited import addresses, " +
-  "1/7/30/90-day or non-expiring addresses, and direct uploads up to 5 GB per file. " +
-  "Paywall: Me tab -> Upgrade to Pro.";
+  "Auto-renewable yearly membership: download links for files, a permanent " +
+  "subdomain (otherwise expires 7 days after registration), " +
+  "20 GB files, 300 GB/month relay, and password-protected links. " +
+  "Paywall: Me tab -> Membership, or Create download link.";
 
 // ---------------------------------------------------------------------------
 
@@ -118,7 +119,7 @@ async function asc(method, path, body) {
 async function main() {
   console.log(APPLY ? "== 实际创建 ==" : "== dry-run（不会改动任何东西）==");
 
-  // 1. 订阅组。同一组内的商品之间可以升降级；将来加年付就放进这个组。
+  // 1. 订阅组。同一组内的商品之间可以升降级；将来加月付就放进这个组。
   console.log("\n[1/5] 创建订阅组");
   const group = await asc("POST", "/v1/subscriptionGroups", {
     data: {
@@ -153,7 +154,7 @@ async function main() {
       attributes: {
         name: SUBSCRIPTION_REFERENCE_NAME,
         productId: PRODUCT_ID,
-        subscriptionPeriod: "ONE_MONTH",
+        subscriptionPeriod: "ONE_YEAR",
         familySharable: false,
         reviewNote: REVIEW_NOTE,
       },
@@ -217,10 +218,10 @@ async function main() {
     if (!match) {
       const near = points.data
         .map((p) => p.attributes.customerPrice)
-        .filter((v) => parseFloat(v) < 1.5)
+        .filter((v) => parseFloat(v) < 3)
         .sort((a, b) => parseFloat(a) - parseFloat(b));
       throw new Error(
-        `美区没有 $${TARGET_PRICE} 这个价格点。1.5 美元以下的可选值：${near.join(", ")}\n` +
+        `美区没有 $${TARGET_PRICE} 这个价格点。3 美元以下的可选值：${near.join(", ")}\n` +
         `商品已创建（id=${subId}），改上面的 TARGET_PRICE 后重跑第 5 步即可。`,
       );
     }
@@ -243,7 +244,7 @@ async function main() {
   console.log("  · 上传审核截图 —— 商品会停在 MISSING_METADATA 直到传了这张图。");
   console.log("    截图必须显示能正常加载出价格的付费墙，所以要先在 Xcode");
   console.log("    Scheme → Run → Options → StoreKit Configuration 选上");
-  console.log("    filego/Resources/FileGo.storekit（simctl 的启动参数挂不上，试过了）。");
+  console.log("    filego/Membership.storekit（simctl 的启动参数挂不上，试过了）。");
   console.log("  · 确认 Paid Applications Agreement 已生效，否则 Product.products(for:) 返回空数组");
   console.log("  · 人工过一遍各地区自动换算出来的价格");
 }

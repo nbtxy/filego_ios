@@ -1,16 +1,32 @@
 import StolnkCore
+import StoreKit
 import UIKit
 
-/// 「我的 → 套餐」。App 是付费下载，这里没有购买：只展示已包含的权益，
-/// 万一本设备还没在 Worker 上开通（比如首次启动时断网），给一个重新同步的按钮。
+/**
+ 「我的 → 会员」，也是全 App 唯一的付费墙。
+
+ App 免费下载，会员是 $1.99/年的自动续期订阅（`MembershipService`）。这一屏要满足
+ App Store 3.1.2：价格与周期写清楚、写明会自动续期且可随时在 Apple ID 设置里取消、
+ 给出使用条款与隐私政策链接、有「恢复购买」。
+
+ 是不是会员只看 Worker 的 `PlanState`；购买成功后由它回查 Apple 再说了算。
+ */
 @MainActor
 final class PlanViewController: UIViewController {
     private let environment: AppEnvironment
     private let scrollView = UIScrollView()
     private let stack = UIStackView()
     private let statusLabel = UILabel()
-    private let syncButton = PaperButton.primary(title: R.Strings.proSync.localizedString())
+    private let subscribeButton = PaperButton.primary()
+    private let restoreButton = PaperButton.ghost(title: R.Strings.proRestore.localizedString())
+    private let manageButton = PaperButton.secondary(title: R.Strings.proCtaManage.localizedString())
+    private let disclosureLabel = UILabel()
     private let activity = UIActivityIndicatorView(style: .medium)
+    private var isBusy = false
+
+    static let termsURL = URL(string: "https://stolnk.com/terms")!
+    static let privacyURL = URL(string: "https://stolnk.com/privacy")!
+    static let appleEULAURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
 
     init(environment: AppEnvironment) {
         self.environment = environment
@@ -21,24 +37,33 @@ final class PlanViewController: UIViewController {
 
     deinit { NotificationCenter.default.removeObserver(self) }
 
+    /// 模态弹出（带关闭按钮）。门槛与 402 走这里；「我的」里是 push。
+    static func present(from presenter: UIViewController, environment: AppEnvironment) {
+        let controller = PlanViewController(environment: environment)
+        let navigation = UINavigationController(rootViewController: controller)
+        controller.navigationItem.leftBarButtonItem = UIBarButtonItem(
+            systemItem: .close,
+            primaryAction: UIAction { [weak navigation] _ in navigation?.dismiss(animated: true) })
+        presenter.present(navigation, animated: true)
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         title = R.Strings.proTitle.localizedString()
         view.backgroundColor = AppColor.background
         configureView()
         NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(stateDidChange),
-            name: .stolnkStateDidChange,
-            object: nil
-        )
+            self, selector: #selector(stateDidChange),
+            name: .stolnkStateDidChange, object: nil)
         render()
         Task {
+            await environment.membership.loadProduct(forceRefresh: true)
             await environment.stolnk.refreshPlan()
-            await environment.appUnlock.claimIfNeeded()
             render()
         }
     }
+
+    // MARK: - 视图
 
     private func configureView() {
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -52,7 +77,7 @@ final class PlanViewController: UIViewController {
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 32),
+            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 28),
             stack.leadingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.leadingAnchor, constant: 24),
             stack.trailingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.trailingAnchor, constant: -24),
             stack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -32)
@@ -83,10 +108,12 @@ final class PlanViewController: UIViewController {
         stack.addArrangedSubview(subtitle)
 
         let benefits = UIStackView(arrangedSubviews: [
-            benefit(icon: "link", text: R.Strings.proBenefitInboxes.localizedString()),
+            benefit(icon: "link", text: R.Strings.proBenefitLinks.localizedString()),
+            benefit(icon: "lock.shield", text: R.Strings.proBenefitName.localizedString()),
             benefit(icon: "doc.fill", text: R.Strings.proBenefitFiles.localizedString()),
             benefit(icon: "arrow.up.arrow.down", text: R.Strings.proBenefitRelay.localizedString()),
-            benefit(icon: "lock.fill", text: R.Strings.proBenefitPassword.localizedString())
+            benefit(icon: "lock.fill", text: R.Strings.proBenefitPassword.localizedString()),
+            benefit(icon: "clock", text: R.Strings.proBenefitExpiry.localizedString())
         ])
         benefits.axis = .vertical
         benefits.spacing = 12
@@ -97,16 +124,42 @@ final class PlanViewController: UIViewController {
         stack.addArrangedSubview(benefits)
 
         statusLabel.font = AppTypography.body
-        statusLabel.textColor = AppColor.textSecondary
+        statusLabel.textColor = AppColor.textPrimary
         statusLabel.textAlignment = .center
         statusLabel.numberOfLines = 0
+        stack.setCustomSpacing(AppSpacing.large, after: benefits)
         stack.addArrangedSubview(statusLabel)
 
         activity.hidesWhenStopped = true
         stack.addArrangedSubview(activity)
 
-        syncButton.addAction(UIAction { [weak self] _ in self?.sync() }, for: .touchUpInside)
-        stack.addArrangedSubview(syncButton)
+        subscribeButton.addAction(UIAction { [weak self] _ in self?.subscribe() }, for: .touchUpInside)
+        subscribeButton.heightAnchor.constraint(equalToConstant: 50).isActive = true
+        stack.addArrangedSubview(subscribeButton)
+
+        manageButton.addAction(UIAction { [weak self] _ in self?.manage() }, for: .touchUpInside)
+        stack.addArrangedSubview(manageButton)
+
+        restoreButton.addAction(UIAction { [weak self] _ in self?.restore() }, for: .touchUpInside)
+        stack.addArrangedSubview(restoreButton)
+
+        // 3.1.2：自动续期说明必须出现在购买按钮附近。
+        disclosureLabel.font = .preferredFont(forTextStyle: .caption1)
+        disclosureLabel.adjustsFontForContentSizeCategory = true
+        disclosureLabel.textColor = AppColor.textSecondary
+        disclosureLabel.numberOfLines = 0
+        disclosureLabel.textAlignment = .center
+        stack.addArrangedSubview(disclosureLabel)
+
+        let links = UIStackView(arrangedSubviews: [
+            link(R.Strings.proTerms.localizedString(), Self.termsURL),
+            link(R.Strings.proEula.localizedString(), Self.appleEULAURL),
+            link(R.Strings.proPrivacy.localizedString(), Self.privacyURL)
+        ])
+        links.axis = .horizontal
+        links.distribution = .equalCentering
+        links.spacing = 8
+        stack.addArrangedSubview(links)
     }
 
     private func label(_ text: String, font: UIFont) -> UILabel {
@@ -132,33 +185,109 @@ final class PlanViewController: UIViewController {
         return row
     }
 
-    @objc private func stateDidChange() { render() }
-
-    private func render() {
-        let active = environment.stolnk.plan?.isPro == true
-        statusLabel.text = active
-            ? R.Strings.proIncludedActive.localizedString()
-            : R.Strings.proIncludedPending.localizedString()
-        syncButton.isHidden = active
+    private func link(_ title: String, _ url: URL) -> UIButton {
+        var configuration = UIButton.Configuration.plain()
+        // 用 AttributedString 而不是 titleTextAttributesTransformer：新 SDK 里
+        // AttributeContainer 的下划线属性是 get-only 的 builder，赋值编译不过。
+        var attributed = AttributedString(title)
+        attributed.font = .preferredFont(forTextStyle: .footnote)
+        attributed.underlineStyle = .single
+        attributed.foregroundColor = AppColor.ink
+        configuration.attributedTitle = attributed
+        configuration.baseForegroundColor = AppColor.ink
+        configuration.contentInsets = .init(top: 4, leading: 4, bottom: 4, trailing: 4)
+        let button = UIButton(configuration: configuration)
+        button.addAction(UIAction { _ in UIApplication.shared.open(url) }, for: .touchUpInside)
+        return button
     }
 
-    private func sync() {
-        activity.startAnimating()
-        syncButton.isEnabled = false
-        Task {
-            defer {
-                activity.stopAnimating()
-                syncButton.isEnabled = true
-                render()
-            }
-            do {
-                if try await environment.appUnlock.claim() {
-                    HapticManager.notification(.success)
-                }
-            } catch {
-                presentMessage(error.localizedDescription, title: R.Strings.proSyncFailed.localizedString())
-            }
+    @objc private func stateDidChange() { render() }
+
+    // MARK: - 渲染
+
+    private func render() {
+        let plan = environment.stolnk.plan
+        let member = plan?.isPro == true
+        let product = environment.membership.product
+        let price = product?.displayPrice
+
+        if member {
+            // 3.1.2 的到期日，加上会员真正买到的那件事：子域名固化。
+            let until = plan?.memberExpiryDate.map {
+                R.Strings.proStatusActiveUntil.formatted($0.formatted(date: .long, time: .omitted))
+            } ?? R.Strings.proStatusActive.localizedString()
+            // 会员也可能是在地址到期后才订阅的：那时还没有名字，先提示设置。
+            let locked = plan?.addressActive == false
+                ? R.Strings.nameStatusExpired.localizedString()
+                : R.Strings.nameStatusLocked.localizedString()
+            statusLabel.text = "\(until)\n\(locked)"
+        } else {
+            statusLabel.text = price.map { R.Strings.proPriceLine.formatted($0) }
+                ?? (environment.membership.isLoadingProduct
+                    ? nil : R.Strings.memberProductUnavailable.localizedString())
         }
+        statusLabel.isHidden = statusLabel.text == nil
+
+        var configuration = subscribeButton.configuration
+        configuration?.title = price.map { R.Strings.proCtaSubscribe.formatted($0) }
+            ?? R.Strings.memberSubscribeShort.localizedString()
+        subscribeButton.configuration = configuration
+        subscribeButton.isHidden = member
+        subscribeButton.isEnabled = !isBusy && environment.stolnk.isRegistered
+        subscribeButton.alpha = subscribeButton.isEnabled ? 1 : 0.5
+        manageButton.isHidden = !member
+        restoreButton.isEnabled = !isBusy
+        disclosureLabel.text = R.Strings.proAutoRenewDisclosure.formatted(price ?? "$1.99")
+    }
+
+    // MARK: - 操作
+
+    private func setBusy(_ busy: Bool) {
+        isBusy = busy
+        busy ? activity.startAnimating() : activity.stopAnimating()
+        render()
+    }
+
+    private func subscribe() {
+        guard !isBusy else { return }
+        setBusy(true)
+        Task {
+            let outcome = await environment.membership.purchase()
+            setBusy(false)
+            handle(outcome)
+        }
+    }
+
+    private func restore() {
+        guard !isBusy else { return }
+        setBusy(true)
+        Task {
+            let outcome = await environment.membership.restore()
+            setBusy(false)
+            handle(outcome, restored: true)
+        }
+    }
+
+    private func manage() {
+        Task { await environment.membership.showManageSubscriptions(from: self) }
+    }
+
+    private func handle(_ outcome: MembershipService.PurchaseOutcome, restored: Bool = false) {
+        switch outcome {
+        case .success:
+            HapticManager.notification(.success)
+            PaperToast.show(
+                (restored ? R.Strings.proRestoreSuccess : R.Strings.proPurchaseSuccess)
+                    .localizedString(),
+                in: view)
+        case .userCancelled:
+            break
+        case .pending:
+            presentMessage(R.Strings.proPurchasePending.localizedString())
+        case .failed(let message):
+            presentMessage(message, title: R.Strings.proPurchaseFailed.localizedString())
+        }
+        render()
     }
 
     private func presentMessage(_ message: String, title: String? = nil) {
@@ -170,28 +299,19 @@ final class PlanViewController: UIViewController {
 
 extension PlanViewController {
     /**
-     402（`upgrade_required`）和本地判定的 Pro 门槛的统一出口。
+     402（`upgrade_required`）和本地判定的会员门槛的统一出口。
 
-     付费下载下没有付费墙可推：还不是 Pro 多半是首次认领没成功，先补一次认领，成了就请用户
-     重试；认领失败才打开套餐页让用户自己重新同步。已经是 Pro 还撞上，就是 Pro 自己的上限。
+     不是会员就直接弹会员页；已经是会员还撞上，就是会员自己的上限。
      */
     static func handleUpgradeRequired(on presenter: UIViewController, environment: AppEnvironment) {
-        func alert(_ title: String?, _ message: String) {
-            let controller = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        if environment.stolnk.plan?.isPro == true {
+            let controller = UIAlertController(
+                title: nil, message: R.Strings.proLimitReached.localizedString(),
+                preferredStyle: .alert)
             controller.addAction(UIAlertAction(title: R.Strings.commonOk.localizedString(), style: .default))
             presenter.present(controller, animated: true)
+            return
         }
-        if environment.stolnk.plan?.isPro == true {
-            return alert(nil, R.Strings.proLimitReached.localizedString())
-        }
-        Task { @MainActor in
-            if (try? await environment.appUnlock.claim()) == true {
-                alert(nil, R.Strings.proSyncRetry.localizedString())
-            } else {
-                presenter.present(
-                    UINavigationController(rootViewController: PlanViewController(environment: environment)),
-                    animated: true)
-            }
-        }
+        present(from: presenter, environment: environment)
     }
 }

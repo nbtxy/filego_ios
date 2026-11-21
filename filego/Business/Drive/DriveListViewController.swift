@@ -15,6 +15,9 @@ final class DriveListViewController: UIViewController {
     private let breadcrumbBar = BreadcrumbBar()
     private let emptyView = PaperEmptyStateView(title: R.Strings.driveEmpty.localizedString())
     private let addFolderButton = PaperButton.primary()
+    /// 左下角、与 `+` 对称的接收文件夹入口。只在根目录显示。
+    private let receivedButton = PaperButton.primary()
+    private let receivedBadge = UILabel()
     private let fileActivityIndicator = UIActivityIndicatorView(style: .medium)
     private let activityBackdrop = UIView()
     private var collectionView: UICollectionView!
@@ -42,6 +45,8 @@ final class DriveListViewController: UIViewController {
     private var isGrid: Bool {
         didSet { environment.keyValueStore.set(isGrid, forKey: "drive.grid") }
     }
+    /// 当前宫格布局是按多宽的窗口算的；窗口尺寸变了要重建（Duo 横竖屏/分屏）。
+    private var lastGridWidth: CGFloat = 0
 
     private var visibleNodes: [DriveNode] {
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -90,6 +95,14 @@ final class DriveListViewController: UIViewController {
 
     private var landedObserver: (any NSObjectProtocol)?
     private var incomingObserver: (any NSObjectProtocol)?
+    private var stateObserver: (any NSObjectProtocol)?
+    private var expiredObserver: (any NSObjectProtocol)?
+
+    private var isRoot: Bool { folderId == rootId }
+    private var isReceivedFolder: Bool { LocalDriveStore.isReceived(folderId) }
+
+    /// 进过接收文件夹之后落地的文件数。角标的另一半（在途的那一半来自 `incoming(in:)`）。
+    private static let unseenKey = "drive.received.unseen"
 
     deinit {
         openFileTask?.cancel()
@@ -97,6 +110,8 @@ final class DriveListViewController: UIViewController {
         // 基于 block 的观察者以 token 为键，`removeObserver(self)` 摘不掉它。
         if let landedObserver { NotificationCenter.default.removeObserver(landedObserver) }
         if let incomingObserver { NotificationCenter.default.removeObserver(incomingObserver) }
+        if let stateObserver { NotificationCenter.default.removeObserver(stateObserver) }
+        if let expiredObserver { NotificationCenter.default.removeObserver(expiredObserver) }
     }
 
     override func viewDidLoad() {
@@ -107,10 +122,21 @@ final class DriveListViewController: UIViewController {
         configureCollectionView()
         configureBreadcrumbs()
         configureAddFolderButton()
+        configureReceivedButton()
         configureFileActivityIndicator()
         observeContentSizeCategory()
         observeLandedFiles()
+        observeAddress()
         reload()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        if isReceivedFolder {
+            // 看过了：清掉首页角标里「已落地未查看」的那一半。
+            environment.keyValueStore.set(0, forKey: Self.unseenKey)
+        }
+        updateReceivedBadge()
     }
 
     /**
@@ -125,8 +151,13 @@ final class DriveListViewController: UIViewController {
             forName: .stolnkDidLandFiles,
             object: nil,
             queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.reload() }
+        ) { [weak self] note in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                if self.isRoot { self.countUnseen(note) }
+                self.reload()
+                self.updateReceivedBadge()
+            }
         }
         /*
          占位的增删和进度。有占位消失时重读磁盘：它多半是刚落地了，真文件要在同一次
@@ -143,8 +174,68 @@ final class DriveListViewController: UIViewController {
                     .filter { $0.hasPrefix(Self.incomingPrefix) })
                 let now = Set(self.visibleIncoming.map { Self.incomingPrefix + $0.fileID })
                 if shown.isSubset(of: now) { self.applySnapshot() } else { self.reload() }
+                self.updateReceivedBadge()
             }
         }
+    }
+
+    /// 只有根目录那一份计数：每个页面都数一遍会重复累加。
+    private func countUnseen(_ note: Notification) {
+        guard let files = note.userInfo?["files"] as? [LandedFile] else { return }
+        let received = environment.drive.url(for: LocalDriveStore.receivedID).standardizedFileURL.path
+        let count = files.filter { $0.fileURL.standardizedFileURL.path.hasPrefix(received + "/") }.count
+        guard count > 0, navigationController?.topViewController.map({
+            ($0 as? DriveListViewController)?.isReceivedFolder != true
+        }) ?? true else { return }
+        let previous: Int = environment.keyValueStore.value(forKey: Self.unseenKey) ?? 0
+        environment.keyValueStore.set(previous + count, forKey: Self.unseenKey)
+    }
+
+    /**
+     地址变了（改名、到期失效、暂停）时重画导航栏里的地址按钮；根目录还要把
+     「地址已到期」告诉用户一次——旧地址当场失效，发出去的链接都断了。
+     */
+    private func observeAddress() {
+        stateObserver = NotificationCenter.default.addObserver(
+            forName: .stolnkStateDidChange, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, self.isReceivedFolder, !self.isSearching else { return }
+                self.configureNavigation()
+            }
+        }
+        guard isRoot else { return }
+        expiredObserver = NotificationCenter.default.addObserver(
+            forName: .stolnkAddressDidExpire, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                let alert = UIAlertController(
+                    title: R.Strings.nameStatusExpired.localizedString(),
+                    message: R.Strings.nameStatusExpiredDetail.localizedString(),
+                    preferredStyle: .alert)
+                // 原名已经释放，想继续接收只能重新设置子域名。
+                alert.addAction(UIAlertAction(
+                    title: R.Strings.nameSetNew.localizedString(), style: .default
+                ) { [weak self] _ in
+                    guard let self else { return }
+                    self.router.push(InboxNameViewController(environment: self.environment))
+                })
+                alert.addAction(UIAlertAction(
+                    title: R.Strings.commonOk.localizedString(), style: .cancel))
+                (self.presentedViewController ?? self).present(alert, animated: true)
+            }
+        }
+    }
+
+    /// 窗口宽度变了（旋转、Duo 折叠/分屏）：宫格的列数需要重排。
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        guard isGrid, collectionView != nil else { return }
+        let width = view.bounds.width
+        guard abs(width - lastGridWidth) > 1 else { return }
+        lastGridWidth = width
+        collectionView.setCollectionViewLayout(makeLayout(), animated: false)
     }
 
     /// 宫格卡的高度是算出来的常量，字号变了要重算一次，否则名字会被裁掉。
@@ -196,6 +287,72 @@ final class DriveListViewController: UIViewController {
         )
         searchButton.accessibilityLabel = R.Strings.driveSearch.localizedString()
         navigationItem.rightBarButtonItems = [displayOptionsButton, searchButton]
+        if isReceivedFolder {
+            let addressButton = UIBarButtonItem(
+                title: nil,
+                image: UIImage(systemName: environment.stolnk.inbox?.paused == true
+                    ? "pause.circle" : "qrcode"),
+                primaryAction: nil,
+                menu: addressMenu()
+            )
+            addressButton.accessibilityLabel = R.Strings.receivedAddress.localizedString()
+            navigationItem.rightBarButtonItems?.append(addressButton)
+        }
+    }
+
+    /**
+     接收文件夹导航栏上的「地址」菜单：标题就是 `<name>.stolnk.com`，下面是复制、分享、
+     二维码，最后一项进收件设置（暂停、发件人看到的名字、子域名）。
+     */
+    private func addressMenu() -> UIMenu {
+        let stolnk = environment.stolnk
+        guard let inbox = stolnk.inbox else {
+            return UIMenu(title: R.Strings.receivedAddressUnavailable.localizedString(), children: [
+                UIAction(
+                    title: R.Strings.receivedSettings.localizedString(),
+                    image: UIImage(systemName: "gearshape")
+                ) { [weak self] _ in self?.openReceiveSettings() }
+            ])
+        }
+        var title = inbox.url
+        if inbox.paused { title += "\n" + R.Strings.receivedPaused.localizedString() }
+        return UIMenu(title: title, children: [
+            UIMenu(options: .displayInline, children: [
+                UIAction(
+                    title: R.Strings.driveImportCopyAddress.localizedString(),
+                    image: UIImage(systemName: "doc.on.doc")
+                ) { [weak self] _ in
+                    guard let self else { return }
+                    UIPasteboard.general.string = inbox.url
+                    PaperToast.show(R.Strings.inboxCopied.localizedString(), in: self.view)
+                    HapticManager.notification(.success)
+                },
+                UIAction(
+                    title: R.Strings.driveImportShareAddress.localizedString(),
+                    image: UIImage(systemName: "square.and.arrow.up")
+                ) { [weak self] _ in
+                    guard let url = URL(string: inbox.url) else { return }
+                    self?.shareImportAddress(url)
+                },
+                UIAction(
+                    title: R.Strings.inboxQr.localizedString(),
+                    image: UIImage(systemName: "qrcode")
+                ) { [weak self] _ in self?.showAddressQRCode(inbox) }
+            ]),
+            UIAction(
+                title: R.Strings.receivedSettings.localizedString(),
+                image: UIImage(systemName: "gearshape")
+            ) { [weak self] _ in self?.openReceiveSettings() }
+        ])
+    }
+
+    private func showAddressQRCode(_ inbox: InboxSummary) {
+        guard let image = QRCode.image(for: inbox.url) else { return }
+        present(InboxQRViewController(image: image, address: inbox.url), animated: true)
+    }
+
+    private func openReceiveSettings() {
+        router.push(InboxDetailViewController(environment: environment))
     }
 
     private func displayOptionsMenu() -> UIMenu {
@@ -291,6 +448,7 @@ final class DriveListViewController: UIViewController {
         ])
 
         collectionView.backgroundView = emptyView
+        lastGridWidth = view.bounds.width
 
         dataSource = UICollectionViewDiffableDataSource<String, String>(
             collectionView: collectionView
@@ -348,12 +506,6 @@ final class DriveListViewController: UIViewController {
             ]),
             UIMenu(options: .displayInline, children: [
                 UIAction(
-                    title: R.Strings.driveImportAddress.localizedString(),
-                    image: UIImage(systemName: "link.badge.plus")
-                ) { [weak self] _ in self?.createImportAddress() }
-            ]),
-            UIMenu(options: .displayInline, children: [
-                UIAction(
                     title: R.Strings.driveImportPhoto.localizedString(),
                     image: UIImage(systemName: "photo")
                 ) { [weak self] _ in self?.openPhotos() },
@@ -364,6 +516,8 @@ final class DriveListViewController: UIViewController {
             ])
         ])
         addFolderButton.showsMenuAsPrimaryAction = true
+        // 接收文件夹只收对方发来的文件，没有“新建/导入”这件事，右下角的 + 不出现。
+        addFolderButton.isHidden = isReceivedFolder
         addFolderButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(addFolderButton)
 
@@ -373,6 +527,72 @@ final class DriveListViewController: UIViewController {
             addFolderButton.widthAnchor.constraint(equalToConstant: 56),
             addFolderButton.heightAnchor.constraint(equalToConstant: 56)
         ])
+    }
+
+    /**
+     左下角的接收文件夹入口，和右下角的 `+` 镜像：同一个 `PaperButton.primary()`、同样
+     56×56 的胶囊、同样离安全区 20。只在根目录出现；搜索时和 `+` 一起收起。
+     */
+    private func configureReceivedButton() {
+        var configuration = receivedButton.configuration ?? .plain()
+        configuration.contentInsets = .zero
+        configuration.image = UIImage(
+            systemName: "tray.and.arrow.down",
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: 20, weight: .semibold)
+        )
+        configuration.baseForegroundColor = AppColor.lime
+        receivedButton.configuration = configuration
+        receivedButton.cornerRadius = AppRadius.capsule
+        receivedButton.accessibilityLabel = R.Strings.driveReceivedTitle.localizedString()
+        receivedButton.addAction(UIAction { [weak self] _ in self?.openReceived() }, for: .touchUpInside)
+        receivedButton.translatesAutoresizingMaskIntoConstraints = false
+        receivedButton.isHidden = !isRoot
+        view.addSubview(receivedButton)
+
+        receivedBadge.font = .systemFont(ofSize: 12, weight: .bold)
+        receivedBadge.textColor = AppColor.white
+        receivedBadge.backgroundColor = AppColor.danger
+        receivedBadge.textAlignment = .center
+        receivedBadge.layer.cornerRadius = 10
+        receivedBadge.layer.masksToBounds = true
+        receivedBadge.isHidden = true
+        receivedBadge.isUserInteractionEnabled = false
+        receivedBadge.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(receivedBadge)
+
+        NSLayoutConstraint.activate([
+            receivedButton.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 20),
+            receivedButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            receivedButton.widthAnchor.constraint(equalToConstant: 56),
+            receivedButton.heightAnchor.constraint(equalToConstant: 56),
+            receivedBadge.centerXAnchor.constraint(equalTo: receivedButton.trailingAnchor, constant: -6),
+            receivedBadge.centerYAnchor.constraint(equalTo: receivedButton.topAnchor, constant: 6),
+            receivedBadge.heightAnchor.constraint(equalToConstant: 20),
+            receivedBadge.widthAnchor.constraint(greaterThanOrEqualToConstant: 20)
+        ])
+    }
+
+    /// 在途的 + 落地后还没看过的。
+    private func updateReceivedBadge() {
+        guard isRoot else { return }
+        let inFlight = environment.stolnk.incoming(
+            in: environment.drive.url(for: LocalDriveStore.receivedID)).count
+        let unseen: Int = environment.keyValueStore.value(forKey: Self.unseenKey) ?? 0
+        let total = inFlight + unseen
+        receivedBadge.text = total > 99 ? "99+" : " \(total) "
+        receivedBadge.isHidden = total == 0 || receivedButton.isHidden
+        receivedButton.accessibilityValue = total > 0 ? String(total) : nil
+    }
+
+    private func openReceived() {
+        router.push(DriveListViewController(
+            environment: environment,
+            router: router,
+            folderId: LocalDriveStore.receivedID,
+            folderName: R.Strings.driveReceivedTitle.localizedString(),
+            rootId: rootId,
+            onShowMe: onShowMe
+        ))
     }
 
     private func configureFileActivityIndicator() {
@@ -416,16 +636,18 @@ final class DriveListViewController: UIViewController {
 
     private func makeLayout() -> UICollectionViewLayout {
         if isGrid {
+            // 普通 iPhone 两列；Duo 横屏/宽窗口三列，卡片才不会被拉得太宽。
+            let columns = view.bounds.width >= 620 ? 3 : 2
             let height = gridItemHeight
             let item = NSCollectionLayoutItem(layoutSize: .init(
-                widthDimension: .fractionalWidth(0.5),
+                widthDimension: .fractionalWidth(1 / CGFloat(columns)),
                 heightDimension: .absolute(height)
             ))
             // 网页 `.grid` 的 gap 是 14，两侧各摊一半。
             item.contentInsets = .init(top: 7, leading: 7, bottom: 7, trailing: 7)
             let group = NSCollectionLayoutGroup.horizontal(
                 layoutSize: .init(widthDimension: .fractionalWidth(1), heightDimension: .absolute(height)),
-                subitems: [item, item]
+                subitems: Array(repeating: item, count: columns)
             )
             let section = NSCollectionLayoutSection(group: group)
             section.contentInsets = .init(top: 7, leading: 9, bottom: 16, trailing: 9)
@@ -496,6 +718,8 @@ final class DriveListViewController: UIViewController {
     @objc private func showSearch() {
         isSearching = true
         addFolderButton.isHidden = true
+        receivedButton.isHidden = true
+        receivedBadge.isHidden = true
         configureNavigation()
         DispatchQueue.main.async { [weak self] in
             self?.searchBar.becomeFirstResponder()
@@ -510,7 +734,9 @@ final class DriveListViewController: UIViewController {
         searchResults = []
         isSearchLoading = false
         isSearching = false
-        addFolderButton.isHidden = false
+        addFolderButton.isHidden = isReceivedFolder
+        receivedButton.isHidden = !isRoot
+        updateReceivedBadge()
         configureNavigation()
         applySnapshot()
     }
@@ -601,10 +827,10 @@ final class DriveListViewController: UIViewController {
                 do {
                     _ = try await self.viewModel.importFile(at: url)
                     self.cleanupTemporaryImport(url)
-                    progress.dismiss(animated: true) { [weak self] in self?.reload() }
+                    progress.dismiss(animated: true) { [self] in self.reload() }
                 } catch {
                     self.cleanupTemporaryImport(url)
-                    progress.dismiss(animated: true) { [weak self] in self?.showError(error) }
+                    progress.dismiss(animated: true) { [self] in self.showError(error) }
                 }
             }
         }
@@ -657,192 +883,17 @@ final class DriveListViewController: UIViewController {
         }
     }
 
-    /**
-     这个文件夹的收件地址。
-
-     改造前是向自家后端要一条有效期一天的明文上传链接；现在是这台设备名下、绑定到
-     本文件夹的那个 Stolnk inbox —— `ryan-phone.stolnk.com/<slug>`，不过期，内容
-     端到端加密，只有本机 Secure Enclave 里的密钥能解开。
-
-     路径就在这里取。onboarding 只定下根域名，因为路径是给**文件夹**取的名字，
-     而当时连一个文件夹都还没有。所以第一次在这里问地址，先问路径；之后再来就直接
-     把那条地址交出去。改路径、Reset、暂停、删除仍属于 InboxList 那一步。
-     */
-    private func createImportAddress() {
-        if let inbox = boundInbox() {
-            presentImportAddress(inbox)
-            return
-        }
-        promptForImportPath()
-    }
-
-    /// 找到落地目录正是本文件夹的那个 inbox。
-    private func boundInbox() -> InboxSummary? {
-        let here = environment.drive.url(for: folderId).standardizedFileURL
-        return environment.stolnk.inboxes.first { inbox in
-            environment.stolnk.folder(for: inbox.inboxID)?.standardizedFileURL == here
-        }
-    }
-
-    /**
-     给这个文件夹取一条路径。
-
-     不用通用的 `prompt(title:value:)`：那个没地方放前缀，也没地方接校验。而前缀正是
-     这个弹窗唯一能讲清楚「你在填的是一条 URL 的后半段」的东西。
-     */
-    private func promptForImportPath() {
-        let alert = UIAlertController(
-            title: R.Strings.driveImportNewTitle.localizedString(),
-            message: R.Strings.driveImportNewMessage.formatted(folderName),
-            preferredStyle: .alert
-        )
-        alert.addTextField { [weak self] field in
-            guard let self else { return }
-            InboxPathField.configure(
-                field,
-                prefix: self.environment.stolnk.addressPrefix,
-                text: self.suggestedPath()
-            )
-        }
-        alert.addAction(UIAlertAction(title: R.Strings.commonCancel.localizedString(), style: .cancel))
-        alert.addAction(UIAlertAction(
-            title: R.Strings.driveImportCreate.localizedString(),
-            style: .default
-        ) { [weak self, weak alert] _ in
-            guard let self else { return }
-            let raw = alert?.textFields?.first?.text ?? ""
-            self.createImportAddress(path: PathRules.normalise(raw))
-        })
-        present(alert, animated: true)
-    }
-
-    /**
-     路径输入框的预填。
-
-     根目录给 `inbox`。其余文件夹只有在名字归一化之后真的能当路径时才用它：这棵树
-     里大量文件夹叫「照片」这样的名字，盲预填会直接递给用户一个非法值。
-     */
-    private func suggestedPath() -> String {
-        if folderId == rootId { return "inbox" }
-        let candidate = PathRules.normalise(folderName)
-        return PathRules.problem(with: candidate) == nil ? candidate : ""
-    }
-
-    private func createImportAddress(path: String) {
-        guard PathRules.problem(with: path) == nil else {
-            // 不渲染 `PathRules.problem` 返回的英文，和 onboarding 对 `NameRules` 的做法一致。
-            showImportAddressProblem(
-                title: R.Strings.driveImportNewTitle.localizedString(),
-                message: R.Strings.driveImportPathInvalid.localizedString())
-            return
-        }
-
-        // 发件人在 send page 上看到的是这个名字，所以用文件夹名而不是路径。
-        let normalised = DisplayNameRules.normalise(folderName)
-        let displayName = normalised.isEmpty
-            ? (environment.stolnk.name ?? folderName)
-            : String(normalised.prefix(DisplayNameRules.maxLength))
-
-        Task {
-            do {
-                let inbox = try await environment.stolnk.createInbox(
-                    slug: path,
-                    displayName: displayName,
-                    folder: environment.drive.url(for: folderId)
-                )
-                presentToast(R.Strings.driveImportCreated.localizedString())
-                HapticManager.notification(.success)
-                presentImportAddress(inbox)
-                // 有了地址，同 Wi-Fi 的发送方就可能直传过来。趁现在把本地网络权限问掉，
-                // 别让第一次直传卡在系统弹框上回落中转。
-                LocalNetworkPermission.requestOnce(preferences: environment.keyValueStore)
-            } catch {
-                showImportAddressError(error)
-            }
-        }
-    }
-
-    /**
-     建地址失败。
-
-     402 必须在这里截下来，不能交给 `showError`：那条路把 `isUpgradeRequired` 和
-     `isQuota` 一起送进「本月中转额度用完了」，而免费版只能有一条地址跟额度毫无
-     关系。新流程让每个第二个文件夹都会撞上它，本来偶发的误导会变成常态。
-     */
-    private func showImportAddressError(_ error: Error) {
-        guard let apiError = error as? APIError else {
-            showError(error)
-            return
-        }
-        if apiError.isUpgradeRequired {
-            showImportAddressProblem(
-                title: R.Strings.driveImportSecondAddressTitle.localizedString(),
-                message: R.Strings.driveImportSecondAddressMessage.localizedString())
-            return
-        }
-        /*
-         400 在这条路上意味着「这个路径不行」，但不只一种理由：已被占用，或者落在服务端
-         的保留段里（`api`、`assets`）。文案因此不指认具体哪一种——`NameRules.swift` 的开头
-         已经说明了为什么不把保留字表拷到客户端：一份会漂移的名单比一次往返更糟。
-         */
-        if apiError.status == 400 {
-            showImportAddressProblem(
-                title: R.Strings.driveImportNewTitle.localizedString(),
-                message: R.Strings.driveImportPathRefused.localizedString())
-            return
-        }
-        showError(error)
-    }
-
-    /// 拒绝之后把弹窗再递回去：重新输一遍才是这里唯一的出路，而不是从头点一遍菜单。
-    private func showImportAddressProblem(title: String, message: String) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: R.Strings.commonCancel.localizedString(), style: .cancel))
-        alert.addAction(UIAlertAction(
-            title: R.Strings.commonRetry.localizedString(), style: .default
-        ) { [weak self] _ in
-            self?.promptForImportPath()
-        })
-        present(alert, animated: true)
-    }
-
-    private func presentImportAddress(_ inbox: InboxSummary) {
-        let alert = UIAlertController(
-            title: R.Strings.driveImportAddress.localizedString(),
-            message: inbox.url,
-            preferredStyle: .alert
-        )
-        alert.addAction(UIAlertAction(
-            title: R.Strings.driveImportCopyAddress.localizedString(),
-            style: .default
-        ) { _ in
-            UIPasteboard.general.string = inbox.url
-        })
-        alert.addAction(UIAlertAction(
-            title: R.Strings.driveImportShareAddress.localizedString(),
-            style: .default
-        ) { [weak self] _ in
-            guard let url = URL(string: inbox.url) else { return }
-            self?.shareImportAddress(url)
-        })
-        alert.addAction(UIAlertAction(
-            title: R.Strings.commonOk.localizedString(),
-            style: .cancel
-        ))
-        present(alert, animated: true)
-    }
-
     private func shareImportAddress(_ address: URL) {
         let controller = UIActivityViewController(activityItems: [address], applicationActivities: nil)
         if let popover = controller.popoverPresentationController {
-            popover.sourceView = addFolderButton
-            popover.sourceRect = addFolderButton.bounds
+            popover.barButtonItem = navigationItem.rightBarButtonItems?.last
         }
         present(controller, animated: true)
     }
 
     private func open(_ node: DriveNode) {
         if node.isFolder {
+            if LocalDriveStore.isReceived(node.id) { return openReceived() }
             router.push(DriveListViewController(
                 environment: environment,
                 router: router,
@@ -872,6 +923,13 @@ final class DriveListViewController: UIViewController {
     }
 
     private func actions(for node: DriveNode) -> UIMenu {
+        // 接收文件夹只在搜索结果里露面。它绑着唯一的收件地址，改名、移动、删除都不给。
+        if LocalDriveStore.isReceived(node.id) {
+            return UIMenu(children: [UIAction(
+                title: R.Strings.driveReceivedTitle.localizedString(),
+                image: UIImage(systemName: "tray.and.arrow.down")
+            ) { [weak self] _ in self?.openReceived() }])
+        }
         let rename = UIAction(
             title: R.Strings.driveRename.localizedString(), image: UIImage(systemName: "pencil")
         ) { [weak self] _ in self?.rename(node) }
@@ -962,9 +1020,16 @@ final class DriveListViewController: UIViewController {
     private func showError(_ error: Error) {
         // 服务端的 message 写死了 "This Mac…"，一律按 code 映射自己的文案，
         // 不要直接渲染它（见计划 §J）。
-        if let apiError = error as? APIError, apiError.isQuota || apiError.isUpgradeRequired {
-            showQuotaExceeded()
-            return
+        if let apiError = error as? APIError {
+            // 402 是会员门槛：弹会员页，而不是把它说成「额度用完」。
+            if apiError.isUpgradeRequired {
+                return PlanViewController.handleUpgradeRequired(
+                    on: self, environment: environment)
+            }
+            if apiError.isQuota {
+                showQuotaExceeded()
+                return
+            }
         }
         let alert = UIAlertController(
             title: R.Strings.commonError.localizedString(),
@@ -980,11 +1045,8 @@ final class DriveListViewController: UIViewController {
     }
 
     /**
-     中转额度用完了。
-
-     iOS 端目前没有购买入口（IAP 是 M3），所以这里只陈述现状，不引导升级——
-     App Store 3.1.1 不允许在 app 内引导站外购买，而站内购买还没做。额度用尽
-     只暂停新的上传，已经在路上的文件和手机上已有的文件都不受影响。
+     额度或会员门槛撞上了。服务端的 402 与配额错误走同一个出口：不是会员就弹会员页
+     （App 内 StoreKit 订阅，符合 3.1.1），是会员则只说明已到当前方案上限。
      */
     private func showQuotaExceeded() {
         let alert = UIAlertController(

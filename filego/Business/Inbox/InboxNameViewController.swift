@@ -17,6 +17,9 @@ final class InboxNameViewController: UIViewController {
     private let environment: AppEnvironment
 
     private let currentLabel = UILabel()
+    /// 子域名状态：会员「永久」，非会员「还剩 N 天」，到期后地址失效、需要重新设置。
+    private let expiryLabel = UILabel()
+    private let upgradeButton = PaperButton.secondary()
     private let nameField = PaperTextField()
     private let suffixLabel = UILabel()
     private let statusLabel = UILabel()
@@ -120,13 +123,23 @@ final class InboxNameViewController: UIViewController {
         warning.textColor = AppColor.textSecondary
         warning.numberOfLines = 0
 
+        expiryLabel.font = .preferredFont(forTextStyle: .footnote)
+        expiryLabel.numberOfLines = 0
+        upgradeButton.configuration?.title = R.Strings.nameStatusUpgrade.localizedString()
+        upgradeButton.addAction(UIAction { [weak self] _ in
+            guard let self else { return }
+            PlanViewController.present(from: self, environment: self.environment)
+        }, for: .touchUpInside)
+
         let stack = UIStackView(arrangedSubviews: [
-            currentCaption, currentLabel, addressRow, statusLabel, saveButton, warning,
+            currentCaption, currentLabel, expiryLabel, upgradeButton,
+            addressRow, statusLabel, saveButton, warning,
         ])
         stack.axis = .vertical
         stack.spacing = 16
         stack.setCustomSpacing(4, after: currentCaption)
-        stack.setCustomSpacing(28, after: currentLabel)
+        stack.setCustomSpacing(8, after: currentLabel)
+        stack.setCustomSpacing(28, after: upgradeButton)
         stack.setCustomSpacing(6, after: addressRow)
         stack.setCustomSpacing(24, after: saveButton)
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -156,6 +169,7 @@ final class InboxNameViewController: UIViewController {
      `currentName` 重新对齐，否则「和现在一样」这个判断会一直卡在旧名字上。
      */
     @objc private func stateDidChange() {
+        renderExpiry()
         let currentSuffix = environment.stolnk.nameSuffix
         let currentName = environment.stolnk.name
         guard currentSuffix != suffix || currentName != probe.currentName else { return }
@@ -168,6 +182,19 @@ final class InboxNameViewController: UIViewController {
 
     private func renderCurrent() {
         currentLabel.text = environment.stolnk.name.map { $0 + suffix } ?? "—"
+        renderExpiry()
+    }
+
+    private func renderExpiry() {
+        let status = NameStatusText.make(environment: environment)
+        expiryLabel.text = status.detail
+        expiryLabel.textColor = status.expires ? AppColor.danger : AppColor.textSecondary
+        // 没有可用地址时先设置名字，按钮说「开通会员」；只有正在倒计时的自选名字
+        // 才说「保留这个子域名」。
+        upgradeButton.configuration?.title = (status.needsName
+            ? R.Strings.memberSubscribeShort
+            : R.Strings.nameStatusUpgrade).localizedString()
+        upgradeButton.isHidden = !(status.expires || status.needsName)
     }
 
     // MARK: - 名字可用性

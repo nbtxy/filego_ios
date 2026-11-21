@@ -7,9 +7,9 @@ import UIKit
  PRD 7.1 —— 注册是一屏一次调用。名字不是随机地址的升级版，它**就是**身份，所以和
  公钥一起上行；重名以 409 失败且什么都不创建，换个名字重试因此是干净的。
 
- 这一屏只确定根域名，**不产生链接**。Mac 上还要在这里选一个磁盘文件夹并给它取
- 路径；iOS 没有那个时机——树就在 App 容器里，此刻一个文件夹也没被选中，而路径正是
- 给文件夹取的名字。它属于 `DriveListViewController` 里的「获取文件导入地址」。
+ 这一屏只确定名字，**不产生路径**：注册成功后服务端会建好这台设备唯一的根 inbox，
+ 文件夹固定是 `Documents/Received`。非会员的自选名字 7 天后会失效、原名字释放，所以
+ 创建按钮下方把这条规则说清楚。
  */
 @MainActor
 final class InboxOnboardingViewController: UIViewController {
@@ -18,8 +18,11 @@ final class InboxOnboardingViewController: UIViewController {
     private let nameField = PaperTextField()
     private let suffixLabel = UILabel()
     private let statusLabel = UILabel()
-    private let createButton = PaperButton.primary()
+    private let createButton = PaperButton.primary(
+        title: R.Strings.onboardingCreate.localizedString())
     private let spinner = UIActivityIndicatorView(style: .medium)
+    /// 内容比一屏高时（横屏、Duo 的宽屏、超大字号）要能滚动，不能把顶部裁掉。
+    private let scrollView = UIScrollView()
 
     private var probe: NameAvailabilityProbe!
     private var status: NameStatus = .empty
@@ -49,6 +52,18 @@ final class InboxOnboardingViewController: UIViewController {
         NotificationCenter.default.addObserver(
             self, selector: #selector(stateDidChange),
             name: .stolnkStateDidChange, object: nil)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(keyboardWillChange),
+            name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
+    }
+
+    /// 横屏或 Duo 的矮窗口里键盘会盖住名字输入框，给滚动区让出键盘的高度。
+    @objc private func keyboardWillChange(_ note: Notification) {
+        guard let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect
+        else { return }
+        let overlap = max(0, view.bounds.maxY - view.convert(frame, from: nil).minY)
+        scrollView.contentInset.bottom = overlap
+        scrollView.verticalScrollIndicatorInsets.bottom = overlap
     }
 
     /**
@@ -108,7 +123,6 @@ final class InboxOnboardingViewController: UIViewController {
         statusLabel.textColor = AppColor.textSecondary
         statusLabel.numberOfLines = 0
 
-        createButton.configuration?.title = R.Strings.onboardingCreate.localizedString()
         createButton.addTarget(self, action: #selector(create), for: .touchUpInside)
 
         let note = UILabel()
@@ -127,11 +141,21 @@ final class InboxOnboardingViewController: UIViewController {
         stack.setCustomSpacing(28, after: subtitle)
         stack.setCustomSpacing(6, after: addressRow)
         stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(stack)
+
+        scrollView.alwaysBounceVertical = false
+        scrollView.keyboardDismissMode = .interactive
+        // 已经钉在 safe area 上了，再让系统自动加一次安全区就是双倍留白。
+        scrollView.contentInsetAdjustmentBehavior = .never
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(scrollView)
+        let content = UIView()
+        content.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(content)
+        content.addSubview(stack)
 
         spinner.hidesWhenStopped = true
         spinner.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(spinner)
+        content.addSubview(spinner)
 
         #if DEBUG
         // 调试面板在「我的」里，而「我的」要注册完才进得去——正好把开发机上最需要
@@ -151,12 +175,31 @@ final class InboxOnboardingViewController: UIViewController {
         #endif
 
         NSLayoutConstraint.activate([
-            stack.centerYAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerYAnchor),
-            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 28),
-            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -28),
+            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+
+            content.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            content.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+            content.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+            content.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+            content.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
+            // 内容不满一屏时把内容撑满，`centerY` 才有东西可居中；超出一屏时由
+            // 内容自身的高度撑开，滚动交给 scrollView。
+            content.heightAnchor.constraint(
+                greaterThanOrEqualTo: scrollView.frameLayoutGuide.heightAnchor),
+
+            stack.centerYAnchor.constraint(equalTo: content.centerYAnchor),
+            stack.topAnchor.constraint(greaterThanOrEqualTo: content.topAnchor, constant: 24),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: content.bottomAnchor, constant: -24),
+            stack.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 28),
+            stack.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -28),
+
             createButton.heightAnchor.constraint(equalToConstant: 48),
-            spinner.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            spinner.centerXAnchor.constraint(equalTo: content.centerXAnchor),
             spinner.topAnchor.constraint(equalTo: stack.bottomAnchor, constant: 24),
+            spinner.bottomAnchor.constraint(lessThanOrEqualTo: content.bottomAnchor, constant: -24),
         ])
 
         #if DEBUG
@@ -223,8 +266,10 @@ final class InboxOnboardingViewController: UIViewController {
     }
 
     private func updateState() {
+        // 禁用态的对比度交给 PaperButton 的 configurationUpdateHandler；
+        // 整颗按钮再乘 0.4 会把深色材质和白字一起压没。
         createButton.isEnabled = !status.blocksSubmission
-        createButton.alpha = createButton.isEnabled ? 1 : 0.4
+        createButton.alpha = 1
     }
 
     // MARK: - 注册
@@ -256,7 +301,7 @@ final class InboxOnboardingViewController: UIViewController {
         busy ? spinner.startAnimating() : spinner.stopAnimating()
         nameField.isEnabled = !busy
         createButton.isEnabled = !busy && !status.blocksSubmission
-        createButton.alpha = createButton.isEnabled ? 1 : 0.4
+        createButton.alpha = 1
     }
 }
 

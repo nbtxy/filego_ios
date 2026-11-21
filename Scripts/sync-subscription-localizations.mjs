@@ -1,21 +1,27 @@
 #!/usr/bin/env node
-/** 同步已存在的 JustFling Pro 订阅文案与 US$2.99 基准价格；重复运行幂等。 */
+/** 同步已存在的 Stolnk 会员年度订阅文案与 US$1.99 基准价格；重复运行幂等。 */
 import { readFileSync } from "node:fs";
 import { createSign, createPrivateKey } from "node:crypto";
 
 const APPLY = process.argv.includes("--apply");
-const GROUP_ID = "22290281";
-const SUBSCRIPTION_ID = "6798478945";
-const GROUP_REFERENCE_NAME = "JustFling Pro";
-const SUBSCRIPTION_REFERENCE_NAME = "JustFling Pro Monthly";
+const APP_ID = "6798472788";                            // com.nbtxy.filego
+const PRODUCT_ID = "com.nbtxy.filego.member.yearly";
+const GROUP_REFERENCE_NAME = "Stolnk Membership";
+const SUBSCRIPTION_REFERENCE_NAME = "Stolnk Membership Yearly";
 const BASE_TERRITORY = "USA";
-const TARGET_PRICE = "2.99";
+const TARGET_PRICE = "1.99";
 const REVIEW_NOTE =
-  "Auto-renewable subscription: 50 GB storage, unlimited import addresses, " +
-  "1/7/30/90-day or non-expiring addresses, and direct uploads up to 5 GB per file. " +
-  "Paywall: Me tab -> Upgrade to Pro.";
+  "Auto-renewable yearly membership: download links for files, a permanent " +
+  "subdomain (otherwise expires 7 days after registration), " +
+  "20 GB files, 300 GB/month relay, and password-protected links. " +
+  "Paywall: Me tab -> Membership, or Create download link.";
 
-const REQUIRED = [
+// 订阅 id / 组 id 不写死：商品是后建的，按 productId 现查，脚本可重复运行。
+let GROUP_ID;
+let SUBSCRIPTION_ID;
+
+function requiredFor(GROUP_ID, SUBSCRIPTION_ID) {
+  return [
   {
     endpoint: `/v1/subscriptionGroups/${GROUP_ID}/subscriptionGroupLocalizations?limit=200`,
     postEndpoint: "/v1/subscriptionGroupLocalizations",
@@ -23,7 +29,7 @@ const REQUIRED = [
     relationship: "subscriptionGroup",
     relationshipType: "subscriptionGroups",
     relationshipId: GROUP_ID,
-    attributes: { locale: "zh-Hans", name: "JustFling 会员" },
+    attributes: { locale: "zh-Hans", name: "Stolnk 会员" },
   },
   {
     endpoint: `/v1/subscriptionGroups/${GROUP_ID}/subscriptionGroupLocalizations?limit=200`,
@@ -32,7 +38,7 @@ const REQUIRED = [
     relationship: "subscriptionGroup",
     relationshipType: "subscriptionGroups",
     relationshipId: GROUP_ID,
-    attributes: { locale: "zh-Hant", name: "JustFling 會員" },
+    attributes: { locale: "zh-Hant", name: "Stolnk 會員" },
   },
   {
     endpoint: `/v1/subscriptionGroups/${GROUP_ID}/subscriptionGroupLocalizations?limit=200`,
@@ -41,7 +47,7 @@ const REQUIRED = [
     relationship: "subscriptionGroup",
     relationshipType: "subscriptionGroups",
     relationshipId: GROUP_ID,
-    attributes: { locale: "en-US", name: "JustFling Membership" },
+    attributes: { locale: "en-US", name: "Stolnk Membership" },
   },
   {
     endpoint: `/v1/subscriptions/${SUBSCRIPTION_ID}/subscriptionLocalizations?limit=200`,
@@ -52,8 +58,8 @@ const REQUIRED = [
     relationshipId: SUBSCRIPTION_ID,
     attributes: {
       locale: "zh-Hans",
-      name: "Pro 会员",
-      description: "50 GB、导入地址不限量、永久有效、单文件 5 GB 直传",
+      name: "Stolnk 会员",
+      description: "下载链接与永久子域名，每年 $1.99",
     },
   },
   {
@@ -65,8 +71,8 @@ const REQUIRED = [
     relationshipId: SUBSCRIPTION_ID,
     attributes: {
       locale: "zh-Hant",
-      name: "Pro 會員",
-      description: "50 GB、匯入地址不限量、永久有效、單檔 5 GB 直傳",
+      name: "Stolnk 會員",
+      description: "下載連結與永久子網域，每年 $1.99",
     },
   },
   {
@@ -78,11 +84,12 @@ const REQUIRED = [
     relationshipId: SUBSCRIPTION_ID,
     attributes: {
       locale: "en-US",
-      name: "JustFling Pro",
-      description: "50 GB, unlimited links, 5 GB direct uploads.",
+      name: "Stolnk Membership",
+      description: "Download links and a permanent subdomain.",
     },
   },
-];
+  ];
+}
 
 function b64url(value) {
   return Buffer.from(value).toString("base64url");
@@ -149,6 +156,26 @@ async function mutate(method, path, body) {
   }
   return asc(method, path, body);
 }
+
+if (!APPLY) console.log("== dry-run（只读查询，不写 ASC）==");
+const groups = await asc("GET", `/v1/apps/${APP_ID}/subscriptionGroups?limit=200`);
+for (const group of groups.data) {
+  const subscriptions = await asc(
+    "GET", `/v1/subscriptionGroups/${group.id}/subscriptions?limit=200`);
+  const match = subscriptions.data.find(
+    (subscription) => subscription.attributes.productId === PRODUCT_ID);
+  if (match) {
+    GROUP_ID = group.id;
+    SUBSCRIPTION_ID = match.id;
+    break;
+  }
+}
+if (!SUBSCRIPTION_ID) {
+  throw new Error(
+    `ASC 里还没有 ${PRODUCT_ID}。先运行 Scripts/create-subscription.mjs --apply 创建。`);
+}
+console.log(`订阅组 ${GROUP_ID} / 商品 ${SUBSCRIPTION_ID}（${PRODUCT_ID}）`);
+const REQUIRED = requiredFor(GROUP_ID, SUBSCRIPTION_ID);
 
 for (const item of REQUIRED) {
   const existing = await asc("GET", item.endpoint);
@@ -222,7 +249,7 @@ if (subscription.data.attributes.reviewNote !== REVIEW_NOTE) {
   console.log("reviewNote: 已是最新");
 }
 
-// Apple 的 subscriptionPrices 每次只改【一个地区】。先找美区 $2.99 价格点，再取
+// Apple 的 subscriptionPrices 每次只改【一个地区】。先找美区 $1.99 价格点，再取
 // adjustedEqualizations，把 Apple 按当地定价规则推荐的等值价格逐区写入。只 POST
 // 美区价格点不会自动传播到其它地区（这正是旧脚本曾漏掉的地方）。
 const basePoints = await asc(
@@ -269,8 +296,8 @@ const missing = [...desiredByTerritory.entries()].filter(([territory, point]) =>
 );
 const chinaPoint = desiredByTerritory.get("CHN");
 console.log(
-  `目标价格: 美区 $${basePoint.attributes.customerPrice}/月；` +
-    `中国区 ¥${chinaPoint?.attributes.customerPrice ?? "—"}/月；共 ${desiredByTerritory.size} 个地区`,
+  `目标价格: 美区 $${basePoint.attributes.customerPrice}/年；` +
+    `中国区 ¥${chinaPoint?.attributes.customerPrice ?? "—"}/年；共 ${desiredByTerritory.size} 个地区`,
 );
 console.log(`仍需同步: ${missing.length} 个地区`);
 

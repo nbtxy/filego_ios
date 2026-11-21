@@ -1,13 +1,13 @@
-Stolnk turns a folder into an inbox. Pick a name, choose a folder, and you get an address like yourname.stolnk.com/clients. Anyone can open it in a browser and send you files — no app to install, no account to create.
+Stolnk turns your iPhone into an inbox. Pick a name and you get your own address, yourname.stolnk.com. Anyone can open it in a browser and send you files — no app to install, no account to create.
 
 RECEIVE
 • Every file is encrypted in the sender's browser before it leaves, and only your iPhone holds the key to open it
-• Files land straight in the folder you chose, inside the app
+• Files land straight in your Received folder, inside the app
 • If your phone is away, files wait safely and arrive the next time you open Stolnk
-• Pause an address, protect it with a password, change its path, or reset it — the old address stops working at once
+• Pause your address, or protect it with a password (membership) — it stops accepting files at once
 • Show the address as a QR code for someone standing next to you
 
-SEND
+SEND (MEMBERSHIP)
 • Share any file as a download link that works in any browser
 • Choose how long it lasts and how many downloads it allows
 • Pause, revoke, or delete a link at any time
@@ -21,8 +21,8 @@ YOUR FILES, ON YOUR PHONE
 PRIVACY
 No sign-in, no email, no password. Your identity is a name and a key kept in your iPhone's Secure Enclave. No ads, no tracking, no analytics SDKs. You can delete your account from inside the app at any time.
 
-EVERYTHING INCLUDED
-Stolnk is a paid download — no in-app purchases, no subscription. Every feature is included from the moment you install: unlimited addresses, files up to 20 GB each, 300 GB of relay per month, more and longer-lasting download links, and password-protected links.
+FREE, WITH OPTIONAL MEMBERSHIP
+Stolnk is free to download. Every iPhone gets one receive address, yourname.stolnk.com, feeding a Received folder. An optional membership, $1.99 per year, raises the limits to files up to 20 GB each and 300 GB of relay per month, adds password protection, lets you create download links, and keeps your subdomain permanently (changeable any time); without it, your custom subdomain lasts 7 days; after that the address stops working and the name is released, so you set a new one to keep receiving. Members can change theirs any time. Membership is an auto-renewing App Store subscription that you can cancel any time in your Apple ID settings. Earlier paid-download buyers get one year of membership free.
 
 Privacy Policy: https://stolnk.com/privacy
 Terms of Use: https://stolnk.com/terms

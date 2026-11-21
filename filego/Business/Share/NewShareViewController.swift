@@ -141,7 +141,7 @@ final class NewShareViewController: UIViewController {
         passwordProButton.configuration?.title = R.Strings.sharePasswordProOnly.localizedString()
         passwordProButton.addTarget(self, action: #selector(showUpgrade), for: .touchUpInside)
 
-        InboxPathField.configure(
+        SharePathField.configure(
             pathField,
             prefix: environment.stolnk.addressPrefix.map { $0 + "~" },
             text: nil,
@@ -408,9 +408,9 @@ final class NewShareViewController: UIViewController {
     /**
      报错。
 
-     402 统一交给 `PlanViewController.handleUpgradeRequired`：它有三种成因（时长超档、密码要 Pro、
-     条数用完），付费下载下答案都是「先补一次 Pro 认领」，认领过了才是真的到顶。409 和 413 则必须分开
-     讲——一个是「换个路径」，一个是「撤回一条再传」，建议完全不同。
+     402 统一交给 `PlanViewController.handleUpgradeRequired`：非会员看到会员页，
+     会员则说明是时长超档、密码要 Pro 或条数用完。409 和 413 则必须分开讲——一个是
+     「换个路径」，一个是「撤回一条再传」，建议完全不同。
      */
     private func showError(_ error: Error) {
         guard let apiError = error as? APIError else {
@@ -419,6 +419,11 @@ final class NewShareViewController: UIViewController {
                 message: error.localizedDescription)
         }
         if apiError.isUpgradeRequired { return showUpgrade() }
+        if apiError.code == "address_expired" {
+            return showMessage(
+                title: R.Strings.nameStatusExpired.localizedString(),
+                message: R.Strings.nameStatusExpiredDetail.localizedString())
+        }
         if apiError.code == "code_taken" {
             // 不关页面：路径撞车是最常见的失败，用户就在这一屏接着改。
             probe.evaluate(pathField.text ?? "")

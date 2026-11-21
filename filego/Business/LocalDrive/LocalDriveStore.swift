@@ -14,21 +14,76 @@ import StolnkCore
 final class LocalDriveStore {
     static let rootID = ""
 
+    /**
+     专属接收文件夹的 id（`Documents/Received`）。
+
+     这台设备唯一的收件地址 `<name>.stolnk.com` 收到的文件都落在这里。它不出现在根目录
+     的网格里——入口是 Drive 首页左下角那个按钮——也不能被改名、移动或删除：
+     `StolnkController` 的绑定以它的路径为准，挪走了下一个文件就没处落。磁盘上的名字
+     固定为英文，显示名走本地化（`drive.received.title`）。
+     */
+    static let receivedID = "Received"
+
+    static func isReceived(_ id: String) -> Bool { id == receivedID }
+
+    /**
+     `Documents/Inbox/` 是 iOS 给 App 投递「用 Stolnk 打开」文件的系统目录。
+     它归系统管，App 删除整个文件夹会被拒绝，也不该出现在用户的文件树里。
+     里面的文件在 `handleIncomingFile` 导入后被删掉，只留下这个空目录。
+     */
+    static let systemInboxID = "Inbox"
+
+    static func isSystemInbox(_ id: String) -> Bool {
+        id.caseInsensitiveCompare(systemInboxID) == .orderedSame
+    }
+
     let root: URL
     private let fm = FileManager.default
 
     /// 收件过程中的 `.part` 文件由 `FileLanding` 以点开头命名，落地前对用户不可见。
-    /// 这里统一跳过点开头的条目，顺带也把 `.Trash/` 挡在外面。
+    /// 这里统一跳过点开头的条目，顺带也把回收站挡在外面。
     private func isHidden(_ name: String) -> Bool { name.hasPrefix(".") }
 
-    /// `trashUsage` 在后台线程上读它，所以不能跟着模块默认的 MainActor 隔离走。
-    private nonisolated static let trashFolder = ".Trash"
+    /**
+     回收站目录名。
+
+     **不能叫 `.Trash`。** 开着 `UIFileSharingEnabled` 时，iOS「文件」App 会把
+     App 的 Documents 当成“我的 iPhone”下的一个目录，并在里面用 `.Trash` 存
+     “最近删除”。真机上这个目录由系统管理，App 往里写会得到
+     “没有权限访问 .Trash”，连删普通文件夹都会失败。所以用自己的隐藏目录。
+     */
+    private nonisolated static let trashFolder = ".StolnkTrash"
+    /// 旧版本用过的名字；升级时尽量整体搬走。
+    private nonisolated static let legacyTrashFolder = ".Trash"
 
     init(root: URL? = nil) {
         self.root =
             root
             ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         try? fm.createDirectory(at: self.root, withIntermediateDirectories: true)
+        try? fm.createDirectory(
+            at: self.root.appendingPathComponent(Self.receivedID, isDirectory: true),
+            withIntermediateDirectories: true)
+        migrateLegacyTrash()
+    }
+
+    /**
+     旧版本的回收站是 `Documents/.Trash`。如果它还是 App 自己的目录，整体改名成
+     `.StolnkTrash`（索引文件跟着走）；如果已经被系统接管、搬不动，就留着不动，
+     新回收站从空开始——继续用旧目录才是那个无权限错误的来源。
+     */
+    private func migrateLegacyTrash() {
+        let legacy = root.appendingPathComponent(Self.legacyTrashFolder, isDirectory: true)
+        let current = trashURL
+        guard fm.fileExists(atPath: legacy.path),
+              !fm.fileExists(atPath: current.path) else { return }
+        do {
+            try fm.moveItem(at: legacy, to: current)
+        } catch {
+            AppLogger.warning("旧回收站 .Trash 无法迁移（可能已由系统管理）：\(error.localizedDescription)")
+            // 建一个空的新回收站，免得每次启动都去撞同一个权限错误。
+            try? fm.createDirectory(at: current, withIntermediateDirectories: true)
+        }
     }
 
     // MARK: - 路径
@@ -69,6 +124,8 @@ final class LocalDriveStore {
         let nodes = entries
             .filter { !isHidden($0.lastPathComponent) }
             .compactMap { makeNode(at: $0) }
+            // 接收文件夹只从左下角入口进；系统投递的 Inbox 不归用户管，都不显示。
+            .filter { !Self.isReceived($0.id) && !Self.isSystemInbox($0.id) }
         return sorted(nodes, by: sort, order: order)
     }
 
@@ -100,7 +157,9 @@ final class LocalDriveStore {
         for case let url as URL in walker {
             guard !isHidden(url.lastPathComponent) else { continue }
             guard url.lastPathComponent.lowercased().contains(needle) else { continue }
-            if let node = makeNode(at: url) { found.append(node) }
+            if let node = makeNode(at: url), !Self.isSystemInbox(node.id) {
+                found.append(node)
+            }
         }
         return found
     }
@@ -109,7 +168,7 @@ final class LocalDriveStore {
 
     @discardableResult
     func createFolder(in parentID: String, name: String) throws -> DriveNode {
-        let safe = FileNameSanitizer.sanitize(name)
+        let safe = Self.avoidingSystemInbox(FileNameSanitizer.sanitize(name))
         let parent = url(for: parentID)
         let unique = FileNameSanitizer.uniqueName(for: safe, in: parent)
         let target = parent.appendingPathComponent(unique, isDirectory: true)
@@ -117,16 +176,30 @@ final class LocalDriveStore {
         return makeNode(at: target) ?? node(at: id(for: target) ?? "")!
     }
 
+    /// 接收文件夹与系统投递目录都不是用户能改的：它们的路径有外部含义。
+    private func refuseIfProtected(_ node: DriveNode) throws {
+        if Self.isReceived(node.id) || Self.isSystemInbox(node.id) {
+            throw CocoaError(.fileWriteNoPermission)
+        }
+    }
+
+    /// `Inbox` 这个名字留给 iOS 的系统投递目录，用户建同名文件夹会被改名。
+    private static func avoidingSystemInbox(_ name: String) -> String {
+        isSystemInbox(name) ? "\(name) 2" : name
+    }
+
     func rename(_ node: DriveNode, to name: String) throws {
+        try refuseIfProtected(node)
         let source = url(for: node.id)
         let parent = source.deletingLastPathComponent()
-        let safe = FileNameSanitizer.sanitize(name)
+        let safe = Self.avoidingSystemInbox(FileNameSanitizer.sanitize(name))
         guard safe != node.name else { return }
         let unique = FileNameSanitizer.uniqueName(for: safe, in: parent)
         try fm.moveItem(at: source, to: parent.appendingPathComponent(unique))
     }
 
     func move(_ node: DriveNode, to parentID: String) throws {
+        try refuseIfProtected(node)
         let source = url(for: node.id)
         let destination = url(for: parentID)
         let unique = FileNameSanitizer.uniqueName(for: node.name, in: destination)
@@ -144,7 +217,7 @@ final class LocalDriveStore {
      移入回收站。
 
      真删是不可逆的，而这条路径连着的是别人发来的文件——误触的代价太高。移到
-     `Documents/.Trash/`：点开头，所以不出现在树里，也不出现在「文件」App 里，
+     `Documents/.StolnkTrash/`：点开头，所以不出现在树里，也不出现在「文件」App 里，
      但东西还在。
 
      移动本身不记录任何东西：`moveItem` 保留的是文件原来的修改时间，不是入站时间，
@@ -152,6 +225,7 @@ final class LocalDriveStore {
      索引里写一条。见 `reconcileTrashIndex`。
      */
     func moveToTrash(_ node: DriveNode) throws {
+        try refuseIfProtected(node)
         try fm.createDirectory(at: trashURL, withIntermediateDirectories: true)
         let unique = FileNameSanitizer.uniqueName(for: node.name, in: trashURL)
         try fm.moveItem(at: url(for: node.id), to: trashURL.appendingPathComponent(unique))
@@ -322,7 +396,7 @@ final class LocalDriveStore {
     /**
      索引和磁盘对账，磁盘说了算。
 
-     索引是后加的，`.Trash/` 里可能已经躺着旧版本丢进去的文件；开着
+     索引是后加的，回收站里可能已经躺着旧版本丢进去的文件；开着
      `UIFileSharingEnabled`，用户也可能从别处动过目录。条目对不上文件就丢掉，文件没有
      条目就按它自己的修改时间补一条——原位置无从得知，还原只能回落到根目录。
      */
@@ -352,7 +426,7 @@ final class LocalDriveStore {
         return index
     }
 
-    /// `.Trash/` 下的条目名。索引文件自己是点开头的，顺带被挡掉。
+    /// 回收站目录下的条目名。索引文件自己是点开头的，顺带被挡掉。
     private func trashContents() -> [String] {
         ((try? fm.contentsOfDirectory(atPath: trashURL.path)) ?? [])
             .filter { !isHidden($0) }
@@ -413,7 +487,9 @@ final class LocalDriveStore {
             id: id,
             parentId: parent == "." ? "" : parent,
             kind: isFolder ? .folder : .file,
-            name: url.lastPathComponent,
+            name: Self.isReceived(id)
+                ? R.Strings.driveReceivedTitle.localizedString()
+                : url.lastPathComponent,
             size: Int64(values?.fileSize ?? 0),
             updatedAt: values?.contentModificationDate ?? Date()
         )

@@ -117,11 +117,21 @@ final class MeViewController: UIViewController {
             content.image = UIImage(systemName: "link")
             content.imageProperties.tintColor = AppColor.FileTile.folderForeground
             content.text = R.Strings.meAddress.localizedString()
-            // 名字是 onboarding 就定下的身份，`ryan.stolnk.com` 从那一刻起一直成立；
-            // inbox 是之后给某个文件夹取的路径，没建过不代表没有地址。拿 inbox 的有无
-            // 去渲染这一行，会在刚注册完的设备上把「已有地址」说成「未设置」。
-            content.secondaryText = stolnk.name.map { $0 + stolnk.nameSuffix }
-                ?? R.Strings.meAddressNone.localizedString()
+            // 侧栏只陈述子域名的状态：会员「永久」，非会员「还剩 N 天」，
+            // 到期后地址不可用，就只写「已到期」，不要再显示任何随机名。
+            let status = NameStatusText.make(environment: environment)
+            if let name = stolnk.name {
+                content.secondaryText = status.short.isEmpty
+                    ? name + stolnk.nameSuffix
+                    : "\(name + stolnk.nameSuffix) · \(status.short)"
+                content.secondaryTextProperties.color = status.expires
+                    ? AppColor.danger : AppColor.textSecondary
+            } else {
+                content.secondaryText = status.short.isEmpty
+                    ? R.Strings.meAddressNone.localizedString() : status.short
+                content.secondaryTextProperties.color = status.needsName
+                    ? AppColor.danger : AppColor.textSecondary
+            }
             cell.accessories = [.disclosureIndicator()]
 
         case .links:
@@ -261,7 +271,7 @@ extension MeViewController: UICollectionViewDelegate {
         guard let row = dataSource.itemIdentifier(for: indexPath) else { return }
         switch row {
         case .address:
-            navigate(InboxListViewController(environment: environment))
+            navigate(InboxDetailViewController(environment: environment))
         case .links:
             navigate(ShareListViewController(environment: environment))
         #if DEBUG

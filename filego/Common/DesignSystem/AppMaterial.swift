@@ -305,7 +305,7 @@ final class MaterialButton: UIButton {
 
 /// 凹槽输入框。替代 `.roundedRect`：系统那种是冷灰描边的白框，压在纸色底上发蓝。
 ///
-/// 内边距放在 `textRect` / `editingRect` 里而不是 `leftView`：`InboxPathField` 要用
+/// 内边距放在 `textRect` / `editingRect` 里而不是 `leftView`：`SharePathField` 要用
 /// `leftView` 钉地址前缀，两者不能抢同一个位置。`placeholderRect` 不要再缩一次——
 /// 系统的实现本来就从 `textRect` 推出来，再缩就是双倍内边距。
 @MainActor

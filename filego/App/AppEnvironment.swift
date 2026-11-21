@@ -8,7 +8,7 @@ final class AppEnvironment {
     let keyValueStore: KeyValueStore
     let stolnk: StolnkController
     let drive: LocalDriveStore
-    let appUnlock: AppUnlockService
+    let membership: MembershipService
 
     convenience init() {
         self.init(services: ServiceContainer.shared, keyValueStore: KeyValueStore.shared)
@@ -20,7 +20,9 @@ final class AppEnvironment {
         self.keyValueStore = keyValueStore
         self.stolnk = StolnkController(store: store)
         self.drive = LocalDriveStore()
-        self.appUnlock = AppUnlockService(stolnk: stolnk)
+        self.membership = MembershipService(stolnk: stolnk)
+        // 唯一的 inbox 永远落在专属接收文件夹里，见 `StolnkController.bindReceiveFolder`。
+        stolnk.receiveFolder = drive.url(for: LocalDriveStore.receivedID)
 
         services.register(stolnk, as: StolnkController.self)
     }

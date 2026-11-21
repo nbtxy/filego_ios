@@ -18,91 +18,6 @@
         }
       }
     },
-    "account.delete": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete account"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "注销账号"
-          }
-        }
-      }
-    },
-    "account.delete.confirm.action": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete permanently"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "永久注销"
-          }
-        }
-      }
-    },
-    "account.delete.confirm.message": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "All your files, everything in the trash and your account details will be permanently deleted. This can't be undone."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "你的所有文件、回收站内容与账号信息将被永久删除，且无法恢复。"
-          }
-        }
-      }
-    },
-    "account.delete.confirm.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete your account?"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "确定要注销账号吗？"
-          }
-        }
-      }
-    },
-    "account.delete.failed": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Couldn't delete your account"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "注销失败"
-          }
-        }
-      }
-    },
     "account.email": {
       "extractionState": "manual",
       "localizations": {
@@ -800,40 +715,6 @@
         }
       }
     },
-    "drive.import.address": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Get File Import Address"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "获取文件导入地址"
-          }
-        }
-      }
-    },
-    "drive.import.addressMessage": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This address is valid until %@. Open it in a browser or upload with curl.\n\n%@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "此地址有效期至 %@。可以在浏览器中打开，也可以使用 curl 上传。\n\n%@"
-          }
-        }
-      }
-    },
     "drive.import.cameraDenied": {
       "extractionState": "manual",
       "localizations": {
@@ -902,40 +783,6 @@
         }
       }
     },
-    "drive.import.create": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Create address"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "创建地址"
-          }
-        }
-      }
-    },
-    "drive.import.created": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Address created"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "地址已创建"
-          }
-        }
-      }
-    },
     "drive.import.file": {
       "extractionState": "manual",
       "localizations": {
@@ -953,40 +800,6 @@
         }
       }
     },
-    "drive.import.newMessage": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Anyone with this link can send files straight into “%@”. No account, nothing to install."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "拿到这条链接的人就能把文件直接发进「%@」。不用账号，不用装东西。"
-          }
-        }
-      }
-    },
-    "drive.import.newTitle": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose this folder's address"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "给这个文件夹取一条地址"
-          }
-        }
-      }
-    },
     "drive.import.openSettings": {
       "extractionState": "manual",
       "localizations": {
@@ -1000,57 +813,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "打开设置"
-          }
-        }
-      }
-    },
-    "drive.import.pathInvalid": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Use lowercase letters, numbers and hyphens — up to three segments."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "只能用小写字母、数字和连字符，最多三段。"
-          }
-        }
-      }
-    },
-    "drive.import.pathPlaceholder": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "client-a"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "client-a"
-          }
-        }
-      }
-    },
-    "drive.import.pathRefused": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "That path isn’t available. Pick another."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "这个路径不可用，换一个。"
           }
         }
       }
@@ -1085,91 +847,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在准备文件…"
-          }
-        }
-      }
-    },
-    "drive.import.resetAddress": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reset Address"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重置地址"
-          }
-        }
-      }
-    },
-    "drive.import.resetConfirmMessage": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The current address will stop working immediately. People using it will no longer be able to import files."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "当前地址将立即失效，正在使用旧地址的人将无法继续导入文件。"
-          }
-        }
-      }
-    },
-    "drive.import.resetConfirmTitle": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reset the import address?"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重置文件导入地址？"
-          }
-        }
-      }
-    },
-    "drive.import.secondAddressMessage": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This iPhone already has a receiving address on another folder. Files already here are unaffected."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "这台手机已经在别的文件夹上有一条收件地址了。已有的文件不受影响。"
-          }
-        }
-      }
-    },
-    "drive.import.secondAddressTitle": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "One address at a time"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "一次只能有一条地址"
           }
         }
       }
@@ -1391,6 +1068,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "降序"
+          }
+        }
+      }
+    },
+    "drive.received.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Received"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收到的文件"
           }
         }
       }
@@ -1690,13 +1384,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Link copied"
+            "value": "Address copied"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "链接已复制"
+            "value": "地址已复制"
           }
         }
       }
@@ -1714,91 +1408,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "复制链接"
-          }
-        }
-      }
-    },
-    "inbox.delete": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete Link…"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "删除地址…"
-          }
-        }
-      }
-    },
-    "inbox.delete.confirm": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete Link"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "删除地址"
-          }
-        }
-      }
-    },
-    "inbox.delete.done": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Address deleted"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "地址已删除"
-          }
-        }
-      }
-    },
-    "inbox.delete.message": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The address, its records, and anything still waiting in the relay go with it. Files already on this iPhone stay. The path becomes free for a new link."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "地址、它的传输记录、还停在中转站没下载的文件会一起消失。已经落到手机上的文件留着。路径会释放出来给新链接用。"
-          }
-        }
-      }
-    },
-    "inbox.delete.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete “%@”?"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "删除「%@」？"
           }
         }
       }
@@ -1854,23 +1463,6 @@
         }
       }
     },
-    "inbox.detail.landsIn": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Files land in"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "落地于"
-          }
-        }
-      }
-    },
     "inbox.detail.options": {
       "extractionState": "manual",
       "localizations": {
@@ -1901,40 +1493,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "已设密码"
-          }
-        }
-      }
-    },
-    "inbox.detail.path": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Path"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "路径"
-          }
-        }
-      }
-    },
-    "inbox.detail.pathHint": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Changing the path makes the old address stop working immediately."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "换了路径，旧地址立刻失效。"
           }
         }
       }
@@ -2058,91 +1616,6 @@
         }
       }
     },
-    "inbox.folder": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lands in %@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "落地于 %@"
-          }
-        }
-      }
-    },
-    "inbox.folder.change": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose Folder…"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "选择文件夹…"
-          }
-        }
-      }
-    },
-    "inbox.folder.changed": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Files will land here from now on"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "之后的文件会落到这里"
-          }
-        }
-      }
-    },
-    "inbox.folder.pick": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Land Here"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "落到这里"
-          }
-        }
-      }
-    },
-    "inbox.folderUnset": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Not bound"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "未绑定"
-          }
-        }
-      }
-    },
     "inbox.list.name": {
       "extractionState": "manual",
       "localizations": {
@@ -2173,57 +1646,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "我的地址"
-          }
-        }
-      }
-    },
-    "inbox.path.message": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The old address stops working the moment you save. Anyone still using it will not be able to send."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "保存的瞬间旧地址就失效了，还在用它的人发不进来。"
-          }
-        }
-      }
-    },
-    "inbox.path.save": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Change Path"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "换路径"
-          }
-        }
-      }
-    },
-    "inbox.path.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Change this link’s path"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "换一条路径"
           }
         }
       }
@@ -2347,91 +1769,6 @@
         }
       }
     },
-    "inbox.reset": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reset Link…"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重置链接…"
-          }
-        }
-      }
-    },
-    "inbox.reset.confirm": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reset Link"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重置链接"
-          }
-        }
-      }
-    },
-    "inbox.reset.done": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The link has a new address"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "链接已换新地址"
-          }
-        }
-      }
-    },
-    "inbox.reset.message": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "It keeps receiving into the same folder at a new random path. The current address stops working immediately — there is no grace period."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "它会换一条随机路径，继续收进同一个文件夹。当前地址立刻失效，没有过渡期。"
-          }
-        }
-      }
-    },
-    "inbox.reset.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reset this link?"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重置这条链接？"
-          }
-        }
-      }
-    },
     "inbox.resume": {
       "extractionState": "manual",
       "localizations": {
@@ -2472,13 +1809,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This iPhone has its own address. Files sent to your Mac's address go to the Mac, not here."
+            "value": "This iPhone gets its own receive address, feeding a Received folder. A name you choose lasts 7 days unless you become a member — after that the address stops working and the name is released, so you set a new name to choose again."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "这台手机有自己的地址。发往你 Mac 那个地址的文件会到 Mac，不会到这里。"
+            "value": "这台手机有自己的收件地址，收到的文件会进「收到的文件」文件夹。自选名字在非会员状态下保留 7 天，到期后地址失效、原名字释放；想继续使用自选名字，需要重新设置。开通会员可永久保留并可随时修改。"
           }
         }
       }
@@ -2829,13 +2166,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Included features"
+            "value": "Membership"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已包含的功能"
+            "value": "会员"
           }
         }
       }
@@ -2846,7 +2183,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not activated"
+            "value": "Not a member"
           }
         },
         "zh-Hans": {
@@ -2863,13 +2200,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Active"
+            "value": "Member"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已开通"
+            "value": "会员"
           }
         }
       }
@@ -3044,6 +2381,40 @@
         }
       }
     },
+    "member.productUnavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Membership isn't available right now. Please try again later."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "会员暂时无法购买，请稍后再试。"
+          }
+        }
+      }
+    },
+    "member.subscribeShort": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subscribe"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开通会员"
+          }
+        }
+      }
+    },
     "name.change.action": {
       "extractionState": "manual",
       "localizations": {
@@ -3214,6 +2585,210 @@
         }
       }
     },
+    "name.setNew": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set a subdomain"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设置子域名"
+          }
+        }
+      }
+    },
+    "name.status.daysLeft": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d days left"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还剩 %d 天"
+          }
+        }
+      }
+    },
+    "name.status.daysLeftDetail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ expires in %d days. The address then stops working and the name is released; set a new subdomain to keep receiving. Membership keeps it permanently and lets you change it any time."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 将在 %d 天后到期，届时地址失效、原名字释放；需要重新设置子域名才能继续接收。会员可永久保留，并可随时修改。"
+          }
+        }
+      }
+    },
+    "name.status.expired": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Address expired"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已到期"
+          }
+        }
+      }
+    },
+    "name.status.expiredDetail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This subdomain has expired. The address no longer works and the old name has been released. Set a new subdomain to receive files again; membership keeps it permanently and lets you change it any time."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个子域名已到期，地址已失效，原名字已释放。重新设置子域名后才能继续接收文件；会员可永久保留，并可随时修改。"
+          }
+        }
+      }
+    },
+    "name.status.locked": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permanent"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "永久"
+          }
+        }
+      }
+    },
+    "name.status.lockedDetail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ is yours permanently, and you can change it at any time."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 永久归你，并可随时修改。"
+          }
+        }
+      }
+    },
+    "name.status.noName": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not set"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未设置"
+          }
+        }
+      }
+    },
+    "name.status.noNameDetail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set a subdomain to receive files. A name you choose lasts %d days; membership keeps it permanently."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设置子域名后才能接收文件。自选名字可用 %d 天；会员可永久保留，并可随时修改。"
+          }
+        }
+      }
+    },
+    "name.status.row": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subdomain"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "子域名"
+          }
+        }
+      }
+    },
+    "name.status.unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在获取…"
+          }
+        }
+      }
+    },
+    "name.status.upgrade": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep this name"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保留这个子域名"
+          }
+        }
+      }
+    },
     "onboarding.available": {
       "extractionState": "manual",
       "localizations": {
@@ -3322,13 +2897,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This is your name on Stolnk. You’ll turn a folder into a receiving address later."
+            "value": "This is your name on Stolnk. Your address will be yourname.stolnk.com, and everything sent there lands in your Received folder."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "这是你在 Stolnk 上的名字。之后再把某个文件夹变成收件地址。"
+            "value": "这是你在 Stolnk 上的名字。你的收件地址是 yourname.stolnk.com，发到这里的文件会进「收到的文件」文件夹。"
           }
         }
       }
@@ -3724,6 +3299,40 @@
         }
       }
     },
+    "pro.autoRenewDisclosure": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ per year. Payment is charged to your Apple ID when you confirm. The subscription renews automatically each year unless cancelled at least 24 hours before the current period ends. Manage or cancel any time in your Apple ID settings."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@/年。确认购买时从你的 Apple ID 扣款。订阅每年自动续期，除非在当前订阅期结束前至少 24 小时取消。可随时在 Apple ID 设置中管理或取消。"
+          }
+        }
+      }
+    },
+    "pro.benefit.expiry": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Links valid for up to 30 days"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "链接最长 30 天有效期"
+          }
+        }
+      }
+    },
     "pro.benefit.files": {
       "extractionState": "manual",
       "localizations": {
@@ -3741,36 +3350,36 @@
         }
       }
     },
-    "pro.benefit.free": {
+    "pro.benefit.links": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Free"
+            "value": "Download links for your files"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "免费版"
+            "value": "为文件创建下载链接"
           }
         }
       }
     },
-    "pro.benefit.inboxes": {
+    "pro.benefit.name": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Unlimited receiving addresses"
+            "value": "Your subdomain, permanent and editable"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无限接收地址"
+            "value": "子域名永久归你，可随时修改"
           }
         }
       }
@@ -3781,30 +3390,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Password-protected sharing"
+            "value": "Password-protected links"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "密码保护的文件分享"
-          }
-        }
-      }
-    },
-    "pro.benefit.pro": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pro"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pro 会员"
+            "value": "密码保护的下载链接"
           }
         }
       }
@@ -3815,7 +3407,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "300 GB monthly relay allowance"
+            "value": "300 GB of relay each month"
           }
         },
         "zh-Hans": {
@@ -3826,53 +3418,19 @@
         }
       }
     },
-    "pro.benefit.storage": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Storage"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "存储空间"
-          }
-        }
-      }
-    },
-    "pro.benefit.storage.value": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@ · %2$@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@ · %2$@"
-          }
-        }
-      }
-    },
     "pro.benefits.title": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "What you get"
+            "value": "What membership includes"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "升级后你会得到"
+            "value": "会员权益"
           }
         }
       }
@@ -3900,81 +3458,30 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ / month"
+            "value": "%@ / year"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ / 月"
+            "value": "%@ / 年"
           }
         }
       }
     },
-    "pro.entry.active": {
+    "pro.eula": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pro"
+            "value": "Apple Standard EULA"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pro 会员"
-          }
-        }
-      }
-    },
-    "pro.entry.expires": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Until %@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "有效期至 %@"
-          }
-        }
-      }
-    },
-    "pro.entry.free": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Free"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "免费版"
-          }
-        }
-      }
-    },
-    "pro.entry.upgrade": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Upgrade to Pro"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "升级 Pro 会员"
+            "value": "Apple 标准 EULA"
           }
         }
       }
@@ -3985,13 +3492,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Everything, included"
+            "value": "Stolnk Membership"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "全部功能，已包含"
+            "value": "Stolnk 会员"
           }
         }
       }
@@ -4002,13 +3509,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "All included features are active on this device"
+            "value": "Membership is active on this device"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "本设备已开通全部已包含的功能"
+            "value": "本设备已开通会员"
           }
         }
       }
@@ -4019,13 +3526,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The included features haven't been activated on this device yet. Check your connection and sync again."
+            "value": "Membership isn't active on this device yet. Check your connection and sync again."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "本设备尚未开通已包含的功能，请检查网络后重新同步。"
+            "value": "本设备尚未开通会员，请检查网络后重新同步。"
           }
         }
       }
@@ -4036,13 +3543,30 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You've reached the limit of the included features."
+            "value": "You've reached this plan's limit."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已达到已包含功能的上限。"
+            "value": "已达到当前方案的上限。"
+          }
+        }
+      }
+    },
+    "pro.priceLine": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stolnk Membership · %@ / year"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stolnk 会员 · %@ / 年"
           }
         }
       }
@@ -4064,53 +3588,155 @@
         }
       }
     },
+    "pro.purchaseFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Purchase failed"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "购买失败"
+          }
+        }
+      }
+    },
+    "pro.purchasePending": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Purchase pending"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "购买待完成"
+          }
+        }
+      }
+    },
+    "pro.purchasePendingSync": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your purchase is being verified. Check your connection in a moment."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "购买正在核验中，请稍后检查网络。"
+          }
+        }
+      }
+    },
+    "pro.purchaseSuccess": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You're a member now"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已开通会员"
+          }
+        }
+      }
+    },
+    "pro.restore": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore purchases"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复购买"
+          }
+        }
+      }
+    },
+    "pro.restoreNone": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No membership to restore."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有可恢复的会员。"
+          }
+        }
+      }
+    },
+    "pro.restoreSuccess": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Membership restored"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已恢复会员"
+          }
+        }
+      }
+    },
     "pro.status.active": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Subscribed until %@"
+            "value": "Membership active"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已订阅，有效期至 %@"
+            "value": "会员已开通"
           }
         }
       }
     },
-    "pro.status.expiring": {
+    "pro.statusActiveUntil": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Auto-renew is off. You'll return to the free plan after %@."
+            "value": "Member until %@"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已关闭自动续期，%@ 后回到免费版。"
-          }
-        }
-      }
-    },
-    "pro.status.grace": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Renewal failed. Update your payment method before %@ or you'll drop back to 200 MB."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "续费未成功，%@ 前请更新支付方式，否则空间将回到 200 MB。"
+            "value": "会员有效期至 %@"
           }
         }
       }
@@ -4121,64 +3747,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stolnk is a paid download. Every feature is yours — no in-app purchases, no subscription."
+            "value": "Free to download. Membership adds download links and keeps your subdomain for you, editable at any time — $1.99 a year, renewed automatically until you cancel in your Apple ID settings."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stolnk 是付费下载应用，安装即享全部功能，没有内购，也没有订阅。"
-          }
-        }
-      }
-    },
-    "pro.sync": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sync again"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重新同步"
-          }
-        }
-      }
-    },
-    "pro.sync.failed": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Couldn't activate the included features"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "暂时无法开通已包含的功能"
-          }
-        }
-      }
-    },
-    "pro.sync.retry": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The included features are now active. Please try again."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已包含的功能已开通，请再试一次。"
+            "value": "免费下载。开通会员即可创建下载链接，并永久保留你的子域名，可随时修改——$1.99/年，自动续期，可随时在 Apple ID 设置中取消。"
           }
         }
       }
@@ -4200,155 +3775,19 @@
         }
       }
     },
-    "pro.tier.addressCount": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ import addresses"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ 条导入地址"
-          }
-        }
-      }
-    },
-    "pro.tier.directUpload": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Direct uploads up to %@ per file"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "单文件最高 %@ 直传"
-          }
-        }
-      }
-    },
-    "pro.tier.expiry.free": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Import addresses expire after 7 days"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "导入地址有效期 7 天"
-          }
-        }
-      }
-    },
-    "pro.tier.expiry.pro": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Expiry: 1, 7, 30 or 90 days — or never"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "有效期可选 1、7、30、90 天或永不过期"
-          }
-        }
-      }
-    },
-    "pro.tier.free": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Free"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "免费版"
-          }
-        }
-      }
-    },
-    "pro.tier.storageValue": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ storage"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ 存储空间"
-          }
-        }
-      }
-    },
-    "pro.tier.unlimited": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Unlimited import addresses"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "导入地址不限量"
-          }
-        }
-      }
-    },
     "pro.title": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Included features"
+            "value": "Membership"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已包含的功能"
-          }
-        }
-      }
-    },
-    "pro.userAgreement": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "User Agreement"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "用户协议"
+            "value": "会员"
           }
         }
       }
@@ -4400,6 +3839,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "升级 Pro"
+          }
+        }
+      }
+    },
+    "received.address": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Address"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地址"
+          }
+        }
+      }
+    },
+    "received.addressUnavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Address unavailable"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地址不可用"
+          }
+        }
+      }
+    },
+    "received.paused": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paused"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已暂停"
+          }
+        }
+      }
+    },
+    "received.settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Receiving settings"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收件设置"
           }
         }
       }
@@ -5012,6 +4519,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "下载链接"
+          }
+        }
+      }
+    },
+    "share.memberOnly.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Membership turns a file into a link anyone can download. Receiving files stays free."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开通会员即可把文件变成任何人可下载的链接。接收文件始终免费。"
+          }
+        }
+      }
+    },
+    "share.memberOnly.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download links are a membership feature"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下载链接是会员功能"
           }
         }
       }

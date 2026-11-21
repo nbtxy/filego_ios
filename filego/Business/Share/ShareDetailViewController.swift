@@ -32,7 +32,7 @@ private nonisolated enum Row: Hashable {
  一条下载链接的详情与管理。对应 Mac 端 `SharesView` 里的 `ShareDetail`。
 
  只记 `shareID`，每次渲染都从 `environment.stolnk.shares` 里现查——和
- `InboxDetailViewController` 完全相同的理由：改完路径或暂停之后 `refreshShares()`
+ 收件设置页完全相同的理由：改完路径或暂停之后 `refreshShares()`
  会整个换掉数组，手里存着的那份结构体立刻过期，页面会理直气壮地继续显示一条
  已经失效的链接。查不到就说明它被删了，直接退回列表。
  */
@@ -369,7 +369,7 @@ extension ShareDetailViewController {
             preferredStyle: .alert
         )
         alert.addTextField { [weak self] field in
-            InboxPathField.configure(
+            SharePathField.configure(
                 field,
                 prefix: self?.environment.stolnk.addressPrefix.map { $0 + "~" },
                 text: share.code,

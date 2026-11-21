@@ -4,7 +4,7 @@ import UIKit
 /**
  回收站。
 
- 内容不在文件树里（`Documents/.Trash/`），所以这里不是 `DriveListViewController` 的一个
+ 内容不在文件树里（`Documents/.StolnkTrash/`），所以这里不是 `DriveListViewController` 的一个
  目录参数能覆盖的：没有面包屑、没有下钻、没有新建，文件夹也点不进去——它已经不在树上了。
  复用的是行的样子（`DriveNodeCell`）和那张白卡，不是那套导航。
 

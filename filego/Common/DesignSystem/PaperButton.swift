@@ -53,6 +53,23 @@ enum PaperButton {
 
         let button = MaterialButton(surface: surface)
         button.configuration = configuration
+        // 系统禁用态会把整颗按钮压淡，深色材质变成浅灰、白字几乎看不见
+        // （Duo 首屏的「占用这个名字」就是这样）。自己控制禁用态的对比度，
+        // 同时记住调用方后来改过的前景色（比如 + / 收件按钮的柠檬绿）。
+        var enabledColor = foreground
+        button.configurationUpdateHandler = { button in
+            guard var configuration = button.configuration else { return }
+            if button.isEnabled, let current = configuration.baseForegroundColor {
+                enabledColor = current
+            }
+            configuration.background.backgroundColor = .clear
+            configuration.background.strokeColor = .clear
+            configuration.baseForegroundColor = button.isEnabled
+                ? enabledColor
+                : enabledColor.withAlphaComponent(0.55)
+            button.configuration = configuration
+            (button as? MaterialButton)?.material?.alpha = button.isEnabled ? 1 : 0.6
+        }
         return button
     }
 }

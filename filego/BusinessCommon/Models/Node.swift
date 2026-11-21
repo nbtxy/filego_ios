@@ -48,10 +48,10 @@ nonisolated enum SortOrder: String {
 
  刻意不是 `DriveNode`：树里的节点靠相对路径定身份，而回收站里的东西已经脱离了树，
  它的原位置是还原时才用的历史信息，不是当前位置。多出来的两个字段（入站时间、
- 原父目录）文件系统本身不记，来自 `.Trash/.index.json`。
+ 原父目录）文件系统本身不记，来自 `.StolnkTrash/.index.json`。
  */
 nonisolated struct TrashItem: Hashable {
-    /// `.Trash/` 下的实际文件名。重名会被去重，所以未必等于 `name`。
+    /// `.StolnkTrash/` 下的实际文件名。重名会被去重，所以未必等于 `name`。
     let storageName: String
     /// 删除时的显示名，也是还原后的名字。
     let name: String

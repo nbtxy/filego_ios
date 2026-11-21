@@ -1,2 +1,5 @@
-• A refreshed, tactile look: cards gently lift off the page, buttons press down when you tap them, and text fields sit slightly recessed.
-• The file list now leaves more room below the navigation bar, and the cards fit their rows more snugly.
+Stolnk is now free to download, with an optional $1.99/year membership.
+• Every iPhone gets one receive address and a Received folder for incoming files
+• Members can create download links and keep their custom subdomain permanently; without membership the address stops working after 7 days
+• A single address replaces the old per-folder links
+• If you bought the previous paid download, you get one year of membership free

@@ -60,7 +60,7 @@ final class DriveListViewModel {
         _ = try await reload()
     }
 
-    /// 移入 `Documents/.Trash/`，仍在设备上。见 `LocalDriveStore.moveToTrash`。
+    /// 移入 `Documents/.StolnkTrash/`，仍在设备上。见 `LocalDriveStore.moveToTrash`。
     func moveToTrash(_ node: DriveNode) async throws {
         try drive.moveToTrash(node)
         _ = try await reload()

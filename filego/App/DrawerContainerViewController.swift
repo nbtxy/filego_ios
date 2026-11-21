@@ -21,7 +21,8 @@ final class DrawerContainerViewController: UIViewController, UIGestureRecognizer
     private var edgePan: UIScreenEdgePanGestureRecognizer!
     private var closePan: UIPanGestureRecognizer!
 
-    private var drawerWidth: CGFloat { max(1, view.bounds.width * widthFraction) }
+    /// 最宽 360：Duo 这类宽屏/横屏上 0.82 会占掉大半屏，主内容只剩一条缝。
+    private var drawerWidth: CGFloat { max(1, min(360, view.bounds.width * widthFraction)) }
     private var currentProgress: CGFloat { dragProgress ?? (isOpen ? 1 : 0) }
 
     init(environment: AppEnvironment) {
