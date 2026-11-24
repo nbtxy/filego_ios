@@ -7,6 +7,11 @@ RECEIVE
 • Pause your address, or protect it with a password (membership) — it stops accepting files at once
 • Show the address as a QR code for someone standing next to you
 
+AI OUTPUT, ON YOUR PHONE
+• When an AI tool writes an HTML report or a Markdown file, send it from your computer to your receive address and open it on your phone
+• HTML renders as a page and Markdown is typeset — not shown as raw source
+• No zip, no cable, no email to yourself; the file lands in the same Received folder
+
 SEND (MEMBERSHIP)
 • Share any file as a download link that works in any browser
 • Choose how long it lasts and how many downloads it allows
@@ -15,14 +20,16 @@ SEND (MEMBERSHIP)
 YOUR FILES, ON YOUR PHONE
 • Browse as a list or grid, sort, rename, and move files between folders
 • Import from Photos or Files
-• Preview images, video, audio, PDFs, text, Markdown, and HTML
+• Preview images, video, audio, PDFs, text, Markdown, and HTML — including AI-generated pages
 • Deleted items stay in Trash for 30 days, and you can see what's using storage
 
 PRIVACY
 No sign-in, no email, no password. Your identity is a name and a key kept in your iPhone's Secure Enclave. No ads, no tracking, no analytics SDKs. You can delete your account from inside the app at any time.
 
 FREE, WITH OPTIONAL MEMBERSHIP
-Stolnk is free to download. Every iPhone gets one receive address, yourname.stolnk.com, feeding a Received folder. An optional membership, $1.99 per year, raises the limits to files up to 20 GB each and 300 GB of relay per month, adds password protection, lets you create download links, and keeps your subdomain permanently (changeable any time); without it, your custom subdomain lasts 7 days; after that the address stops working and the name is released, so you set a new one to keep receiving. Members can change theirs any time. Membership is an auto-renewing App Store subscription that you can cancel any time in your Apple ID settings. Earlier paid-download buyers get one year of membership free.
+Stolnk is free to download. Every iPhone gets one receive address, yourname.stolnk.com, feeding a Received folder. An optional membership raises the limits to files up to 20 GB each and 300 GB of relay per month, adds password protection, lets you create download links, and keeps your subdomain permanently (changeable any time); without it, your custom subdomain lasts 7 days; after that the address stops working and the name is released, so you set a new one to keep receiving. Members can change theirs any time.
+
+Membership has two options: $1.99 per year, an auto-renewing App Store subscription you can cancel any time in your Apple ID settings, or $9.99 once for lifetime, a one-time purchase that does not renew. Both are sold only inside the app. Earlier paid-download buyers get one year of membership free.
 
 Privacy Policy: https://stolnk.com/privacy
 Terms of Use: https://stolnk.com/terms

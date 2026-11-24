@@ -26,10 +26,27 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         Task {
             environment.membership.startObservingTransactions()
             await environment.stolnk.start()
+            #if DEBUG
+            // 宣传截图用：跳过手工输入名字，直接对本地服务注册一个临时设备。
+            // 只在 Debug 构建和显式参数下发生，发布包里没有这段代码。
+            if let name = screenshotRegistrationName() {
+                _ = await environment.stolnk.register(name: name)
+            }
+            #endif
             await environment.membership.bootstrap()
         }
         return true
     }
+
+    #if DEBUG
+    /// `-screenshot-register maya` — used by the App Store screenshot script.
+    private func screenshotRegistrationName() -> String? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: "-screenshot-register"),
+              arguments.indices.contains(index + 1) else { return nil }
+        return arguments[index + 1]
+    }
+    #endif
 
     func application(
         _ application: UIApplication,

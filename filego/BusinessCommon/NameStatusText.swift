@@ -27,7 +27,16 @@ enum NameStatusText {
 
     static func make(environment: AppEnvironment) -> Text {
         let plan = environment.stolnk.plan
-        let address = (environment.stolnk.name ?? "") + environment.stolnk.nameSuffix
+        // 文案里的地址要和上面那张卡片显示的是同一个。用 inbox 的服务端地址，
+        // 而不是用本机配置拼出来的 `<name><suffix>`：开发环境连的是
+        // `localhost:5173`，而服务端给出的链接已经是 `https://<name>.stolnk.com`，
+        // 拼出来的那一份会在同一屏里和真实地址打架。
+        let address = (environment.stolnk.inbox?.url ?? "")
+            .replacingOccurrences(of: "https://", with: "")
+            .replacingOccurrences(of: "http://", with: "")
+        let fallback = address.isEmpty
+            ? (environment.stolnk.name ?? "") + environment.stolnk.nameSuffix
+            : address
         guard let plan else {
             return Text(
                 short: "", detail: R.Strings.nameStatusUnknown.localizedString(),
@@ -43,7 +52,7 @@ enum NameStatusText {
         if plan.isPro {
             return Text(
                 short: R.Strings.nameStatusLocked.localizedString(),
-                detail: R.Strings.nameStatusLockedDetail.formatted(address),
+                detail: R.Strings.nameStatusLockedDetail.formatted(fallback),
                 expires: false, needsName: false)
         }
         guard let days = plan.nameDaysLeft() else {
@@ -62,7 +71,7 @@ enum NameStatusText {
         }
         return Text(
             short: R.Strings.nameStatusDaysLeft.formatted(days),
-            detail: R.Strings.nameStatusDaysLeftDetail.formatted(address, days),
+            detail: R.Strings.nameStatusDaysLeftDetail.formatted(fallback, days),
             expires: true, needsName: false)
     }
 }

@@ -2959,40 +2959,6 @@
         }
       }
     },
-    "preview.html.blockerUnavailable": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This page can't be sandboxed for preview right now."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "无法为该页面建立网络隔离，暂时不能预览"
-          }
-        }
-      }
-    },
-    "preview.html.loadRemoteContent": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Load Remote Content"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "载入远程内容"
-          }
-        }
-      }
-    },
     "preview.html.openInQuickLook": {
       "extractionState": "manual",
       "localizations": {
@@ -3435,6 +3401,23 @@
         }
       }
     },
+    "pro.choosePlan": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose how you’d like to unlock Stolnk."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择解锁 Stolnk 的方式。"
+          }
+        }
+      }
+    },
     "pro.cta.manage": {
       "extractionState": "manual",
       "localizations": {
@@ -3537,6 +3520,23 @@
         }
       }
     },
+    "pro.lifetime.disclosure": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lifetime is a one-time purchase of %@. It is not a subscription, does not renew, and unlocks Stolnk permanently."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "终身版为 %@ 的一次性购买，不是订阅，不会续费，永久解锁 Stolnk。"
+          }
+        }
+      }
+    },
     "pro.limit.reached": {
       "extractionState": "manual",
       "localizations": {
@@ -3550,6 +3550,176 @@
           "stringUnit": {
             "state": "translated",
             "value": "已达到当前方案的上限。"
+          }
+        }
+      }
+    },
+    "pro.plan.lifetime.badge": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BEST VALUE"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最划算"
+          }
+        }
+      }
+    },
+    "pro.plan.lifetime.cta": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get lifetime · %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "终身买断 · %@"
+          }
+        }
+      }
+    },
+    "pro.plan.lifetime.ctaFallback": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get lifetime · US$9.99"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "终身买断 · US$9.99"
+          }
+        }
+      }
+    },
+    "pro.plan.lifetime.fallbackPrice": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "US$9.99 once"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "US$9.99 一次买断"
+          }
+        }
+      }
+    },
+    "pro.plan.lifetime.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buy once, keep it forever. No subscription, no renewal."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一次买断，永久使用。不是订阅，不会续费。"
+          }
+        }
+      }
+    },
+    "pro.plan.lifetime.price": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ once"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 一次买断"
+          }
+        }
+      }
+    },
+    "pro.plan.lifetime.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lifetime"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "终身版"
+          }
+        }
+      }
+    },
+    "pro.plan.yearly.fallbackPrice": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "$1.99 / year"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "$1.99 / 年"
+          }
+        }
+      }
+    },
+    "pro.plan.yearly.note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renews every year. Cancel any time in your Apple ID settings."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每年自动续期，可随时在 Apple ID 设置中取消。"
+          }
+        }
+      }
+    },
+    "pro.plan.yearly.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yearly membership"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "年度会员"
           }
         }
       }
@@ -3656,6 +3826,23 @@
         }
       }
     },
+    "pro.purchaseSuccessLifetime": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lifetime unlocked"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已解锁终身版"
+          }
+        }
+      }
+    },
     "pro.restore": {
       "extractionState": "manual",
       "localizations": {
@@ -3724,6 +3911,23 @@
         }
       }
     },
+    "pro.status.lifetime": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lifetime member — yours for good"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "终身会员 · 永久有效"
+          }
+        }
+      }
+    },
     "pro.statusActiveUntil": {
       "extractionState": "manual",
       "localizations": {
@@ -3747,13 +3951,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Free to download. Membership adds download links and keeps your subdomain for you, editable at any time — $1.99 a year, renewed automatically until you cancel in your Apple ID settings."
+            "value": "Free to download. Membership adds download links and keeps your subdomain for good, editable at any time — $1.99 a year, or $9.99 once for lifetime."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "免费下载。开通会员即可创建下载链接，并永久保留你的子域名，可随时修改——$1.99/年，自动续期，可随时在 Apple ID 设置中取消。"
+            "value": "免费下载。开通会员即可创建下载链接，并永久保留你的子域名，可随时修改——$1.99/年，或 $9.99 一次买断。"
           }
         }
       }

@@ -32,6 +32,20 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window.makeKeyAndVisible()
         self.window = window
 
+        #if DEBUG
+        // 宣传截图用：Duo 的外屏默认按横屏起，截图需要竖屏。
+        // 只在显式参数下请求旋转，正常启动不受影响。
+        if ProcessInfo.processInfo.arguments.contains("-screenshot-portrait") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                window.windowScene?.requestGeometryUpdate(
+                    .iOS(interfaceOrientations: .portrait)
+                ) { error in
+                    AppLogger.warning("截图竖屏请求失败：\(error.localizedDescription)")
+                }
+            }
+        }
+        #endif
+
         if let url = connectionOptions.urlContexts.first?.url {
             DispatchQueue.main.async {
                 rootViewController.handleIncomingFile(url)

@@ -6,37 +6,15 @@ import WebKit
 ///
 /// QuickLook 预览 HTML 走的是系统的静态沙箱：JavaScript 被禁用、远程资源被拦，
 /// 带交互的页面（图表、折叠、表单、单页应用）打开后只剩一个骨架。
-/// 这里改用 WKWebView 真实渲染，网络访问则由我们自己的内容拦截规则收口。
+/// 这里改用 WKWebView 真实渲染。远程图片、样式、脚本和 iframe 会自动加载，
+/// 不再提供「载入远程内容」开关；只有整页跳转到站外地址仍然拦截并需要用户确认。
 final class HtmlPreviewController: UIViewController {
-    /// 页面允许触达的资源范围。
-    private enum ResourcePolicy {
-        /// 只允许 file:／页面自带的 data:、blob:。HTML 是他人上传的不可信内容，
-        /// 默认不给任何外联能力——远程请求会暴露读者 IP，也可能被当作回传信道。
-        case localOnly
-        /// 用户在菜单里显式放行后才允许联网。
-        case allowRemote
-    }
-
-    private enum Failure: Error, LocalizedError {
-        /// 拦截规则编译不出来就没法保证「默认不联网」，此时宁可不渲染也不裸奔。
-        case contentBlockerUnavailable
-
-        var errorDescription: String? {
-            R.Strings.previewHtmlBlockerUnavailable.localizedString()
-        }
-    }
-
     private let file: PreviewTemporaryFile
 
-    private var resourcePolicy: ResourcePolicy = .localOnly
-    private var blockRemoteRules: WKContentRuleList?
     /// 文档没声明编码、需要我们代为指定时，连同内容一起留着——`load(data:…)` 要用。
     private var encodingOverride: (data: Data, encoding: String)?
 
     private var webView: WKWebView?
-    /// 自己留一份引用：`webView.configuration` 返回的是配置副本，
-    /// 不要绕道那里去装卸拦截规则。
-    private let userContentController = WKUserContentController()
     /// 页面成功渲染过一次之后，就不再因为后续导航失败把内容换成错误页。
     private var hasRenderedOnce = false
     private let activityIndicator = UIActivityIndicatorView(style: .medium)
@@ -81,19 +59,12 @@ final class HtmlPreviewController: UIViewController {
         activityIndicator.startAnimating()
         Task { [weak self] in
             guard let self else { return }
-            do {
-                self.blockRemoteRules = try await Self.compileBlockRemoteRules()
-                self.encodingOverride = await Task.detached(priority: .userInitiated) { [file] in
-                    Self.encodingOverride(forFileAt: file.url)
-                }.value
-                self.installWebViewIfNeeded()
-                self.reloadPage()
-                self.updateMenu()
-            } catch {
-                AppLogger.error("HTML 预览拦截规则不可用", error: error)
-                self.activityIndicator.stopAnimating()
-                self.showFallback(message: error.localizedDescription)
-            }
+            self.encodingOverride = await Task.detached(priority: .userInitiated) { [file] in
+                Self.encodingOverride(forFileAt: file.url)
+            }.value
+            self.installWebViewIfNeeded()
+            self.reloadPage()
+            self.updateMenu()
         }
     }
 
@@ -105,7 +76,6 @@ final class HtmlPreviewController: UIViewController {
         // 他人上传的页面不该在设备上留下 cookie / localStorage，用完即弃。
         configuration.websiteDataStore = .nonPersistent()
         configuration.allowsInlineMediaPlayback = true
-        configuration.userContentController = userContentController
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = self
@@ -131,11 +101,6 @@ final class HtmlPreviewController: UIViewController {
 
     private func reloadPage() {
         guard let webView else { return }
-
-        userContentController.removeAllContentRuleLists()
-        if resourcePolicy == .localOnly, let blockRemoteRules {
-            userContentController.add(blockRemoteRules)
-        }
 
         hasRenderedOnce = false
         webView.isHidden = false
@@ -187,50 +152,12 @@ final class HtmlPreviewController: UIViewController {
         return (data, "gb18030")
     }
 
-    // MARK: - 内容拦截规则
-
-    private static let blockRemoteRulesIdentifier = "FileGoHtmlPreviewBlockRemote"
-
-    /// 先把所有请求拦掉，再按 scheme 逐条放行本地来源。
-    ///
-    /// 拆成四条独立的 `ignore-previous-rules` 而不是写成一条正则分支，是为了不依赖
-    /// WebKit URL 过滤器对分组／交替的支持程度——规则表编译失败会直接导致整页不渲染。
-    private static func compileBlockRemoteRules() async throws -> WKContentRuleList {
-        let source = """
-        [
-          { "trigger": { "url-filter": ".*" }, "action": { "type": "block" } },
-          { "trigger": { "url-filter": "^file:" }, "action": { "type": "ignore-previous-rules" } },
-          { "trigger": { "url-filter": "^data:" }, "action": { "type": "ignore-previous-rules" } },
-          { "trigger": { "url-filter": "^blob:" }, "action": { "type": "ignore-previous-rules" } },
-          { "trigger": { "url-filter": "^about:" }, "action": { "type": "ignore-previous-rules" } }
-        ]
-        """
-        guard let store = WKContentRuleListStore.default() else {
-            throw Failure.contentBlockerUnavailable
-        }
-        guard let list = try await store.compileContentRuleList(
-            forIdentifier: blockRemoteRulesIdentifier,
-            encodedContentRuleList: source
-        ) else {
-            throw Failure.contentBlockerUnavailable
-        }
-        return list
-    }
-
     // MARK: - 菜单
 
     private func updateMenu() {
         guard webView != nil else {
             navigationItem.rightBarButtonItem = nil
             return
-        }
-
-        let remote = UIAction(
-            title: R.Strings.previewHtmlLoadRemoteContent.localizedString(),
-            image: UIImage(systemName: "network"),
-            state: resourcePolicy == .allowRemote ? .on : .off
-        ) { [weak self] _ in
-            self?.toggleRemoteContent()
         }
 
         let quickLook = UIAction(
@@ -247,7 +174,7 @@ final class HtmlPreviewController: UIViewController {
             self?.presentShareSheet()
         }
 
-        var children = [remote, quickLook, share]
+        var children = [quickLook, share]
         if let onCreateShareLink {
             children.append(UIAction(
                 title: R.Strings.previewCreateShareLink.localizedString(),
@@ -261,13 +188,6 @@ final class HtmlPreviewController: UIViewController {
             image: UIImage(systemName: "ellipsis.circle"),
             menu: UIMenu(children: children)
         )
-    }
-
-    /// 拦截规则是装在 WebView 上的，改完必须整页重载——已经被挡掉的资源不会自己重试。
-    private func toggleRemoteContent() {
-        resourcePolicy = resourcePolicy == .localOnly ? .allowRemote : .localOnly
-        updateMenu()
-        reloadPage()
     }
 
     private func presentShareSheet() {
@@ -320,7 +240,7 @@ final class HtmlPreviewController: UIViewController {
         ])
     }
 
-    /// 规则编译失败、页面加载失败时的统一降级出口。
+    /// 页面加载失败时的统一降级出口。
     private func showFallback(message: String) {
         webView?.isHidden = true
         errorLabel.text = message
@@ -424,14 +344,11 @@ extension HtmlPreviewController: WKNavigationDelegate {
             return
         }
 
-        // 子框架：srcdoc / data: / blob: 是页面自带内容，放行；
-        // 远程 iframe 只在用户放行联网后才允许（localOnly 时拦截规则也会挡住）。
+        // 子框架：srcdoc / data: / blob: 是页面自带内容；远程 iframe 也自动放行。
+        // 只有整页导航仍要停在当前文件上（见上面），避免页面把预览器变成浏览器。
         if !isMainFrame {
-            if scheme == "about" || scheme == "data" || scheme == "blob" {
-                decisionHandler(.allow)
-                return
-            }
-            if resourcePolicy == .allowRemote, scheme == "http" || scheme == "https" {
+            if scheme == "about" || scheme == "data" || scheme == "blob"
+                || scheme == "http" || scheme == "https" {
                 decisionHandler(.allow)
                 return
             }

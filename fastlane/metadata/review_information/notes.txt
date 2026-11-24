@@ -1,23 +1,33 @@
 ENGLISH
 
-1. No sign-in and no demo account are needed. On first launch choose any available name (3–20 lowercase letters, digits or hyphens). The identity is a key pair generated on the device; there is no email or password.
-2. Receiving: each device has exactly one address, https://yourname.stolnk.com (no paths). Open the Received folder with the bottom-left button on the Drive home screen, or Me → address. Open that address in Safari on any device and upload a file; it is encrypted in the browser and arrives in the Received folder. Keep the app in the foreground.
-3. Sending: tap ⋯ next to a file → Create download link. The https://yourname.stolnk.com/~code link downloads in any browser. Download links are not end-to-end encrypted; the app says so on the form.
-4. Pricing: free download with one optional auto-renewing subscription, Stolnk Membership (com.nbtxy.filego.member.yearly, $1.99/year, group "Stolnk Membership"). It is sold only through StoreKit inside the app (Me → Membership); there is no login, license key, redemption field or external purchase link. The website only describes it and links to the App Store. Non-members can receive files but cannot create download links and use free limits (2 GB files, 3 GB/month relay, no passwords). Members can create links, keep their subdomain permanently (changeable any time), and get 20 GB files, 300 GB/month relay and password-protected links. A non-member's custom subdomain lasts 7 days; then the address stops working and the name is released, and the user must set a new subdomain. Users who bought the previous $1.99 paid download get one year of membership free (granted by our server; no code entry). Terms, price, Restore Purchases, Manage Subscription, Terms of Use (Apple standard EULA) and Privacy Policy links are on the membership screen. Stolnk is iPhone-only; the former Mac and Windows apps are discontinued and nothing is sold outside the App Store.
-   Sandbox: use TestFlight or Settings → App Store → Sandbox Account. Tap Create download link (or Me → Membership) and subscribe; a sandbox year renews in about 1 hour. After expiry links pause and the subdomain returns to the 7-day rule. Restore Purchases syncs on a new device; without a subscription, Create download link shows the membership screen.
+1. No sign-in and no demo account. On first launch choose an available name (3–20 lowercase letters, digits or hyphens). The identity is a key pair generated on the device; no email or password.
+
+2. Receiving: each device has one address, https://yourname.stolnk.com (no paths). Open Received with the bottom-left button on the Drive home screen, or Me → address. Open that address in Safari on any device and upload a file; it is encrypted in the browser and arrives in Received. Keep the app in the foreground.
+
+3. Sending: tap ⋯ next to a file → Create download link. The https://yourname.stolnk.com/~code link downloads in any browser. Download links are not end-to-end encrypted; the form says so.
+
+4. Pricing: free download with two optional in-app purchases, both sold only through StoreKit inside the app (Me → Membership); there is no login, license key, redemption field or external purchase link. The website only describes them and links to the App Store.
+   (a) Stolnk Membership: auto-renewing subscription, com.nbtxy.filego.member.yearly, $1.99/year, group "Stolnk Membership".
+   (b) Stolnk Lifetime: one-time non-consumable, com.nbtxy.filego.member.lifetime, $9.99, no renewal.
+   Non-members can receive files but cannot create download links and use free limits (2 GB files, 3 GB/month relay, no passwords). Members can create links, keep their subdomain permanently (editable any time), and get 20 GB files, 300 GB/month relay and password-protected links. A non-member's custom subdomain lasts 7 days, then the address stops working and the name is released; the user must set a new subdomain. Previous $1.99 paid-download buyers get one year of membership free; the previous $14.99 lifetime product is no longer sold but is still honoured for its buyers. Terms, both prices, Restore Purchases, Manage Subscription, Terms of Use (Apple standard EULA) and Privacy Policy are on the membership screen. Stolnk is iPhone-only; the former Mac and Windows apps are discontinued and nothing is sold outside the App Store.
+   Sandbox: use TestFlight or Settings → App Store → Sandbox Account. Buy either option from Me → Membership or Create download link. A sandbox yearly subscription renews in about 1 hour; the lifetime purchase never renews. After expiry links pause and the subdomain returns to the 7-day rule. Restore Purchases syncs both products; with no purchase, Create download link shows the membership screen.
+
 5. Account deletion: Me → Delete account. It deletes the name, address, links and all server-side data for the device immediately.
-6. HTML/Markdown preview is a local file preview, not a browser; remote content is blocked by default.
+
+6. HTML and Markdown previews are local file previews, not a general browser. HTML previews load remote images, styles, scripts and iframes automatically; only full-page navigation to another website is blocked and asks first. Markdown previews block remote images by default and have a menu toggle. AI-generated HTML and Markdown can be sent from a computer to the receive address and opened on the phone: HTML renders as a page and Markdown is typeset, not shown as source.
+
 7. No ads, ATT prompt, analytics SDK or third-party tracking. Backend: https://stolnk.com on Cloudflare.
+
 8. Encryption: only Apple CryptoKit standard algorithms (P-256, AES-GCM, HKDF) for end-to-end encryption; export exemption.
 
 中文
 
-1. 无需登录，也无需演示账号。首次启动时任选一个可用名字（3–20 位小写字母、数字或连字符）即可。身份是设备上生成的密钥对，没有邮箱或密码。
-2. 接收：每台设备只有一个地址 https://yourname.stolnk.com（没有路径）。点 Drive 首页左下角的按钮进入「收到的文件」，或在「我的」中查看地址。在任意设备的 Safari 中打开该地址上传文件；文件在浏览器中加密并出现在「收到的文件」里。请保持 App 在前台。
-3. 发送：点文件右侧的 ⋯ → 创建下载链接。生成的 https://yourname.stolnk.com/~code 可在任意浏览器下载。下载链接不是端到端加密的，表单上已说明。
-4. 定价：App 免费下载，另有一个可选的自动续期订阅「Stolnk 会员」（com.nbtxy.filego.member.yearly，$1.99/年，订阅群组「Stolnk 会员」）。仅通过 App 内 StoreKit 销售（我的 → 会员）；没有登录、授权码、兑换入口或外部购买链接。非会员可接收文件，但不能创建下载链接，且适用免费额度（单文件 2 GB、每月 3 GB 中转、无密码）。会员可创建链接、永久保留子域名（可随时修改），并获得 20 GB 单文件、每月 300 GB 中转和密码保护。非会员的自定义子域名有效期 7 天，到期后地址失效、原名字释放，需要重新设置子域名。购买过此前 $1.99 付费下载的用户免费获得一年会员（服务器自动发放，无需输入代码）。订阅条款、价格、恢复购买、管理订阅、使用条款（Apple 标准 EULA）和隐私政策链接都在会员页。Stolnk 只做 iPhone 版；原 Mac、Windows 版已停售，App Store 以外不再销售任何 Stolnk 内容。
-   沙盒：使用 TestFlight，或在「设置 → App Store → 沙盒账户」登录沙盒 Apple ID。点「创建下载链接」（或「我的 → 会员」）并订阅；沙盒的一年约 1 小时续期。到期后链接暂停，子域名恢复 7 天规则。新设备可用「恢复购买」；未订阅时点「创建下载链接」会弹出会员页。
-5. 删除账号：「我的 → 删除账号」，立即删除名字、地址、链接及该设备在服务器上的全部数据。
-6. HTML/Markdown 预览是本地文件预览，不是网页浏览器；默认禁止远程内容。
-7. 无广告、无 ATT、无统计 SDK、无第三方追踪。后端为 https://stolnk.com，由开发者在 Cloudflare 上运营。
-8. 加密：仅使用 Apple CryptoKit 的 P-256、AES-GCM、HKDF 做端到端加密，符合出口豁免。
+1. 无需登录或演示账号；首次启动选一个可用名字，身份是设备生成的密钥对。
+2. 接收：每台设备一个地址 https://yourname.stolnk.com；从 Drive 左下角或「我的」进入「收到的文件」；用任意设备的 Safari 上传。
+3. 发送：文件右侧 ⋯ → 创建下载链接；下载链接不是端到端加密，表单已说明。
+4. 定价：免费下载，两个可选内购，仅通过 App 内 StoreKit（我的 → 会员）销售：Stolnk 会员年订阅 com.nbtxy.filego.member.yearly，$1.99/年；Stolnk 终身版 com.nbtxy.filego.member.lifetime，$9.99 一次性，不续费。非会员限额 2 GB/文件、3 GB/月中转、无密码；会员可建链接、永久保留子域名、20 GB/文件、300 GB/月中转、密码保护。非会员子域名 7 天后失效。旧付费下载用户赠一年会员，旧 $14.99 终身商品仍有效。会员页含条款、价格、恢复购买、管理订阅和隐私政策。仅 iPhone 版。
+   沙盒：TestFlight 或沙盒账号购买任一选项；年订阅约 1 小时续期，终身版不续费；恢复购买同步两种商品。
+5. 删除账号：「我的 → 删除账号」。
+6. HTML/Markdown 为本地文件预览，不是通用浏览器；HTML 自动加载远程资源，整页跳转先询问;Markdown 远程图片默认关闭，可开关。AI 产物可从电脑发到接收地址后打开。
+7. 无广告、ATT 或统计 SDK。
+8. 仅使用 CryptoKit 的 P-256、AES-GCM、HKDF。

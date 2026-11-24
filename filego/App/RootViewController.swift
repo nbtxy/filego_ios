@@ -22,6 +22,14 @@ final class RootViewController: UIViewController {
         fatalError("init(coder:) has not been implemented")
     }
 
+    #if DEBUG
+    /// 宣传截图用：Duo 内屏在展开姿态下把状态栏画在右侧，截图里很扎眼。
+    /// 只在显式参数下隐藏，正常启动不受影响。
+    override var prefersStatusBarHidden: Bool {
+        ProcessInfo.processInfo.arguments.contains("-screenshot-hide-status-bar")
+    }
+    #endif
+
     deinit {
         NotificationCenter.default.removeObserver(self)
     }

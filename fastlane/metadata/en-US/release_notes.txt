@@ -1,5 +1,5 @@
-Stolnk is now free to download, with an optional $1.99/year membership.
-• Every iPhone gets one receive address and a Received folder for incoming files
-• Members can create download links and keep their custom subdomain permanently; without membership the address stops working after 7 days
-• A single address replaces the old per-folder links
-• If you bought the previous paid download, you get one year of membership free
+New lifetime option: $9.99 once, no subscription.
+• AI-generated HTML and Markdown now open on your phone, rendered instead of as raw source
+• Send a report or page from your computer to your receive address and read it in the app
+• The yearly membership is still $1.99/year
+• If you bought the previous paid download, your free year of membership is unchanged

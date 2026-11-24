@@ -438,8 +438,11 @@ final class DriveListViewController: UIViewController {
         collectionView.refreshControl?.addTarget(self, action: #selector(refresh), for: .valueChanged)
         view.addSubview(collectionView)
         NSLayoutConstraint.activate([
-            collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            // 左右跟着安全区，而不是整个 view。Duo 折叠时状态栏在右侧，横屏时
+            // 也可能有侧边安全区；贴着 view 会让每行最右边的「更多」按钮钻到状态栏
+            // 或刘海底下，既看不见也不好点。
+            collectionView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
+            collectionView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
             collectionView.topAnchor.constraint(
                 equalTo: view.safeAreaLayoutGuide.topAnchor,
                 constant: folderId == rootId ? 0 : 36

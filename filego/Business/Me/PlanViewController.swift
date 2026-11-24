@@ -5,9 +5,13 @@ import UIKit
 /**
  「我的 → 会员」，也是全 App 唯一的付费墙。
 
- App 免费下载，会员是 $1.99/年的自动续期订阅（`MembershipService`）。这一屏要满足
- App Store 3.1.2：价格与周期写清楚、写明会自动续期且可随时在 Apple ID 设置里取消、
- 给出使用条款与隐私政策链接、有「恢复购买」。
+ App 免费下载，会员有两种买法（`MembershipService`）：
+ - 年度自动续期订阅 $1.99/年；
+ - 终身买断 $9.99，一次付费，不再续订。
+
+ 这一屏要满足 App Store 3.1.2：价格与周期写清楚、写明订阅会自动续期且可随时在
+ Apple ID 设置里取消、写明终身版是一次性购买、给出使用条款与隐私政策链接、
+ 有「恢复购买」。
 
  是不是会员只看 Worker 的 `PlanState`；购买成功后由它回查 Apple 再说了算。
  */
@@ -17,7 +21,12 @@ final class PlanViewController: UIViewController {
     private let scrollView = UIScrollView()
     private let stack = UIStackView()
     private let statusLabel = UILabel()
-    private let subscribeButton = PaperButton.primary()
+    private let yearlyCard = UIStackView()
+    private let lifetimeCard = UIStackView()
+    private let yearlyPriceLabel = UILabel()
+    private let lifetimePriceLabel = UILabel()
+    private let yearlyButton = PaperButton.primary()
+    private let lifetimeButton = PaperButton.primary()
     private let restoreButton = PaperButton.ghost(title: R.Strings.proRestore.localizedString())
     private let manageButton = PaperButton.secondary(title: R.Strings.proCtaManage.localizedString())
     private let disclosureLabel = UILabel()
@@ -63,6 +72,21 @@ final class PlanViewController: UIViewController {
         }
     }
 
+    #if DEBUG
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        // Duo 展开成横屏后可视高度只有 2007pt，两张套餐卡放不下。
+        // 宣传截图用这个参数滚到底部，让年度和终身两个价格同时出现在画面里。
+        guard ProcessInfo.processInfo.arguments.contains("-screenshot-plan-lower") else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            guard let self else { return }
+            let maxY = max(0, self.scrollView.contentSize.height - self.scrollView.bounds.height)
+            // 340 而不是滚到底：顶部还能留下权益卡片，两张价格卡同时完整可见。
+            self.scrollView.setContentOffset(CGPoint(x: 0, y: min(maxY, 200)), animated: false)
+        }
+    }
+    #endif
+
     // MARK: - 视图
 
     private func configureView() {
@@ -77,7 +101,7 @@ final class PlanViewController: UIViewController {
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 28),
+            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 16),
             stack.leadingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.leadingAnchor, constant: 24),
             stack.trailingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.trailingAnchor, constant: -24),
             stack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -32)
@@ -86,8 +110,8 @@ final class PlanViewController: UIViewController {
         let mark = BrandMarkView()
         mark.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            mark.widthAnchor.constraint(equalToConstant: 56),
-            mark.heightAnchor.constraint(equalToConstant: 56)
+            mark.widthAnchor.constraint(equalToConstant: 48),
+            mark.heightAnchor.constraint(equalToConstant: 48)
         ])
         let markRow = UIView()
         markRow.addSubview(mark)
@@ -107,6 +131,13 @@ final class PlanViewController: UIViewController {
         subtitle.textAlignment = .center
         stack.addArrangedSubview(subtitle)
 
+        statusLabel.font = AppTypography.body
+        statusLabel.textColor = AppColor.textPrimary
+        statusLabel.textAlignment = .center
+        statusLabel.numberOfLines = 0
+        stack.setCustomSpacing(AppSpacing.large, after: subtitle)
+        stack.addArrangedSubview(statusLabel)
+
         let benefits = UIStackView(arrangedSubviews: [
             benefit(icon: "link", text: R.Strings.proBenefitLinks.localizedString()),
             benefit(icon: "lock.shield", text: R.Strings.proBenefitName.localizedString()),
@@ -116,26 +147,21 @@ final class PlanViewController: UIViewController {
             benefit(icon: "clock", text: R.Strings.proBenefitExpiry.localizedString())
         ])
         benefits.axis = .vertical
-        benefits.spacing = 12
+        benefits.spacing = 8
         benefits.isLayoutMarginsRelativeArrangement = true
-        benefits.directionalLayoutMargins = .init(top: 18, leading: 18, bottom: 18, trailing: 18)
+        benefits.directionalLayoutMargins = .init(top: 14, leading: 16, bottom: 14, trailing: 16)
         AppMaterial.raise(benefits, radius: AppRadius.card)
-        stack.setCustomSpacing(AppSpacing.large, after: subtitle)
+        stack.setCustomSpacing(AppSpacing.large, after: statusLabel)
         stack.addArrangedSubview(benefits)
 
-        statusLabel.font = AppTypography.body
-        statusLabel.textColor = AppColor.textPrimary
-        statusLabel.textAlignment = .center
-        statusLabel.numberOfLines = 0
+        configureYearlyCard()
+        configureLifetimeCard()
         stack.setCustomSpacing(AppSpacing.large, after: benefits)
-        stack.addArrangedSubview(statusLabel)
+        stack.addArrangedSubview(yearlyCard)
+        stack.addArrangedSubview(lifetimeCard)
 
         activity.hidesWhenStopped = true
         stack.addArrangedSubview(activity)
-
-        subscribeButton.addAction(UIAction { [weak self] _ in self?.subscribe() }, for: .touchUpInside)
-        subscribeButton.heightAnchor.constraint(equalToConstant: 50).isActive = true
-        stack.addArrangedSubview(subscribeButton)
 
         manageButton.addAction(UIAction { [weak self] _ in self?.manage() }, for: .touchUpInside)
         stack.addArrangedSubview(manageButton)
@@ -143,7 +169,7 @@ final class PlanViewController: UIViewController {
         restoreButton.addAction(UIAction { [weak self] _ in self?.restore() }, for: .touchUpInside)
         stack.addArrangedSubview(restoreButton)
 
-        // 3.1.2：自动续期说明必须出现在购买按钮附近。
+        // 3.1.2：自动续期说明必须出现在购买按钮附近；终身版则要讲清它不是订阅。
         disclosureLabel.font = .preferredFont(forTextStyle: .caption1)
         disclosureLabel.adjustsFontForContentSizeCategory = true
         disclosureLabel.textColor = AppColor.textSecondary
@@ -160,6 +186,82 @@ final class PlanViewController: UIViewController {
         links.distribution = .equalCentering
         links.spacing = 8
         stack.addArrangedSubview(links)
+    }
+
+    private func configureYearlyCard() {
+        yearlyPriceLabel.font = AppTypography.body
+        yearlyPriceLabel.textColor = AppColor.textPrimary
+        yearlyButton.addAction(
+            UIAction { [weak self] _ in self?.subscribeYearly() }, for: .touchUpInside)
+
+        let card = makeCard(
+            title: R.Strings.proPlanYearlyTitle.localizedString(),
+            badge: nil,
+            priceLabel: yearlyPriceLabel,
+            note: R.Strings.proPlanYearlyNote.localizedString(),
+            button: yearlyButton)
+        yearlyCard.axis = .vertical
+        yearlyCard.addArrangedSubview(card)
+    }
+
+    private func configureLifetimeCard() {
+        lifetimePriceLabel.font = AppTypography.body
+        lifetimePriceLabel.textColor = AppColor.textPrimary
+        lifetimeButton.addAction(
+            UIAction { [weak self] _ in self?.subscribeLifetime() }, for: .touchUpInside)
+
+        let card = makeCard(
+            title: R.Strings.proPlanLifetimeTitle.localizedString(),
+            badge: R.Strings.proPlanLifetimeBadge.localizedString(),
+            priceLabel: lifetimePriceLabel,
+            note: R.Strings.proPlanLifetimeNote.localizedString(),
+            button: lifetimeButton)
+        lifetimeCard.axis = .vertical
+        lifetimeCard.addArrangedSubview(card)
+    }
+
+    private func makeCard(
+        title: String, badge: String?, priceLabel: UILabel, note: String, button: UIButton
+    ) -> UIView {
+        let card = UIStackView()
+        card.axis = .vertical
+        card.spacing = 8
+        card.isLayoutMarginsRelativeArrangement = true
+        card.directionalLayoutMargins = .init(top: 14, leading: 16, bottom: 14, trailing: 16)
+        AppMaterial.raise(card, radius: AppRadius.card)
+
+        let titleLabel = label(title, font: AppTypography.sectionTitle)
+        let header = UIStackView(arrangedSubviews: [titleLabel])
+        header.axis = .horizontal
+        header.alignment = .center
+        header.spacing = 8
+        if let badge {
+            let badgeLabel = UILabel()
+            badgeLabel.text = badge
+            badgeLabel.font = .preferredFont(forTextStyle: .caption1)
+            badgeLabel.textColor = AppColor.ink
+            badgeLabel.backgroundColor = AppColor.FileTile.folderBackground
+            badgeLabel.layer.cornerRadius = 9
+            badgeLabel.layer.masksToBounds = true
+            badgeLabel.textAlignment = .center
+            badgeLabel.setContentHuggingPriority(.required, for: .horizontal)
+            badgeLabel.translatesAutoresizingMaskIntoConstraints = false
+            badgeLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 56).isActive = true
+            badgeLabel.heightAnchor.constraint(equalToConstant: 18).isActive = true
+            header.addArrangedSubview(badgeLabel)
+        }
+        header.addArrangedSubview(UIView())
+        card.addArrangedSubview(header)
+        card.addArrangedSubview(priceLabel)
+
+        let noteLabel = label(note, font: .preferredFont(forTextStyle: .footnote))
+        noteLabel.textColor = AppColor.textSecondary
+        card.addArrangedSubview(noteLabel)
+
+        button.heightAnchor.constraint(equalToConstant: 50).isActive = true
+        card.setCustomSpacing(12, after: noteLabel)
+        card.addArrangedSubview(button)
+        return card
     }
 
     private func label(_ text: String, font: UIFont) -> UILabel {
@@ -208,36 +310,67 @@ final class PlanViewController: UIViewController {
     private func render() {
         let plan = environment.stolnk.plan
         let member = plan?.isPro == true
-        let product = environment.membership.product
-        let price = product?.displayPrice
+        let forever = member && plan?.memberExpiresAt == nil
+        let yearlyPrice = environment.membership.yearlyProduct?.displayPrice
+        let lifetimePrice = environment.membership.lifetimeProduct?.displayPrice
 
         if member {
-            // 3.1.2 的到期日，加上会员真正买到的那件事：子域名固化。
-            let until = plan?.memberExpiryDate.map {
-                R.Strings.proStatusActiveUntil.formatted($0.formatted(date: .long, time: .omitted))
-            } ?? R.Strings.proStatusActive.localizedString()
-            // 会员也可能是在地址到期后才订阅的：那时还没有名字，先提示设置。
-            let locked = plan?.addressActive == false
-                ? R.Strings.nameStatusExpired.localizedString()
-                : R.Strings.nameStatusLocked.localizedString()
-            statusLabel.text = "\(until)\n\(locked)"
+            if forever {
+                statusLabel.text = R.Strings.proStatusLifetime.localizedString()
+            } else {
+                // 3.1.2 的到期日，加上会员真正买到的那件事：子域名固化。
+                let until = plan?.memberExpiryDate.map {
+                    R.Strings.proStatusActiveUntil.formatted($0.formatted(date: .long, time: .omitted))
+                } ?? R.Strings.proStatusActive.localizedString()
+                // 会员也可能是在地址到期后才订阅的：那时还没有名字，先提示设置。
+                let locked = plan?.addressActive == false
+                    ? R.Strings.nameStatusExpired.localizedString()
+                    : R.Strings.nameStatusLocked.localizedString()
+                statusLabel.text = "\(until)\n\(locked)"
+            }
         } else {
-            statusLabel.text = price.map { R.Strings.proPriceLine.formatted($0) }
-                ?? (environment.membership.isLoadingProduct
-                    ? nil : R.Strings.memberProductUnavailable.localizedString())
+            // 副标题已经解释了可选项，未开通时不再重复一行。
+            statusLabel.text = nil
         }
         statusLabel.isHidden = statusLabel.text == nil
 
-        var configuration = subscribeButton.configuration
-        configuration?.title = price.map { R.Strings.proCtaSubscribe.formatted($0) }
+        yearlyPriceLabel.text = yearlyPrice.map { R.Strings.proCtaSubscribe.formatted($0) }
+            ?? R.Strings.proPlanYearlyFallbackPrice.localizedString()
+        lifetimePriceLabel.text = lifetimePrice.map { R.Strings.proPlanLifetimePrice.formatted($0) }
+            ?? R.Strings.proPlanLifetimeFallbackPrice.localizedString()
+
+        var yearly = yearlyButton.configuration
+        yearly?.title = yearlyPrice.map { R.Strings.proCtaSubscribe.formatted($0) }
             ?? R.Strings.memberSubscribeShort.localizedString()
-        subscribeButton.configuration = configuration
-        subscribeButton.isHidden = member
-        subscribeButton.isEnabled = !isBusy && environment.stolnk.isRegistered
-        subscribeButton.alpha = subscribeButton.isEnabled ? 1 : 0.5
+        yearlyButton.configuration = yearly
+
+        var lifetime = lifetimeButton.configuration
+        lifetime?.title = lifetimePrice.map { R.Strings.proPlanLifetimeCta.formatted($0) }
+            ?? R.Strings.proPlanLifetimeCtaFallback.localizedString()
+        lifetimeButton.configuration = lifetime
+
+        // 已经是会员就不再卖会员；订阅会员仍可升级到终身版。
+        yearlyCard.isHidden = member
+        lifetimeCard.isHidden = forever
+        let buyable = !isBusy && environment.stolnk.isRegistered
+        for button in [yearlyButton, lifetimeButton] {
+            button.isEnabled = buyable
+            button.alpha = buyable ? 1 : 0.5
+        }
         manageButton.isHidden = !member
         restoreButton.isEnabled = !isBusy
-        disclosureLabel.text = R.Strings.proAutoRenewDisclosure.formatted(price ?? "$1.99")
+
+        var disclosures: [String] = []
+        if !member {
+            disclosures.append(
+                R.Strings.proAutoRenewDisclosure.formatted(yearlyPrice ?? "$1.99"))
+        }
+        if !forever {
+            disclosures.append(
+                R.Strings.proLifetimeDisclosure.formatted(lifetimePrice ?? "$9.99"))
+        }
+        disclosureLabel.text = disclosures.isEmpty ? nil : disclosures.joined(separator: "\n\n")
+        disclosureLabel.isHidden = disclosures.isEmpty
     }
 
     // MARK: - 操作
@@ -248,13 +381,23 @@ final class PlanViewController: UIViewController {
         render()
     }
 
-    private func subscribe() {
+    private func subscribeYearly() {
         guard !isBusy else { return }
         setBusy(true)
         Task {
-            let outcome = await environment.membership.purchase()
+            let outcome = await environment.membership.purchaseYearly()
             setBusy(false)
             handle(outcome)
+        }
+    }
+
+    private func subscribeLifetime() {
+        guard !isBusy else { return }
+        setBusy(true)
+        Task {
+            let outcome = await environment.membership.purchaseLifetime()
+            setBusy(false)
+            handle(outcome, lifetime: true)
         }
     }
 
@@ -272,14 +415,20 @@ final class PlanViewController: UIViewController {
         Task { await environment.membership.showManageSubscriptions(from: self) }
     }
 
-    private func handle(_ outcome: MembershipService.PurchaseOutcome, restored: Bool = false) {
+    private func handle(
+        _ outcome: MembershipService.PurchaseOutcome,
+        restored: Bool = false,
+        lifetime: Bool = false
+    ) {
         switch outcome {
         case .success:
             HapticManager.notification(.success)
-            PaperToast.show(
-                (restored ? R.Strings.proRestoreSuccess : R.Strings.proPurchaseSuccess)
-                    .localizedString(),
-                in: view)
+            let message = restored
+                ? R.Strings.proRestoreSuccess.localizedString()
+                : lifetime
+                    ? R.Strings.proPurchaseSuccessLifetime.localizedString()
+                    : R.Strings.proPurchaseSuccess.localizedString()
+            PaperToast.show(message, in: view)
         case .userCancelled:
             break
         case .pending:

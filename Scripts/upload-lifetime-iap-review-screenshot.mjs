@@ -3,8 +3,9 @@ import { createHash, createPrivateKey, createSign } from "node:crypto";
 import { basename, resolve } from "node:path";
 import { readFileSync } from "node:fs";
 
-const IAP_ID = "6812208070";
-const IMAGE_PATH = resolve("fastlane/review_screenshots/pro-lifetime.png");
+const APP_ID = "6798472788";
+const PRODUCT_ID = "com.nbtxy.filego.member.lifetime";
+const IMAGE_PATH = resolve("fastlane/review_screenshots/lifetime.png");
 const image = readFileSync(IMAGE_PATH);
 const checksum = createHash("md5").update(image).digest("hex");
 
@@ -51,6 +52,15 @@ async function asc(method, path, body) {
 function stateOf(resource) {
   return resource.attributes.assetDeliveryState?.state ?? "UNKNOWN";
 }
+
+// Discover the IAP id from its stable product id rather than hardcoding an ASC
+// resource id that changes when the product is recreated.
+const listed = await asc(
+  "GET",
+  `/v1/apps/${APP_ID}/inAppPurchasesV2?filter[productId]=${PRODUCT_ID}&limit=10`,
+);
+const IAP_ID = listed.data[0]?.id;
+if (!IAP_ID) throw new Error(`找不到商品 ${PRODUCT_ID}，先运行 Scripts/create-lifetime-iap.mjs --apply`);
 
 const existing = await asc("GET", `/v2/inAppPurchases/${IAP_ID}/appStoreReviewScreenshot`).catch((error) => {
   if (error.message.includes("-> 404")) return null;

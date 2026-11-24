@@ -1,18 +1,27 @@
 #!/usr/bin/env node
-/** Create and configure Stolnk Pro as a $14.99 non-consumable IAP. */
+/**
+ * Create and configure Stolnk Lifetime as a $9.99 non-consumable IAP.
+ *
+ * The old $14.99 product (`com.nbtxy.filego.pro.lifetime`) was sold while the
+ * app was a paid download. It is deliberately left alone: it stays off sale,
+ * and the server still honours it for anyone who bought it. This script only
+ * creates the current product.
+ */
+
 import { createPrivateKey, createSign } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 const APPLY = process.argv.includes("--apply");
 const APP_ID = "6798472788";
-const PRODUCT_ID = "com.nbtxy.filego.pro.lifetime";
-const TARGET_PRICE = "14.99";
+const PRODUCT_ID = "com.nbtxy.filego.member.lifetime";
+const TARGET_PRICE = "9.99";
 const BASE_TERRITORY = "USA";
 
+// Apple limits these to 30 and 45 characters respectively.
 const LOCALIZATIONS = [
-  { locale: "en-US", name: "Stolnk Pro Lifetime", description: "Unlock every Stolnk Pro feature for good." },
-  { locale: "zh-Hans", name: "Stolnk Pro 永久版", description: "永久解锁 Stolnk Pro 的全部功能" },
-  { locale: "zh-Hant", name: "Stolnk Pro 永久版", description: "永久解鎖 Stolnk Pro 的全部功能" },
+  { locale: "en-US", name: "Stolnk Lifetime", description: "Everything membership adds, once. No renewal." },
+  { locale: "zh-Hans", name: "Stolnk 终身版", description: "会员全部功能，一次买断，不会续费" },
+  { locale: "zh-Hant", name: "Stolnk 終身版", description: "會員全部功能，一次買斷，不會續訂" },
 ];
 
 function b64url(value) {
@@ -78,10 +87,13 @@ async function main() {
       data: {
         type: "inAppPurchases",
         attributes: {
-          name: "Stolnk Pro Lifetime",
+          name: "Stolnk Lifetime",
           productId: PRODUCT_ID,
           inAppPurchaseType: "NON_CONSUMABLE",
-          reviewNote: "One-time Pro unlock. Paywall: open the drawer, tap Plan, then tap Unlock forever.",
+          reviewNote:
+            "One-time lifetime purchase. Unlocks download links, a permanent subdomain, " +
+            "20 GB files, 300 GB/month relay and password-protected links. " +
+            "Paywall: Me tab -> Membership; the lifetime option is the second card.",
         },
         relationships: { app: { data: { type: "apps", id: APP_ID } } },
       },

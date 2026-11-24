@@ -4,19 +4,34 @@ import StoreKit
 import UIKit
 
 /**
- 年度会员（自动续期订阅）的 StoreKit 2 集成。
+ 会员（年度自动续期订阅）与终身买断（一次性内购）的 StoreKit 2 集成。
 
  和服务端的分工照旧：这里只负责「和 StoreKit / Worker 打交道」，**不自己判定权益**。
  是不是会员一律以 Worker 的 `PlanState` 为准——本地 `Transaction` 只能证明 Apple 那边
- 有这笔交易，证明不了它属于这台设备。每一笔已验签的交易都交给
- `POST /licenses/apple/subscription`，由 Worker 回查 Apple 后写库，再 `finish()`。
+ 有这笔交易，证明不了它属于这台设备。每一笔已验签的交易都交给对应的 Worker 路由：
+
+ - 年度订阅 → `POST /licenses/apple/subscription`
+ - 终身买断 → `POST /licenses/apple/lifetime`
+ - 旧版 $14.99 终身买断（已停售，仅恢复购买）→ `POST /licenses/apple/verify`
+
+ 由 Worker 回查 Apple 后写库，再 `finish()`。
 
  改写自 `Parked/StoreKitService.swift`：去掉了旧的 `BillingService` / `SessionManager`，
  改走 `StolnkController`（它持有 `APIClient` 和设备会话）。
  */
 @MainActor
 final class MembershipService {
-    static let productID = "com.nbtxy.filego.member.yearly"
+    static let yearlyProductID = "com.nbtxy.filego.member.yearly"
+    static let lifetimeProductID = "com.nbtxy.filego.member.lifetime"
+    /**
+     2026 年之前以 $14.99 卖过的终身内购。早已下架，但买到的人仍然拥有它；
+     恢复购买时认得这个商品号，服务端也会继续认。
+     */
+    static let legacyLifetimeProductID = "com.nbtxy.filego.pro.lifetime"
+
+    private static let recognizedProductIDs: Set<String> = [
+        yearlyProductID, lifetimeProductID, legacyLifetimeProductID
+    ]
 
     enum PurchaseOutcome {
         case success
@@ -26,8 +41,12 @@ final class MembershipService {
         case failed(String)
     }
 
-    private(set) var product: Product?
+    private(set) var yearlyProduct: Product?
+    private(set) var lifetimeProduct: Product?
     private(set) var isLoadingProduct = false
+
+    /// 旧调用点的兼容名。付费墙默认展示年度订阅，但两个商品都会被加载。
+    var product: Product? { yearlyProduct }
 
     private let stolnk: StolnkController
     private var updatesTask: Task<Void, Never>?
@@ -68,14 +87,22 @@ final class MembershipService {
 
     /// 付费墙传 `forceRefresh: true`，免得价格在 ASC 调整后仍显示启动时缓存的旧价。
     func loadProduct(forceRefresh: Bool = false) async {
-        guard !isLoadingProduct, forceRefresh || product == nil else { return }
+        guard !isLoadingProduct,
+              forceRefresh || yearlyProduct == nil || lifetimeProduct == nil else { return }
         isLoadingProduct = true
         defer { isLoadingProduct = false }
         do {
-            product = try await Product.products(for: [Self.productID]).first
-            if product == nil {
-                // 最常见的原因：Paid Applications Agreement 没生效，或商品还没过审。
-                AppLogger.warning("会员商品为空——检查 Paid Applications Agreement 与商品状态")
+            let products = try await Product.products(for: [
+                Self.yearlyProductID, Self.lifetimeProductID
+            ])
+            yearlyProduct = products.first { $0.id == Self.yearlyProductID }
+            lifetimeProduct = products.first { $0.id == Self.lifetimeProductID }
+            if yearlyProduct == nil || lifetimeProduct == nil {
+                // 最常见的原因：Paid Applications Agreement 没生效、商品还没过审，
+                // 或新加的终身内购还没随版本提交审核。
+                AppLogger.warning(
+                    "会员商品缺失——检查 Paid Applications Agreement 与商品状态："
+                    + products.map(\.id).joined(separator: ", "))
             }
         } catch {
             AppLogger.error("加载会员商品失败", error: error)
@@ -84,8 +111,17 @@ final class MembershipService {
 
     // MARK: - 购买
 
-    func purchase() async -> PurchaseOutcome {
-        if product == nil { await loadProduct(forceRefresh: true) }
+    func purchaseYearly() async -> PurchaseOutcome {
+        await purchase(productID: Self.yearlyProductID, current: yearlyProduct)
+    }
+
+    func purchaseLifetime() async -> PurchaseOutcome {
+        await purchase(productID: Self.lifetimeProductID, current: lifetimeProduct)
+    }
+
+    private func purchase(productID: String, current: Product?) async -> PurchaseOutcome {
+        if current == nil { await loadProduct(forceRefresh: true) }
+        let product = productID == Self.yearlyProductID ? yearlyProduct : lifetimeProduct
         guard let product else {
             return .failed(R.Strings.memberProductUnavailable.localizedString())
         }
@@ -123,7 +159,9 @@ final class MembershipService {
         var lastOutcome: PurchaseOutcome?
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result,
-                  transaction.productID == Self.productID else { continue }
+                  Self.recognizedProductIDs.contains(transaction.productID) else { continue }
+            if transaction.productID == Self.yearlyProductID,
+               let expiry = transaction.expirationDate, expiry <= Date() { continue }
             lastOutcome = await report(transaction)
         }
         await stolnk.refreshPlan()
@@ -160,13 +198,36 @@ final class MembershipService {
         }
     }
 
-    /// 启动期对账：Apple 端有有效订阅、而 Worker 还不知道的情况（重装、换设备）。
+    /// 启动期对账：Apple 端有有效购买、而 Worker 还不知道的情况（重装、换设备）。
     private func syncCurrentEntitlements() async {
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result,
-                  transaction.productID == Self.productID else { continue }
-            if let expiry = transaction.expirationDate, expiry <= Date() { continue }
+                  Self.recognizedProductIDs.contains(transaction.productID) else { continue }
+            if transaction.productID == Self.yearlyProductID,
+               let expiry = transaction.expirationDate, expiry <= Date() { continue }
             _ = await report(transaction)
+        }
+    }
+
+    private func report(_ transaction: StoreKit.Transaction) async -> PurchaseOutcome {
+        switch transaction.productID {
+        case Self.yearlyProductID:
+            return await finishReport(transaction) {
+                try await self.stolnk.verifySubscription(transactionID: transaction.id)
+            }
+        case Self.lifetimeProductID:
+            return await finishReport(transaction) {
+                try await self.stolnk.verifyLifetime(transactionID: transaction.id)
+            }
+        case Self.legacyLifetimeProductID:
+            // 旧商品走旧的 `/apple/verify`：服务端也认得它，并把它记成永久买断。
+            return await finishReport(transaction) {
+                try await self.stolnk.verifyLegacyLifetime(transactionID: transaction.id)
+            }
+        default:
+            // 别的商品（或家庭共享来的、我们不卖的东西）不提供任何权益。
+            await transaction.finish()
+            return .failed(R.Strings.proPurchaseFailed.localizedString())
         }
     }
 
@@ -179,18 +240,16 @@ final class MembershipService {
      只有永久性失败（Worker 判定交易本身无效的 4xx）才 finish，否则同一笔会被无限重投；
      网络错误、5xx、未注册一律不 finish，留给下次重投。
      */
-    private func report(_ transaction: StoreKit.Transaction) async -> PurchaseOutcome {
-        guard transaction.productID == Self.productID else {
-            // 旧的 lifetime IAP 或别的商品：会员制下 Worker 不再据此授予任何东西。
-            await transaction.finish()
-            return .failed(R.Strings.proPurchaseFailed.localizedString())
-        }
+    private func finishReport(
+        _ transaction: StoreKit.Transaction,
+        verify: () async throws -> PlanState
+    ) async -> PurchaseOutcome {
         guard stolnk.isRegistered else {
             AppLogger.info("设备未注册，会员交易暂不上报")
             return .failed(R.Strings.proPurchasePendingSync.localizedString())
         }
         do {
-            let state = try await stolnk.verifySubscription(transactionID: transaction.id)
+            let state = try await verify()
             await transaction.finish()
             // 服务端没报错不等于开通成功——它判定的档位才算数。
             guard state.isPro else {

@@ -1,1 +1,1 @@
-receive files,file request,upload link,inbox,transfer,encrypted,share link,download link,large files
+receive files,file inbox,upload link,html viewer,markdown,ai output,encrypted,share link,large files

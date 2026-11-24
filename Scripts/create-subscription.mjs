@@ -23,7 +23,7 @@ import { createSign, createPrivateKey } from "node:crypto";
 const APPLY = process.argv.includes("--apply");
 
 const APP_ID = "6798472788";                            // com.nbtxy.filego
-const PRODUCT_ID = "com.nbtxy.filego.member.yearly";   // 与 MembershipService.productID 一致
+const PRODUCT_ID = "com.nbtxy.filego.member.yearly";   // 与 MembershipService.yearlyProductID 一致
 const BASE_TERRITORY = "USA";
 const TARGET_PRICE = "1.99";
 

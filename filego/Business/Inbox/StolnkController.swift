@@ -645,6 +645,36 @@ final class StolnkController {
         }
     }
 
+    /// 终身买断交易交给 Worker 回查 Apple。返回 Worker 判定后的套餐。
+    func verifyLifetime(transactionID: UInt64) async throws -> PlanState {
+        guard let api else { throw Self.notRegistered }
+        do {
+            let state = try await api.verifyLifetime(transactionID: transactionID)
+            plan = state
+            broadcast()
+            return state
+        } catch {
+            handle(error)
+            broadcast()
+            throw error
+        }
+    }
+
+    /// 旧版 $14.99 终身买断（已停售）。只用于恢复购买，走旧的校验接口。
+    func verifyLegacyLifetime(transactionID: UInt64) async throws -> PlanState {
+        guard let api else { throw Self.notRegistered }
+        do {
+            let state = try await api.verifyApplePurchase(transactionID: transactionID)
+            plan = state
+            broadcast()
+            return state
+        } catch {
+            handle(error)
+            broadcast()
+            throw error
+        }
+    }
+
     /// 会员订阅交易交给 Worker 回查 Apple。返回 Worker 判定后的套餐。
     func verifySubscription(transactionID: UInt64) async throws -> PlanState {
         guard let api else { throw Self.notRegistered }
