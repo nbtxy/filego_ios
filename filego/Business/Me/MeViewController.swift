@@ -126,11 +126,16 @@ final class MeViewController: UIViewController {
                     : "\(name + stolnk.nameSuffix) · \(status.short)"
                 content.secondaryTextProperties.color = status.expires
                     ? AppColor.danger : AppColor.textSecondary
-            } else {
-                content.secondaryText = status.short.isEmpty
-                    ? R.Strings.meAddressNone.localizedString() : status.short
+            } else if !status.short.isEmpty {
+                content.secondaryText = status.short
                 content.secondaryTextProperties.color = status.needsName
                     ? AppColor.danger : AppColor.textSecondary
+            } else if stolnk.isRegistered, stolnk.plan == nil {
+                // 重装后刚从 Keychain 恢复 deviceID、还没拉回服务端状态前，留空而不是误报「未设置」。
+                content.secondaryText = nil
+            } else {
+                content.secondaryText = R.Strings.meAddressNone.localizedString()
+                content.secondaryTextProperties.color = AppColor.textSecondary
             }
             cell.accessories = [.disclosureIndicator()]
 

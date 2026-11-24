@@ -85,6 +85,8 @@ final class StolnkController {
     private var identityKeys: DeviceIdentity?
     private var pollTimer: Timer?
     private var socketConnected = false
+    private var isStarting = false
+    private var hasObservedForeground = false
 
     private(set) var status: StolnkStatus = .connecting
     private(set) var inboxes: [InboxSummary] = []
@@ -155,6 +157,11 @@ final class StolnkController {
 
     init(store: InboxStore = InboxStore()) {
         self.store = store
+        let saved = store.snapshot
+        self.recent = saved.recent
+        self.inboxes = saved.inboxes
+        self.shares = saved.shares
+        self.name = saved.name
     }
 
     // MARK: - 启动
@@ -166,6 +173,10 @@ final class StolnkController {
      合在一起会让「拿不到密钥」表现成「离线」，用户看不出该做什么。
      */
     func start() async {
+        guard !isStarting else { return }
+        isStarting = true
+        defer { isStarting = false }
+
         recent = store.snapshot.recent
         inboxes = store.snapshot.inboxes
         shares = store.snapshot.shares
@@ -175,8 +186,10 @@ final class StolnkController {
         do {
             keys = try DeviceIdentity.loadOrCreate()
         } catch {
+            AppLogger.error("StolnkController 加载设备密钥失败", error: error)
             lastError = error.localizedDescription
             status = .offline
+            observeForeground()
             broadcast()
             return
         }
@@ -206,6 +219,7 @@ final class StolnkController {
                 startForegroundPolling()
             }
         } catch {
+            AppLogger.error("StolnkController 启动认证失败（origin=\(origin.absoluteString)）", error: error)
             handle(error)
             status = .offline
         }
@@ -548,6 +562,8 @@ final class StolnkController {
      `reconnectNow()` 而不是「检查一下还活着吗」——回到前台时那条连接基本必死。
      */
     private func observeForeground() {
+        guard !hasObservedForeground else { return }
+        hasObservedForeground = true
         /*
          进后台就把直传断掉。系统很快会掐掉 socket 和 DataChannel，与其留一个
          不会再有字节进来的 `.part` 和一个永远停在半截的占位，不如现在干净地收掉；
@@ -567,6 +583,13 @@ final class StolnkController {
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self, self.isRegistered else { return }
+                // 卸载重装首次启动时，iOS 的“无线数据/本地网络”系统弹窗会先让 start()
+                // 里的 authenticate() 失败。用户点允许后系统触发 didBecomeActive，此时
+                // receiver/signalling 尚未装配，重新跑一遍 start() 就能自动恢复。
+                if self.receiver == nil || self.signalling == nil || self.status == .offline {
+                    await self.start()
+                    return
+                }
                 self.signalling?.reconnectNow()
                 // 后台期间 socket 是死的，推送全丢了：先把在途的补回来，再接已传完的。
                 await self.refreshIncoming()
