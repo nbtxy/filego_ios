@@ -1002,6 +1002,9 @@ final class DriveListViewController: UIViewController {
                     if copy { try await self.viewModel.copy(node, to: targetId) }
                     else { try await self.viewModel.move(node, to: targetId) }
                     self.applySnapshot()
+                    // 目标目录（如主目录或上级目录）若在导航栈里排在后面，退回去不会自动重读，
+                    // 与回收站还原保持一致，广播通知让其他已打开的目录刷新。
+                    NotificationCenter.default.post(name: .stolnkDidLandFiles, object: nil)
                 } catch { self.showError(error) }
             }
         }
