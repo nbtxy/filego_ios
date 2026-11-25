@@ -1,5 +1,4 @@
-New lifetime option: $9.99 once, no subscription.
-• AI-generated HTML and Markdown now open on your phone, rendered instead of as raw source
-• Send a report or page from your computer to your receive address and read it in the app
-• The yearly membership is still $1.99/year
-• If you bought the previous paid download, your free year of membership is unchanged
+• Keep your receive address and device identity after uninstalling and reinstalling
+• Faster relay downloads for large files with concurrent multi-part fetching
+• Improved local network direct transfer reliability, including multi-file batches over one connection
+• Fixed an issue where the main file list did not refresh reliably
