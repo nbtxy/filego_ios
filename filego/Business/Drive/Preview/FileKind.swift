@@ -29,7 +29,7 @@ nonisolated enum FileKind {
             self = .pdf
         case "txt", "rtf":
             self = .plainText
-        case "zip", "rar", "7z", "tar", "gz":
+        case "zip", "rar", "7z", "tar", "gz", "tgz":
             self = .archive
         default:
             self = .other

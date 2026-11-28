@@ -10,21 +10,6 @@ enum MarkdownViewerAssets {
         }
     }
 
-    /// 页面里允许加载的图片来源。
-    enum ImagePolicy {
-        /// 只允许内联 data: 图。md 里的远程图会向第三方暴露读者 IP 与阅读时间，默认不加载。
-        case localOnly
-        /// 用户在菜单里显式放行后才允许 https 远程图。
-        case allowRemote
-
-        var cspImageSources: String {
-            switch self {
-            case .localOnly: return "data:"
-            case .allowRemote: return "data: https:"
-            }
-        }
-    }
-
     // MARK: - 资源读取
 
     /// Xcode 16 的 file-system-synchronized group 把资源加进 Resources build phase 时，
@@ -57,7 +42,7 @@ enum MarkdownViewerAssets {
     ///
     /// 注意这里只装配「壳」，**不含 markdown 正文**——正文通过
     /// `callAsyncJavaScript(arguments:)` 参数化传入，绝不做字符串插值。
-    static func html(imagePolicy: ImagePolicy, traitCollection: UITraitCollection) throws -> String {
+    static func html(traitCollection: UITraitCollection) throws -> String {
         let styles = try [
             string(named: "mdviewer-github-markdown", extension: "css"),
             string(named: "mdviewer-highlight", extension: "css"),
@@ -71,7 +56,6 @@ enum MarkdownViewerAssets {
 
         return try string(named: "mdviewer-shell", extension: "html")
             .replacingOccurrences(of: "__STYLES__", with: styles)
-            .replacingOccurrences(of: "__IMG_SRC__", with: imagePolicy.cspImageSources)
             .replacingOccurrences(of: "__ACCENT_LIGHT__", with: accentHex(userInterfaceStyle: .light))
             .replacingOccurrences(of: "__ACCENT_DARK__", with: accentHex(userInterfaceStyle: .dark))
             .replacingOccurrences(of: "__BASE_FONT_PX__", with: String(format: "%.1f", bodyPointSize))

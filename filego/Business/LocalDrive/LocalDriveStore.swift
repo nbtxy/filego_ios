@@ -206,11 +206,106 @@ final class LocalDriveStore {
         try fm.moveItem(at: source, to: destination.appendingPathComponent(unique))
     }
 
-    func copy(_ node: DriveNode, to parentID: String) throws {
-        let source = url(for: node.id)
-        let destination = url(for: parentID)
-        let unique = FileNameSanitizer.uniqueName(for: node.name, in: destination)
-        try fm.copyItem(at: source, to: destination.appendingPathComponent(unique))
+    // MARK: - 压缩与解压
+
+    nonisolated static func canExtract(fileName: String) -> Bool {
+        ArchiveService.canExtract(fileName: fileName)
+    }
+
+    @discardableResult
+    func compress(
+        _ nodes: [DriveNode],
+        in folderID: String,
+        defaultArchiveName: String
+    ) async throws -> DriveNode {
+        guard !nodes.isEmpty else { throw ArchiveService.ArchiveError.emptySelection }
+        for node in nodes { try refuseIfProtected(node) }
+
+        let destinationDir = url(for: folderID)
+        let rawBaseName: String
+        if nodes.count == 1, let single = nodes.first {
+            if single.isFolder {
+                rawBaseName = single.name
+            } else {
+                let stripped = (single.name as NSString).deletingPathExtension
+                rawBaseName = stripped.isEmpty ? single.name : stripped
+            }
+        } else {
+            rawBaseName = defaultArchiveName
+        }
+        let safeZipName = FileNameSanitizer.sanitize(rawBaseName) + ".zip"
+        let uniqueZipName = FileNameSanitizer.uniqueName(for: safeZipName, in: destinationDir)
+        let targetZipURL = destinationDir.appendingPathComponent(uniqueZipName)
+        let sourceURLs = nodes.map { url(for: $0.id) }
+
+        try await Task.detached(priority: .userInitiated) {
+            try ArchiveService.compress(sources: sourceURLs, to: targetZipURL)
+        }.value
+
+        guard let created = makeNode(at: targetZipURL) else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        return created
+    }
+
+    @discardableResult
+    func extract(_ node: DriveNode) async throws -> DriveNode {
+        try refuseIfProtected(node)
+        let archiveURL = url(for: node.id)
+        let parentID = node.parentId ?? Self.rootID
+        let destinationDir = url(for: parentID)
+        let folderBaseName = FileNameSanitizer.sanitize(
+            ArchiveService.baseName(forArchive: node.name)
+        )
+
+        let stagingDir = fm.temporaryDirectory
+            .appendingPathComponent("stolnk-extract-\(UUID().uuidString)", isDirectory: true)
+        defer { try? fm.removeItem(at: stagingDir) }
+
+        try await Task.detached(priority: .userInitiated) {
+            try ArchiveService.extract(archiveAt: archiveURL, into: stagingDir)
+        }.value
+
+        let topEntries = try fm.contentsOfDirectory(
+            at: stagingDir,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: []
+        ).filter {
+            let name = $0.lastPathComponent
+            return name != "__MACOSX" && name != ".DS_Store" && !name.hasPrefix("._")
+        }
+
+        guard !topEntries.isEmpty else {
+            AppLogger.warning("解压后未产出任何文件：\(node.name)（\(node.size) B）")
+            throw ArchiveService.ArchiveError.emptyArchive
+        }
+
+        let landedURL: URL
+        if topEntries.count == 1, let only = topEntries.first {
+            let safeName = Self.avoidingSystemInbox(
+                FileNameSanitizer.sanitize(only.lastPathComponent)
+            )
+            let uniqueName = FileNameSanitizer.uniqueName(for: safeName, in: destinationDir)
+            landedURL = destinationDir.appendingPathComponent(uniqueName)
+            try fm.moveItem(at: only, to: landedURL)
+        } else {
+            let safeFolder = Self.avoidingSystemInbox(
+                folderBaseName.isEmpty ? "Archive" : folderBaseName
+            )
+            let uniqueFolder = FileNameSanitizer.uniqueName(for: safeFolder, in: destinationDir)
+            landedURL = destinationDir.appendingPathComponent(uniqueFolder, isDirectory: true)
+            try fm.createDirectory(at: landedURL, withIntermediateDirectories: false)
+            for item in topEntries {
+                let safeItem = FileNameSanitizer.sanitize(item.lastPathComponent)
+                let uniqueItem = FileNameSanitizer.uniqueName(for: safeItem, in: landedURL)
+                try fm.moveItem(at: item, to: landedURL.appendingPathComponent(uniqueItem))
+            }
+        }
+
+        guard let created = makeNode(at: landedURL) else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        return created
     }
 
     /**

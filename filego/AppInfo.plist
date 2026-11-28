@@ -52,6 +52,8 @@
 	     permission nudge in LocalNetworkPermission can browse something. -->
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Receive files directly from a sender on the same Wi-Fi — faster, and never through our servers.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Save previewed photos and videos to your Photos library.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_stolnk._tcp</string>

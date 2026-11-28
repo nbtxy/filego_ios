@@ -256,6 +256,13 @@ final class VideoPreviewController: UIViewController {
     // MARK: - 菜单
 
     private func buildMenu() {
+        let saveToPhotos = UIAction(
+            title: R.Strings.previewSaveToPhotos.localizedString(),
+            image: UIImage(systemName: "square.and.arrow.down")
+        ) { [weak self] _ in
+            guard let self else { return }
+            PhotoLibrarySaver.save(url: file.url, kind: .video, from: self)
+        }
         let createLink = UIAction(
             title: R.Strings.previewCreateShareLink.localizedString(),
             image: UIImage(systemName: "link")
@@ -270,7 +277,7 @@ final class VideoPreviewController: UIViewController {
 
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             image: UIImage(systemName: "ellipsis.circle"),
-            menu: UIMenu(children: [createLink, shareFile]))
+            menu: UIMenu(children: [saveToPhotos, createLink, shareFile]))
     }
 
     private func presentShareSheet() {

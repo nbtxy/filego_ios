@@ -40,10 +40,32 @@ enum AppAppearance {
             .font: UIFont.systemFont(ofSize: 15, weight: .semibold),
             .foregroundColor: AppColor.ink
         ]
+        buttonAppearance.highlighted.titleTextAttributes = buttonAppearance.normal.titleTextAttributes
+
+        // iOS 26 会把 `.done` 渲染成 tint 色（AppColor.ink）的实心胶囊，文字必须用反色白字，
+        // 否则墨绿字叠在墨绿底上完全看不见；较早系统仍是透明导航按钮，保持墨绿字。
+        let doneAppearance = UIBarButtonItemAppearance(style: .done)
+        let doneForeground: UIColor = if #available(iOS 26.0, *) { AppColor.white } else { AppColor.ink }
+        let doneDisabledForeground: UIColor = if #available(iOS 26.0, *) {
+            AppColor.white.withAlphaComponent(0.5)
+        } else {
+            AppColor.muted
+        }
+        let doneAttributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 15, weight: .semibold),
+            .foregroundColor: doneForeground
+        ]
+        doneAppearance.normal.titleTextAttributes = doneAttributes
+        doneAppearance.highlighted.titleTextAttributes = doneAttributes
+        doneAppearance.disabled.titleTextAttributes = [
+            .font: UIFont.systemFont(ofSize: 15, weight: .semibold),
+            .foregroundColor: doneDisabledForeground
+        ]
+
         standard.buttonAppearance = buttonAppearance
-        standard.doneButtonAppearance = buttonAppearance
+        standard.doneButtonAppearance = doneAppearance
         scrollEdge.buttonAppearance = buttonAppearance
-        scrollEdge.doneButtonAppearance = buttonAppearance
+        scrollEdge.doneButtonAppearance = doneAppearance
 
         let bar = UINavigationBar.appearance()
         bar.standardAppearance = standard

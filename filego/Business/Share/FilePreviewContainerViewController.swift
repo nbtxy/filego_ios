@@ -17,15 +17,21 @@ import UIKit
 @MainActor
 final class FilePreviewContainerViewController: UIViewController {
     private let file: PreviewTemporaryFile
+    private let fileKind: FileKind
     private let onCreateShareLink: (UIViewController) -> Void
+    private let onExtractArchive: ((UIViewController) -> Void)?
 
     init(
         file: PreviewTemporaryFile,
         title: String,
-        onCreateShareLink: @escaping (UIViewController) -> Void
+        fileKind: FileKind = .other,
+        onCreateShareLink: @escaping (UIViewController) -> Void,
+        onExtractArchive: ((UIViewController) -> Void)? = nil
     ) {
         self.file = file
+        self.fileKind = fileKind
         self.onCreateShareLink = onCreateShareLink
+        self.onExtractArchive = onExtractArchive
         super.init(nibName: nil, bundle: nil)
         self.title = title
     }
@@ -54,6 +60,25 @@ final class FilePreviewContainerViewController: UIViewController {
     }
 
     private func buildMenu() {
+        var children: [UIMenuElement] = []
+        if let mediaKind = PhotoLibrarySaver.MediaKind(fileKind: fileKind) {
+            children.append(UIAction(
+                title: R.Strings.previewSaveToPhotos.localizedString(),
+                image: UIImage(systemName: "square.and.arrow.down")
+            ) { [weak self] _ in
+                guard let self else { return }
+                PhotoLibrarySaver.save(url: file.url, kind: mediaKind, from: self)
+            })
+        }
+        if let onExtractArchive {
+            children.append(UIAction(
+                title: R.Strings.driveExtract.localizedString(),
+                image: UIImage(systemName: "archivebox")
+            ) { [weak self] _ in
+                guard let self else { return }
+                onExtractArchive(self)
+            })
+        }
         let createLink = UIAction(
             title: R.Strings.previewCreateShareLink.localizedString(),
             image: UIImage(systemName: "link")
@@ -70,9 +95,10 @@ final class FilePreviewContainerViewController: UIViewController {
             image: UIImage(systemName: "eye")
         ) { [weak self] _ in self?.openInQuickLook() }
 
+        children.append(contentsOf: [createLink, shareFile, quickLook])
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             image: UIImage(systemName: "ellipsis.circle"),
-            menu: UIMenu(children: [createLink, shareFile, quickLook]))
+            menu: UIMenu(children: children))
     }
 
     private func presentShareSheet() {

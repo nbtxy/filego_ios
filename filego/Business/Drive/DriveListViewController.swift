@@ -28,6 +28,15 @@ final class DriveListViewController: UIViewController {
     private var isSearchLoading = false
     private var searchQuery = ""
     private var searchResults: [DriveNode] = []
+    private var isSelecting = false
+    private var selectedNodeIDs: Set<String> = []
+    private let selectionBar = UIView()
+    private let selectionBarSeparator = UIView()
+    private let selectionBarStack = UIStackView()
+    private let batchMoveButton = UIButton(type: .system)
+    private let batchCompressButton = UIButton(type: .system)
+    private let batchShareButton = UIButton(type: .system)
+    private let batchTrashButton = UIButton(type: .system)
     private lazy var searchBar: UISearchBar = {
         let searchBar = UISearchBar()
         searchBar.delegate = self
@@ -52,6 +61,14 @@ final class DriveListViewController: UIViewController {
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return viewModel.nodes }
         return searchResults
+    }
+
+    private var selectableNodes: [DriveNode] {
+        visibleNodes.filter { !LocalDriveStore.isReceived($0.id) }
+    }
+
+    private var selectedNodes: [DriveNode] {
+        selectableNodes.filter { selectedNodeIDs.contains($0.id) }
     }
 
     /// 占位的 item id 前缀。节点 id 是相对路径，永远不以 `/` 开头，所以撞不上。
@@ -123,6 +140,7 @@ final class DriveListViewController: UIViewController {
         configureBreadcrumbs()
         configureAddFolderButton()
         configureReceivedButton()
+        configureSelectionBar()
         configureFileActivityIndicator()
         observeContentSizeCategory()
         observeLandedFiles()
@@ -200,7 +218,7 @@ final class DriveListViewController: UIViewController {
             forName: .stolnkStateDidChange, object: nil, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
-                guard let self, self.isReceivedFolder, !self.isSearching else { return }
+                guard let self, self.isReceivedFolder, !self.isSearching, !self.isSelecting else { return }
                 self.configureNavigation()
             }
         }
@@ -253,6 +271,43 @@ final class DriveListViewController: UIViewController {
         // 这里刻意不再逐页覆盖：之前的 transparent 让内容直接从标题下穿过去，
         // 纸色底又没有毛玻璃衬着，滚动时文字会糊成一团。
 
+        if isSelecting {
+            navigationItem.hidesBackButton = true
+            navigationItem.titleView = nil
+            let count = selectedNodeIDs.count
+            title = count > 0
+                ? R.Strings.driveSelectedCount.formatted(Int64(count))
+                : R.Strings.driveSelectTitle.localizedString()
+            let allSelected = !selectableNodes.isEmpty && selectedNodeIDs.count == selectableNodes.count
+            let selectAllItem = UIBarButtonItem(
+                title: (allSelected ? R.Strings.driveDeselectAll : R.Strings.driveSelectAll).localizedString(),
+                style: .plain,
+                target: self,
+                action: #selector(toggleSelectAll)
+            )
+            selectAllItem.isEnabled = !selectableNodes.isEmpty
+            navigationItem.leftBarButtonItem = selectAllItem
+            let doneItem = UIBarButtonItem(
+                title: R.Strings.commonDone.localizedString(),
+                style: .done,
+                target: self,
+                action: #selector(exitSelectionModeAction)
+            )
+            // iOS 26 把 `.done` 渲染成 tint 色的实心胶囊，文字必须用白字反色；
+            // 较早系统仍是透明导航按钮，保持墨绿字。
+            let doneForeground: UIColor = if #available(iOS 26.0, *) { AppColor.white } else { AppColor.ink }
+            let doneAttributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 15, weight: .semibold),
+                .foregroundColor: doneForeground
+            ]
+            doneItem.tintColor = AppColor.ink
+            doneItem.setTitleTextAttributes(doneAttributes, for: .normal)
+            doneItem.setTitleTextAttributes(doneAttributes, for: .highlighted)
+            navigationItem.rightBarButtonItems = [doneItem]
+            return
+        }
+
+        title = folderName
         if isSearching {
             navigationItem.hidesBackButton = true
             navigationItem.leftBarButtonItem = nil
@@ -271,6 +326,8 @@ final class DriveListViewController: UIViewController {
                 action: #selector(showMe)
             )
             navigationItem.leftBarButtonItem?.accessibilityLabel = R.Strings.tabMe.localizedString()
+        } else {
+            navigationItem.leftBarButtonItem = nil
         }
         let displayOptionsButton = UIBarButtonItem(
             title: nil,
@@ -393,7 +450,16 @@ final class DriveListViewController: UIViewController {
             ) { [weak self] _ in self?.changeOrder(.descending) }
         ]
 
-        return UIMenu(children: [
+        var sections: [UIMenuElement] = []
+        if !selectableNodes.isEmpty {
+            sections.append(UIMenu(options: .displayInline, children: [
+                UIAction(
+                    title: R.Strings.driveSelect.localizedString(),
+                    image: UIImage(systemName: "checkmark.circle")
+                ) { [weak self] _ in self?.enterSelectionMode(initialID: nil) }
+            ]))
+        }
+        sections.append(contentsOf: [
             UIMenu(
                 title: R.Strings.driveView.localizedString(),
                 options: .displayInline,
@@ -410,6 +476,7 @@ final class DriveListViewController: UIViewController {
                 children: orderActions
             )
         ])
+        return UIMenu(children: sections)
     }
 
     private func configureBreadcrumbs() {
@@ -436,6 +503,9 @@ final class DriveListViewController: UIViewController {
         collectionView.register(DriveNodeCell.self, forCellWithReuseIdentifier: "node")
         collectionView.refreshControl = UIRefreshControl()
         collectionView.refreshControl?.addTarget(self, action: #selector(refresh), for: .valueChanged)
+        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
+        longPress.minimumPressDuration = 0.4
+        collectionView.addGestureRecognizer(longPress)
         view.addSubview(collectionView)
         NSLayoutConstraint.activate([
             // 左右跟着安全区，而不是整个 view。Duo 折叠时状态栏在右侧，横屏时
@@ -476,12 +546,15 @@ final class DriveListViewController: UIViewController {
                   let cell = collectionView.dequeueReusableCell(
                     withReuseIdentifier: "node", for: indexPath
                   ) as? DriveNodeCell else { return nil }
+            let selectable = !LocalDriveStore.isReceived(node.id)
             cell.configure(
                 with: node,
                 menu: actions(for: node),
                 grid: isGrid,
                 isFirst: id == ids.first,
-                isLast: id == ids.last
+                isLast: id == ids.last,
+                isSelecting: isSelecting && selectable,
+                isSelected: isSelecting && selectedNodeIDs.contains(node.id)
             )
             return cell
         }
@@ -598,6 +671,228 @@ final class DriveListViewController: UIViewController {
         ))
     }
 
+    // MARK: - 多选操作栏
+
+    private func configureSelectionBar() {
+        selectionBar.backgroundColor = AppColor.surface
+        selectionBar.isHidden = true
+        selectionBar.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(selectionBar)
+
+        selectionBarSeparator.backgroundColor = AppColor.line
+        selectionBarSeparator.translatesAutoresizingMaskIntoConstraints = false
+        selectionBar.addSubview(selectionBarSeparator)
+
+        configureSelectionBarButton(
+            batchMoveButton,
+            title: R.Strings.driveMove.localizedString(),
+            symbol: "folder",
+            tint: AppColor.ink
+        ) { [weak self] in self?.batchMove() }
+
+        configureSelectionBarButton(
+            batchCompressButton,
+            title: R.Strings.driveCompress.localizedString(),
+            symbol: "doc.zipper",
+            tint: AppColor.ink
+        ) { [weak self] in self?.batchCompress() }
+
+        configureSelectionBarButton(
+            batchShareButton,
+            title: R.Strings.driveShare.localizedString(),
+            symbol: "square.and.arrow.up",
+            tint: AppColor.ink
+        ) { [weak self] in self?.batchShare() }
+
+        configureSelectionBarButton(
+            batchTrashButton,
+            title: R.Strings.driveTrash.localizedString(),
+            symbol: "trash",
+            tint: AppColor.danger
+        ) { [weak self] in self?.batchTrash() }
+
+        selectionBarStack.axis = .horizontal
+        selectionBarStack.distribution = .fillEqually
+        selectionBarStack.alignment = .center
+        selectionBarStack.translatesAutoresizingMaskIntoConstraints = false
+        for button in [batchMoveButton, batchCompressButton, batchShareButton, batchTrashButton] {
+            selectionBarStack.addArrangedSubview(button)
+        }
+        selectionBar.addSubview(selectionBarStack)
+
+        NSLayoutConstraint.activate([
+            selectionBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            selectionBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            selectionBar.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+            selectionBarSeparator.topAnchor.constraint(equalTo: selectionBar.topAnchor),
+            selectionBarSeparator.leadingAnchor.constraint(equalTo: selectionBar.leadingAnchor),
+            selectionBarSeparator.trailingAnchor.constraint(equalTo: selectionBar.trailingAnchor),
+            selectionBarSeparator.heightAnchor.constraint(equalToConstant: 0.5),
+
+            selectionBarStack.topAnchor.constraint(equalTo: selectionBar.topAnchor, constant: 8),
+            selectionBarStack.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 8),
+            selectionBarStack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -8),
+            selectionBarStack.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -6),
+            selectionBarStack.heightAnchor.constraint(greaterThanOrEqualToConstant: 48)
+        ])
+    }
+
+    private func configureSelectionBarButton(
+        _ button: UIButton,
+        title: String,
+        symbol: String,
+        tint: UIColor,
+        action: @escaping () -> Void
+    ) {
+        var config = UIButton.Configuration.plain()
+        config.image = UIImage(
+            systemName: symbol,
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
+        )
+        config.title = title
+        config.imagePlacement = .top
+        config.imagePadding = 4
+        config.baseForegroundColor = tint
+        config.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4)
+        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
+            var outgoing = incoming
+            outgoing.font = UIFont.systemFont(ofSize: 11, weight: .medium)
+            return outgoing
+        }
+        button.configuration = config
+        button.addAction(UIAction { _ in action() }, for: .touchUpInside)
+    }
+
+    @objc private func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
+        guard gesture.state == .began, !isSelecting else { return }
+        let point = gesture.location(in: collectionView)
+        guard let indexPath = collectionView.indexPathForItem(at: point),
+              let id = dataSource.itemIdentifier(for: indexPath),
+              !id.hasPrefix(Self.incomingPrefix),
+              let node = visibleNodes.first(where: { $0.id == id }),
+              !LocalDriveStore.isReceived(node.id) else { return }
+        HapticManager.impact(.medium)
+        enterSelectionMode(initialID: node.id)
+    }
+
+    private func enterSelectionMode(initialID: String?) {
+        guard !isSelecting else { return }
+        isSelecting = true
+        selectedNodeIDs = initialID.map { [$0] } ?? []
+        if isSearching {
+            searchBar.resignFirstResponder()
+        }
+        addFolderButton.isHidden = true
+        receivedButton.isHidden = true
+        receivedBadge.isHidden = true
+        selectionBar.isHidden = false
+        selectionBar.alpha = 0
+        selectionBar.transform = CGAffineTransform(translationX: 0, y: 24)
+        UIView.animate(withDuration: 0.22) {
+            self.selectionBar.alpha = 1
+            self.selectionBar.transform = .identity
+        }
+        configureNavigation()
+        updateSelectionBar()
+        applySnapshot()
+    }
+
+    @objc private func exitSelectionModeAction() {
+        exitSelectionMode()
+    }
+
+    private func exitSelectionMode() {
+        guard isSelecting else { return }
+        isSelecting = false
+        selectedNodeIDs.removeAll()
+        addFolderButton.isHidden = isSearching || isReceivedFolder
+        receivedButton.isHidden = isSearching || !isRoot
+        updateReceivedBadge()
+        UIView.animate(withDuration: 0.18, animations: {
+            self.selectionBar.alpha = 0
+            self.selectionBar.transform = CGAffineTransform(translationX: 0, y: 24)
+        }, completion: { _ in
+            if !self.isSelecting {
+                self.selectionBar.isHidden = true
+                self.selectionBar.transform = .identity
+            }
+        })
+        configureNavigation()
+        applySnapshot()
+    }
+
+    @objc private func toggleSelectAll() {
+        let allIDs = Set(selectableNodes.map(\.id))
+        if !allIDs.isEmpty && selectedNodeIDs == allIDs {
+            selectedNodeIDs.removeAll()
+        } else {
+            selectedNodeIDs = allIDs
+        }
+        HapticManager.selection()
+        configureNavigation()
+        updateSelectionBar()
+        applySnapshot()
+    }
+
+    private func updateSelectionBar() {
+        let nodes = selectedNodes
+        let hasSelection = !nodes.isEmpty
+        let canShare = hasSelection && nodes.allSatisfy { !$0.isFolder }
+        batchMoveButton.isEnabled = hasSelection
+        batchCompressButton.isEnabled = hasSelection
+        batchShareButton.isEnabled = canShare
+        batchTrashButton.isEnabled = hasSelection
+    }
+
+    private func batchMove() {
+        let nodes = selectedNodes
+        guard !nodes.isEmpty else { return }
+        pickFolder(for: nodes)
+    }
+
+    private func batchCompress() {
+        let nodes = selectedNodes
+        guard !nodes.isEmpty else { return }
+        runArchiveOperation { [weak self] in
+            guard let self else { return }
+            let archive = try await self.viewModel.compress(nodes, in: self.folderId)
+            if !self.searchQuery.isEmpty {
+                self.searchResults = (try? await self.viewModel.searchRecursively(query: self.searchQuery)) ?? []
+            }
+            HapticManager.notification(.success)
+            self.exitSelectionMode()
+            self.presentToast(R.Strings.driveArchiveCompressed.formatted(archive.name))
+        }
+    }
+
+    private func batchShare() {
+        let files = selectedNodes.filter { !$0.isFolder }
+        guard !files.isEmpty else { return }
+        let urls = files.map { viewModel.fileURL(for: $0) }
+        let controller = UIActivityViewController(activityItems: urls, applicationActivities: nil)
+        if let popover = controller.popoverPresentationController {
+            popover.sourceView = batchShareButton
+            popover.sourceRect = batchShareButton.bounds
+        }
+        present(controller, animated: true)
+    }
+
+    private func batchTrash() {
+        let nodes = selectedNodes
+        guard !nodes.isEmpty else { return }
+        Task {
+            do {
+                try await viewModel.moveToTrash(nodes)
+                HapticManager.notification(.success)
+                exitSelectionMode()
+            } catch {
+                showError(error)
+                applySnapshot()
+            }
+        }
+    }
+
     private func configureFileActivityIndicator() {
         // 凸起白卡，浮在内容上，与 Toast 同一档高度。
         AppMaterial.raise(activityBackdrop, radius: AppRadius.tile, elevation: .floating)
@@ -694,6 +989,19 @@ final class DriveListViewController: UIViewController {
         )
         emptyView.isHidden = isSearchLoading || !ids.isEmpty
         breadcrumbBar.configure(nodes: viewModel.ancestors)
+
+        if isSelecting {
+            let validIDs = Set(selectableNodes.map(\.id))
+            selectedNodeIDs.formIntersection(validIDs)
+            if validIDs.isEmpty {
+                exitSelectionMode()
+            } else {
+                configureNavigation()
+                updateSelectionBar()
+            }
+        } else if !isSearching {
+            configureNavigation()
+        }
     }
 
     private func reload() {
@@ -918,6 +1226,7 @@ final class DriveListViewController: UIViewController {
 
     private func openBreadcrumb(_ node: DriveNode) {
         guard node.id != folderId else { return }
+        if isSelecting { exitSelectionMode() }
         if let existing = router.navigationController?.viewControllers
             .compactMap({ $0 as? DriveListViewController })
             .first(where: { $0.folderId == node.id }) {
@@ -938,12 +1247,21 @@ final class DriveListViewController: UIViewController {
         ) { [weak self] _ in self?.rename(node) }
         let move = UIAction(
             title: R.Strings.driveMove.localizedString(), image: UIImage(systemName: "folder")
-        ) { [weak self] _ in self?.pickFolder(for: node, copy: false) }
-        var children = [rename, move]
+        ) { [weak self] _ in self?.pickFolder(for: [node]) }
+        let archiveAction: UIAction
+        if !node.isFolder && LocalDriveStore.canExtract(fileName: node.name) {
+            archiveAction = UIAction(
+                title: R.Strings.driveExtract.localizedString(),
+                image: UIImage(systemName: "archivebox")
+            ) { [weak self] _ in self?.extractArchive(node) }
+        } else {
+            archiveAction = UIAction(
+                title: R.Strings.driveCompress.localizedString(),
+                image: UIImage(systemName: "doc.zipper")
+            ) { [weak self] _ in self?.compressSingle(node) }
+        }
+        var children = [rename, move, archiveAction]
         if !node.isFolder {
-            children.append(UIAction(
-                title: R.Strings.driveCopy.localizedString(), image: UIImage(systemName: "doc.on.doc")
-            ) { [weak self] _ in self?.pickFolder(for: node, copy: true) })
             // 只给文件，不给文件夹：一条下载链接背后是一个文件，服务端也只收一个。
             children.append(UIAction(
                 title: R.Strings.shareCreate.localizedString(), image: UIImage(systemName: "link")
@@ -989,23 +1307,78 @@ final class DriveListViewController: UIViewController {
         }
     }
 
-    private func pickFolder(for node: DriveNode, copy: Bool) {
+    private func compressSingle(_ node: DriveNode) {
+        let targetParent = node.parentId ?? folderId
+        runArchiveOperation { [weak self] in
+            guard let self else { return }
+            let archive = try await self.viewModel.compress([node], in: targetParent)
+            if !self.searchQuery.isEmpty {
+                self.searchResults = (try? await self.viewModel.searchRecursively(query: self.searchQuery)) ?? []
+            }
+            HapticManager.notification(.success)
+            self.applySnapshot()
+            NotificationCenter.default.post(name: .stolnkDidLandFiles, object: nil)
+            self.presentToast(R.Strings.driveArchiveCompressed.formatted(archive.name))
+        }
+    }
+
+    private func extractArchive(_ node: DriveNode) {
+        runArchiveOperation { [weak self] in
+            guard let self else { return }
+            let extracted = try await self.viewModel.extract(node)
+            if !self.searchQuery.isEmpty {
+                self.searchResults = (try? await self.viewModel.searchRecursively(query: self.searchQuery)) ?? []
+            }
+            HapticManager.notification(.success)
+            self.applySnapshot()
+            NotificationCenter.default.post(name: .stolnkDidLandFiles, object: nil)
+            self.presentToast(R.Strings.driveArchiveExtracted.formatted(extracted.name))
+        }
+    }
+
+    private func runArchiveOperation(_ work: @escaping () async throws -> Void) {
+        setFileActivity(true)
+        view.isUserInteractionEnabled = false
+        Task { @MainActor [weak self] in
+            defer {
+                self?.view.isUserInteractionEnabled = true
+                self?.setFileActivity(false)
+            }
+            do {
+                try await work()
+            } catch {
+                self?.showError(error)
+            }
+        }
+    }
+
+    private func pickFolder(for nodes: [DriveNode]) {
+        let excluded = Set(nodes.filter(\.isFolder).map(\.id))
         let picker = FolderPickerNavigationController.make(
             environment: environment,
             rootId: rootId,
-            excludedNodeId: copy ? nil : node.id
+            excludedNodeIds: excluded
         ) { [weak self] targetId in
             guard let self else { return }
             dismiss(animated: true)
             Task {
                 do {
-                    if copy { try await self.viewModel.copy(node, to: targetId) }
-                    else { try await self.viewModel.move(node, to: targetId) }
-                    self.applySnapshot()
+                    try await self.viewModel.move(nodes, to: targetId)
+                    if !self.searchQuery.isEmpty {
+                        self.searchResults = (try? await self.viewModel.searchRecursively(query: self.searchQuery)) ?? []
+                    }
+                    if self.isSelecting {
+                        self.exitSelectionMode()
+                    } else {
+                        self.applySnapshot()
+                    }
                     // 目标目录（如主目录或上级目录）若在导航栈里排在后面，退回去不会自动重读，
                     // 与回收站还原保持一致，广播通知让其他已打开的目录刷新。
                     NotificationCenter.default.post(name: .stolnkDidLandFiles, object: nil)
-                } catch { self.showError(error) }
+                } catch {
+                    self.showError(error)
+                    self.applySnapshot()
+                }
             }
         }
         present(picker, animated: true)
@@ -1071,6 +1444,20 @@ extension DriveListViewController: UICollectionViewDelegate {
         collectionView.deselectItem(at: indexPath, animated: true)
         guard let id = dataSource.itemIdentifier(for: indexPath),
               let node = visibleNodes.first(where: { $0.id == id }) else { return }
+        if isSelecting {
+            guard !LocalDriveStore.isReceived(node.id) else { return }
+            if selectedNodeIDs.contains(node.id) {
+                selectedNodeIDs.remove(node.id)
+            } else {
+                selectedNodeIDs.insert(node.id)
+            }
+            HapticManager.selection()
+            (collectionView.cellForItem(at: indexPath) as? DriveNodeCell)?
+                .updateSelection(isSelected: selectedNodeIDs.contains(node.id))
+            configureNavigation()
+            updateSelectionBar()
+            return
+        }
         open(node)
     }
 

@@ -6,7 +6,7 @@ final class FolderPickerViewController: UITableViewController {
     private let router: Router
     private let folderId: String
     private let folderName: String
-    private let excludedNodeId: String?
+    private let excludedNodeIds: Set<String>
     /// 确认按钮的文案。同一个选择器服务两种句子——「把文件移到这里」和「让地址落到
     /// 这里」——按钮上写死「移动到这里」在后者里是错的：没有任何东西被移动。
     private let confirmTitle: String
@@ -18,7 +18,7 @@ final class FolderPickerViewController: UITableViewController {
         router: Router,
         folderId: String,
         folderName: String,
-        excludedNodeId: String?,
+        excludedNodeIds: Set<String>,
         confirmTitle: String = R.Strings.driveMoveHere.localizedString(),
         onPick: @escaping (String) -> Void
     ) {
@@ -26,7 +26,7 @@ final class FolderPickerViewController: UITableViewController {
         self.router = router
         self.folderId = folderId
         self.folderName = folderName
-        self.excludedNodeId = excludedNodeId
+        self.excludedNodeIds = excludedNodeIds
         self.confirmTitle = confirmTitle
         self.onPick = onPick
         super.init(style: .insetGrouped)
@@ -78,7 +78,7 @@ final class FolderPickerViewController: UITableViewController {
     private func loadFolders() {
         do {
             let nodes = try environment.drive.list(in: folderId, sort: .name, order: .ascending)
-            folders = nodes.filter { $0.isFolder && $0.id != excludedNodeId }
+            folders = nodes.filter { $0.isFolder && !excludedNodeIds.contains($0.id) }
             tableView.reloadData()
         } catch {
             showError(error)
@@ -110,7 +110,7 @@ final class FolderPickerViewController: UITableViewController {
             router: router,
             folderId: folder.id,
             folderName: folder.name,
-            excludedNodeId: excludedNodeId,
+            excludedNodeIds: excludedNodeIds,
             confirmTitle: confirmTitle,
             onPick: onPick
         ))
@@ -136,7 +136,7 @@ final class FolderPickerNavigationController: UINavigationController {
     static func make(
         environment: AppEnvironment,
         rootId: String,
-        excludedNodeId: String?,
+        excludedNodeIds: Set<String> = [],
         confirmTitle: String = R.Strings.driveMoveHere.localizedString(),
         onPick: @escaping (String) -> Void
     ) -> FolderPickerNavigationController {
@@ -148,7 +148,7 @@ final class FolderPickerNavigationController: UINavigationController {
             router: router,
             folderId: rootId,
             folderName: R.Strings.tabFiles.localizedString(),
-            excludedNodeId: excludedNodeId,
+            excludedNodeIds: excludedNodeIds,
             confirmTitle: confirmTitle,
             onPick: onPick
         ), animated: false)

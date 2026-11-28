@@ -18,6 +18,10 @@ final class DriveNodeCell: UICollectionViewCell {
     private let nameLabel = UILabel()
     private let detailLabel = UILabel()
     private let moreButton = UIButton(type: .system)
+    /// 多选态下顶替 `moreButton` 位置的勾选标记。
+    private let selectionBadge = UIImageView()
+    /// 宫格多选选中时的边框与浅点缀底色。
+    private let gridSelectionOverlay = UIView()
     private let textStack = UIStackView()
     private let separator = UIView()
     /// 在途占位的进度条。平时隐藏，stack 不给它留位置。
@@ -27,6 +31,8 @@ final class DriveNodeCell: UICollectionViewCell {
     private let listHighlightView = UIView()
     private var listConstraints: [NSLayoutConstraint] = []
     private var gridConstraints: [NSLayoutConstraint] = []
+    private var isCellSelected = false
+    private var isSelectionMode = false
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -39,6 +45,17 @@ final class DriveNodeCell: UICollectionViewCell {
         gridCard.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         gridCard.cornerRadius = AppRadius.card
         contentView.addSubview(gridCard)
+
+        gridSelectionOverlay.frame = contentView.bounds
+        gridSelectionOverlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        gridSelectionOverlay.backgroundColor = AppColor.lime2.withAlphaComponent(0.28)
+        gridSelectionOverlay.layer.cornerRadius = AppRadius.card
+        gridSelectionOverlay.layer.cornerCurve = .continuous
+        gridSelectionOverlay.layer.borderWidth = 2
+        gridSelectionOverlay.layer.borderColor = AppColor.ink.cgColor
+        gridSelectionOverlay.isUserInteractionEnabled = false
+        gridSelectionOverlay.isHidden = true
+        contentView.addSubview(gridSelectionOverlay)
 
         // 缩略图位是卡片上压下去的一块凹槽色。
         thumbHolder.backgroundColor = AppColor.well
@@ -75,6 +92,11 @@ final class DriveNodeCell: UICollectionViewCell {
         moreButton.showsMenuAsPrimaryAction = true
         moreButton.translatesAutoresizingMaskIntoConstraints = false
 
+        selectionBadge.contentMode = .scaleAspectFit
+        selectionBadge.isUserInteractionEnabled = false
+        selectionBadge.isHidden = true
+        selectionBadge.translatesAutoresizingMaskIntoConstraints = false
+
         // 网页 `.row` 的行间发丝线是 paper-2，比卡片描边的 --line 浅一档。
         separator.backgroundColor = AppColor.paper2
         separator.translatesAutoresizingMaskIntoConstraints = false
@@ -104,6 +126,7 @@ final class DriveNodeCell: UICollectionViewCell {
         contentView.addSubview(thumbHolder)
         contentView.addSubview(textStack)
         contentView.addSubview(moreButton)
+        contentView.addSubview(selectionBadge)
         contentView.addSubview(separator)
 
         NSLayoutConstraint.activate([
@@ -119,6 +142,10 @@ final class DriveNodeCell: UICollectionViewCell {
             listHighlightView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
             moreButton.widthAnchor.constraint(equalToConstant: Self.moreButtonHitSize),
             moreButton.heightAnchor.constraint(equalToConstant: Self.moreButtonHitSize),
+            selectionBadge.centerXAnchor.constraint(equalTo: moreButton.centerXAnchor),
+            selectionBadge.centerYAnchor.constraint(equalTo: moreButton.centerYAnchor),
+            selectionBadge.widthAnchor.constraint(equalToConstant: 24),
+            selectionBadge.heightAnchor.constraint(equalToConstant: 24),
             gridIcon.centerXAnchor.constraint(equalTo: thumbHolder.centerXAnchor),
             gridIcon.centerYAnchor.constraint(equalTo: thumbHolder.centerYAnchor)
         ])
@@ -202,6 +229,10 @@ final class DriveNodeCell: UICollectionViewCell {
         gridIcon.alpha = 1
         nameLabel.alpha = 1
         moreButton.isHidden = false
+        selectionBadge.isHidden = true
+        gridSelectionOverlay.isHidden = true
+        isCellSelected = false
+        isSelectionMode = false
     }
 
     /**
@@ -241,6 +272,11 @@ final class DriveNodeCell: UICollectionViewCell {
         progressView.setProgress(Float(transfer.overall), animated: isSameFile)
 
         apply(grid: grid, isFirst: isFirst, isLast: isLast)
+        selectionBadge.isHidden = true
+        gridSelectionOverlay.isHidden = true
+        isCellSelected = false
+        isSelectionMode = false
+        updateHighlightAppearance()
     }
 
     /// - Parameters:
@@ -253,7 +289,9 @@ final class DriveNodeCell: UICollectionViewCell {
         grid: Bool,
         detailOverride: String? = nil,
         isFirst: Bool = false,
-        isLast: Bool = false
+        isLast: Bool = false,
+        isSelecting: Bool = false,
+        isSelected: Bool = false
     ) {
         resetIncoming()
         listIcon.configure(with: node)
@@ -272,6 +310,22 @@ final class DriveNodeCell: UICollectionViewCell {
         moreButton.menu = menu
 
         apply(grid: grid, isFirst: isFirst, isLast: isLast)
+        isSelectionMode = isSelecting
+        moreButton.isHidden = isSelecting
+        selectionBadge.isHidden = !isSelecting
+        updateSelection(isSelected: isSelecting && isSelected)
+    }
+
+    func updateSelection(isSelected: Bool) {
+        isCellSelected = isSelected
+        let symbol = isSelected ? "checkmark.circle.fill" : "circle"
+        selectionBadge.image = UIImage(
+            systemName: symbol,
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: 21, weight: .medium)
+        )
+        selectionBadge.tintColor = isSelected ? AppColor.ink : AppColor.muted.withAlphaComponent(0.6)
+        gridSelectionOverlay.isHidden = isListRow || !isSelected
+        updateHighlightAppearance()
     }
 
     private func apply(grid: Bool, isFirst: Bool, isLast: Bool) {
@@ -310,13 +364,21 @@ final class DriveNodeCell: UICollectionViewCell {
     /// 高亮态要按形态分别处理，不能拿 separator 的显隐来推断——段内最后一行也没有它。
     private var isListRow = true
 
-    /// 列表态的按下高亮：网页 `.row:hover` 是一层极浅的暖白。
+    /// 列表态的按下高亮与多选选中底色：按下是极浅的暖白，选中是 `--lime-2`。
     override var isHighlighted: Bool {
         didSet {
-            guard isListRow else { return }
-            listHighlightView.backgroundColor = isHighlighted
-                ? AppColor.paper2.withAlphaComponent(0.6)
-                : .clear
+            updateHighlightAppearance()
+        }
+    }
+
+    private func updateHighlightAppearance() {
+        guard isListRow else { return }
+        if isCellSelected {
+            listHighlightView.backgroundColor = AppColor.lime2.withAlphaComponent(0.45)
+        } else if isHighlighted {
+            listHighlightView.backgroundColor = AppColor.paper2.withAlphaComponent(0.6)
+        } else {
+            listHighlightView.backgroundColor = .clear
         }
     }
 }

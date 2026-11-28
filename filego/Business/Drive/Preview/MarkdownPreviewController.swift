@@ -18,7 +18,6 @@ final class MarkdownPreviewController: UIViewController {
 
     private var markdown: String?
     private var renderMode: RenderMode = .rendered
-    private var imagePolicy: MarkdownViewerAssets.ImagePolicy = .localOnly
 
     private var webView: WKWebView?
     private let activityIndicator = UIActivityIndicatorView(style: .medium)
@@ -121,15 +120,11 @@ final class MarkdownPreviewController: UIViewController {
         self.webView = webView
     }
 
-    /// 重新装配整页。切换远程图片开关必须走这里——`img-src` 写死在 CSP meta 里，
-    /// 光改 JS 标志位不会让已被拦截的图重新可加载。
+    /// 重新装配整页。
     private func reloadPage() {
         guard let webView, markdown != nil else { return }
         do {
-            let html = try MarkdownViewerAssets.html(
-                imagePolicy: imagePolicy,
-                traitCollection: traitCollection
-            )
+            let html = try MarkdownViewerAssets.html(traitCollection: traitCollection)
             webView.loadHTMLString(html, baseURL: nil)
         } catch {
             AppLogger.error("Markdown 页面装配失败", error: error)
@@ -144,11 +139,8 @@ final class MarkdownPreviewController: UIViewController {
                 // 关键安全点：markdown 正文作为 argument 交给 WebKit 序列化，
                 // 绝不插值进 HTML/JS 字符串——天然免疫引号、反斜杠、换行注入。
                 _ = try await webView.callAsyncJavaScript(
-                    "return window.MdViewer.render(md, remote);",
-                    arguments: [
-                        "md": markdown,
-                        "remote": imagePolicy == .allowRemote
-                    ],
+                    "return window.MdViewer.render(md);",
+                    arguments: ["md": markdown],
                     in: nil,
                     contentWorld: .defaultClient
                 )
@@ -185,14 +177,6 @@ final class MarkdownPreviewController: UIViewController {
             self?.toggleRenderMode()
         }
 
-        let images = UIAction(
-            title: R.Strings.previewMarkdownLoadRemoteImages.localizedString(),
-            image: UIImage(systemName: "photo"),
-            state: imagePolicy == .allowRemote ? .on : .off
-        ) { [weak self] _ in
-            self?.toggleRemoteImages()
-        }
-
         let share = UIAction(
             title: R.Strings.previewMarkdownOpenWith.localizedString(),
             image: UIImage(systemName: "square.and.arrow.up")
@@ -200,7 +184,7 @@ final class MarkdownPreviewController: UIViewController {
             self?.presentShareSheet()
         }
 
-        var children = [toggleMode, images, share]
+        var children = [toggleMode, share]
         if let onCreateShareLink {
             children.append(UIAction(
                 title: R.Strings.previewCreateShareLink.localizedString(),
@@ -228,12 +212,6 @@ final class MarkdownPreviewController: UIViewController {
                 contentWorld: .defaultClient
             )
         }
-    }
-
-    private func toggleRemoteImages() {
-        imagePolicy = imagePolicy == .localOnly ? .allowRemote : .localOnly
-        updateMenu()
-        reloadPage()
     }
 
     private func presentShareSheet() {

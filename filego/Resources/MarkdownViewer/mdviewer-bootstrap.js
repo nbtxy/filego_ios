@@ -5,8 +5,7 @@
 
   var state = {
     markdown: "",
-    mode: "rendered",       // "rendered" | "raw"
-    remoteImagesEnabled: false
+    mode: "rendered"       // "rendered" | "raw"
   };
 
   if (typeof marked !== "undefined" && marked.setOptions) {
@@ -54,8 +53,7 @@
     img.parentNode.replaceChild(brokenImagePlaceholder(img), img);
   }
 
-  // 页面以 baseURL=nil 加载，相对路径永远无法解析；远程图默认被 CSP 拦截。
-  // 这两类在插入后立刻确定性替换，不依赖 error 事件（会有竞态）。
+  // 页面以 baseURL=nil 加载，相对路径永远无法解析，在插入后立刻确定性替换。
   function decorateImages(root) {
     var images = root.querySelectorAll("img");
     for (var i = images.length - 1; i >= 0; i--) {
@@ -65,10 +63,6 @@
       var isRemote = /^https:/i.test(src);
 
       if (src.length === 0 || (!isData && !isRemote)) {
-        replaceWithPlaceholder(img);
-        continue;
-      }
-      if (isRemote && !state.remoteImagesEnabled) {
         replaceWithPlaceholder(img);
         continue;
       }
@@ -130,14 +124,11 @@
   }
 
   window.MdViewer = {
-    render: function (markdown, remoteImagesEnabled) {
+    render: function (markdown) {
       state.markdown = typeof markdown === "string" ? markdown : "";
-      state.remoteImagesEnabled = remoteImagesEnabled === true;
       apply();
       return true;
     },
-    // 注意：切换远程图片开关必须由 Swift 侧整页重载完成——img-src 写死在 CSP meta 里，
-    // 光改 JS 标志位不会让被拦截的图重新可加载。
     setMode: function (mode) {
       state.mode = mode === "raw" ? "raw" : "rendered";
       apply();

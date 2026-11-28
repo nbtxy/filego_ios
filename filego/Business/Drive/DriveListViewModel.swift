@@ -60,15 +60,48 @@ final class DriveListViewModel {
         _ = try await reload()
     }
 
+    func move(_ nodes: [DriveNode], to parentId: String) async throws {
+        var firstError: Error?
+        for node in nodes {
+            do { try drive.move(node, to: parentId) }
+            catch { if firstError == nil { firstError = error } }
+        }
+        _ = try await reload()
+        if let firstError { throw firstError }
+    }
+
     /// 移入 `Documents/.StolnkTrash/`，仍在设备上。见 `LocalDriveStore.moveToTrash`。
     func moveToTrash(_ node: DriveNode) async throws {
         try drive.moveToTrash(node)
         _ = try await reload()
     }
 
-    func copy(_ node: DriveNode, to parentId: String) async throws {
-        try drive.copy(node, to: parentId)
+    func moveToTrash(_ nodes: [DriveNode]) async throws {
+        var firstError: Error?
+        for node in nodes {
+            do { try drive.moveToTrash(node) }
+            catch { if firstError == nil { firstError = error } }
+        }
         _ = try await reload()
+        if let firstError { throw firstError }
+    }
+
+    @discardableResult
+    func compress(_ nodes: [DriveNode], in targetFolderId: String? = nil) async throws -> DriveNode {
+        let node = try await drive.compress(
+            nodes,
+            in: targetFolderId ?? folderId,
+            defaultArchiveName: R.Strings.driveArchiveDefaultName.localizedString()
+        )
+        _ = try await reload()
+        return node
+    }
+
+    @discardableResult
+    func extract(_ node: DriveNode) async throws -> DriveNode {
+        let extracted = try await drive.extract(node)
+        _ = try await reload()
+        return extracted
     }
 
     /// 本地文件的 URL，给预览用。改造前这里要先下载。

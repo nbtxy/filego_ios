@@ -28,7 +28,8 @@ enum PreviewCoordinator {
                 size: node.size)
         }
 
-        switch FileKind(node: node) {
+        let kind = FileKind(node: node)
+        switch kind {
         case .markdown:
             let controller = MarkdownPreviewController(file: file, title: node.name)
             controller.onCreateShareLink = createShareLink
@@ -44,8 +45,40 @@ enum PreviewCoordinator {
             return VideoPreviewController(
                 file: file, title: node.name, onCreateShareLink: createShareLink)
         default:
+            let extractArchive: ((UIViewController) -> Void)?
+            if !node.isFolder && LocalDriveStore.canExtract(fileName: node.name) {
+                extractArchive = { presenter in
+                    presenter.view.isUserInteractionEnabled = false
+                    Task { @MainActor in
+                        defer { presenter.view.isUserInteractionEnabled = true }
+                        do {
+                            let extracted = try await environment.drive.extract(node)
+                            HapticManager.notification(.success)
+                            NotificationCenter.default.post(name: .stolnkDidLandFiles, object: nil)
+                            PaperToast.show(
+                                R.Strings.driveArchiveExtracted.formatted(extracted.name),
+                                in: presenter.view
+                            )
+                        } catch {
+                            HapticManager.notification(.error)
+                            PaperToast.show(
+                                error.localizedDescription,
+                                in: presenter.view,
+                                isError: true
+                            )
+                        }
+                    }
+                }
+            } else {
+                extractArchive = nil
+            }
             return FilePreviewContainerViewController(
-                file: file, title: node.name, onCreateShareLink: createShareLink)
+                file: file,
+                title: node.name,
+                fileKind: kind,
+                onCreateShareLink: createShareLink,
+                onExtractArchive: extractArchive
+            )
         }
     }
 }
