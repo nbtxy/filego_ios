@@ -15,7 +15,8 @@ enum PreviewCoordinator {
     static func makeViewController(
         for node: DriveNode,
         file: PreviewTemporaryFile,
-        environment: AppEnvironment
+        environment: AppEnvironment,
+        allowExtract: Bool = true
     ) -> UIViewController {
         // 捕获成一个闭包：预览控制器不认识 AppEnvironment，也不该为了一个菜单项
         // 去认识它。校验和表单都在 ShareLauncher 里，和 Drive 长按菜单是同一条路。
@@ -46,7 +47,7 @@ enum PreviewCoordinator {
                 file: file, title: node.name, onCreateShareLink: createShareLink)
         default:
             let extractArchive: ((UIViewController) -> Void)?
-            if !node.isFolder && LocalDriveStore.canExtract(fileName: node.name) {
+            if allowExtract && !node.isFolder && LocalDriveStore.canExtract(fileName: node.name) {
                 extractArchive = { presenter in
                     presenter.view.isUserInteractionEnabled = false
                     Task { @MainActor in

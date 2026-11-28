@@ -72,3 +72,28 @@ nonisolated struct TrashItem: Hashable {
         )
     }
 }
+
+/**
+ 私有隐藏目录里的一项。
+
+ 存放在 `Library/Application Support/StolnkVault/`，脱离 `Documents/` 文件树：
+ 既不会暴露给系统「文件」App，也不计入存储空间统计。搜索框输入匹配密码后才浮现。
+ */
+nonisolated struct HiddenItem: Hashable {
+    /// 私有目录下的实际文件名（UUID + 原扩展名），避免重名且保留扩展名供预览识别。
+    let storageName: String
+    /// 隐藏前的原始显示名，也是取消隐藏后的文件名。
+    let name: String
+    let kind: NodeKind
+    let size: Int64
+    let hiddenAt: Date
+
+    var isFolder: Bool { kind == .folder }
+
+    var displayNode: DriveNode {
+        DriveNode(
+            id: storageName, parentId: nil, kind: kind,
+            name: name, size: size, updatedAt: hiddenAt
+        )
+    }
+}

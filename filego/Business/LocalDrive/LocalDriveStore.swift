@@ -1,4 +1,6 @@
+import CryptoKit
 import Foundation
+import Security
 import StolnkCore
 
 /**
@@ -306,6 +308,148 @@ final class LocalDriveStore {
             throw CocoaError(.fileNoSuchFile)
         }
         return created
+    }
+
+    // MARK: - 隐藏文件（私有目录，不计入大小统计）
+
+    private static let vaultFolder = "StolnkVault"
+    private static let vaultIndexFile = ".index.json"
+
+    private struct HiddenIndexEntry: Codable {
+        var name: String
+        var isFolder: Bool
+        var hiddenAt: Date
+        var passwordSalt: String
+        var passwordHash: String
+    }
+
+    /// 存放在 `Library/Application Support/StolnkVault/`，在 `Documents/` 之外：
+    /// 不参与 `LocalStorageUsage` 大小统计，也不会出现在系统「文件」App 中。
+    private var vaultURL: URL {
+        let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return appSupport.appendingPathComponent(Self.vaultFolder, isDirectory: true)
+    }
+
+    func hide(_ node: DriveNode, password: String) throws {
+        try refuseIfProtected(node)
+        let trimmed = password.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw CocoaError(.fileWriteUnknown) }
+
+        try fm.createDirectory(at: vaultURL, withIntermediateDirectories: true)
+        let ext = node.isFolder ? "" : URL(fileURLWithPath: node.name).pathExtension
+        let storageName = ext.isEmpty ? UUID().uuidString : "\(UUID().uuidString).\(ext)"
+        try fm.moveItem(at: url(for: node.id), to: vaultURL.appendingPathComponent(storageName))
+
+        let salt = Self.generateSalt()
+        let hash = Self.hashPassword(trimmed, salt: salt)
+        var index = readVaultIndex()
+        index[storageName] = HiddenIndexEntry(
+            name: node.name,
+            isFolder: node.isFolder,
+            hiddenAt: Date(),
+            passwordSalt: salt,
+            passwordHash: hash
+        )
+        writeVaultIndex(index)
+    }
+
+    func matchingHiddenItems(forPassword password: String) -> [HiddenItem] {
+        let trimmed = password.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+        let index = reconcileVaultIndex()
+        return index.compactMap { storageName, entry in
+            guard Self.hashPassword(trimmed, salt: entry.passwordSalt) == entry.passwordHash else {
+                return nil
+            }
+            return HiddenItem(
+                storageName: storageName,
+                name: entry.name,
+                kind: entry.isFolder ? .folder : .file,
+                size: Self.size(of: vaultURL.appendingPathComponent(storageName)),
+                hiddenAt: entry.hiddenAt
+            )
+        }
+        .sorted { $0.hiddenAt > $1.hiddenAt }
+    }
+
+    func hiddenFileURL(for item: HiddenItem) -> URL {
+        vaultURL.appendingPathComponent(item.storageName)
+    }
+
+    @discardableResult
+    func unhide(_ item: HiddenItem, to parentID: String) throws -> DriveNode {
+        let source = vaultURL.appendingPathComponent(item.storageName)
+        let destination = url(for: parentID)
+        let safeName = Self.avoidingSystemInbox(FileNameSanitizer.sanitize(item.name))
+        let unique = FileNameSanitizer.uniqueName(for: safeName, in: destination)
+        let target = destination.appendingPathComponent(unique)
+        try fm.moveItem(at: source, to: target)
+
+        var index = readVaultIndex()
+        index.removeValue(forKey: item.storageName)
+        writeVaultIndex(index)
+
+        guard let restored = makeNode(at: target) else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        return restored
+    }
+
+    func deleteHidden(_ item: HiddenItem) throws {
+        try fm.removeItem(at: vaultURL.appendingPathComponent(item.storageName))
+        var index = readVaultIndex()
+        index.removeValue(forKey: item.storageName)
+        writeVaultIndex(index)
+    }
+
+    private func reconcileVaultIndex() -> [String: HiddenIndexEntry] {
+        var index = readVaultIndex()
+        var changed = false
+        for storageName in Array(index.keys) {
+            let path = vaultURL.appendingPathComponent(storageName).path
+            if !fm.fileExists(atPath: path) {
+                index.removeValue(forKey: storageName)
+                changed = true
+            }
+        }
+        if changed { writeVaultIndex(index) }
+        return index
+    }
+
+    private func readVaultIndex() -> [String: HiddenIndexEntry] {
+        let url = vaultURL.appendingPathComponent(Self.vaultIndexFile)
+        guard let data = try? Data(contentsOf: url) else { return [:] }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        do {
+            return try decoder.decode([String: HiddenIndexEntry].self, from: data)
+        } catch {
+            AppLogger.error("隐藏文件索引读取失败", error: error)
+            return [:]
+        }
+    }
+
+    private func writeVaultIndex(_ index: [String: HiddenIndexEntry]) {
+        let url = vaultURL.appendingPathComponent(Self.vaultIndexFile)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        do {
+            try fm.createDirectory(at: vaultURL, withIntermediateDirectories: true)
+            try encoder.encode(index).write(to: url, options: .atomic)
+        } catch {
+            AppLogger.error("隐藏文件索引写入失败", error: error)
+        }
+    }
+
+    private static func generateSalt() -> String {
+        var bytes = [UInt8](repeating: 0, count: 16)
+        _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
+        return Data(bytes).base64EncodedString()
+    }
+
+    private static func hashPassword(_ password: String, salt: String) -> String {
+        let digest = SHA256.hash(data: Data("\(salt):\(password)".utf8))
+        return digest.map { String(format: "%02x", $0) }.joined()
     }
 
     /**

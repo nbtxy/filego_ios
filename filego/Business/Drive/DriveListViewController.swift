@@ -28,6 +28,7 @@ final class DriveListViewController: UIViewController {
     private var isSearchLoading = false
     private var searchQuery = ""
     private var searchResults: [DriveNode] = []
+    private var hiddenSearchResults: [HiddenItem] = []
     private var isSelecting = false
     private var selectedNodeIDs: Set<String> = []
     private let selectionBar = UIView()
@@ -35,6 +36,7 @@ final class DriveListViewController: UIViewController {
     private let selectionBarStack = UIStackView()
     private let batchMoveButton = UIButton(type: .system)
     private let batchCompressButton = UIButton(type: .system)
+    private let batchHideButton = UIButton(type: .system)
     private let batchShareButton = UIButton(type: .system)
     private let batchTrashButton = UIButton(type: .system)
     private lazy var searchBar: UISearchBar = {
@@ -73,6 +75,8 @@ final class DriveListViewController: UIViewController {
 
     /// 占位的 item id 前缀。节点 id 是相对路径，永远不以 `/` 开头，所以撞不上。
     private static let incomingPrefix = "/incoming/"
+    /// 密码匹配出的隐藏文件前缀，仅在搜索态出现。
+    private static let hiddenPrefix = "/hidden/"
 
     /// 本文件夹里正在路上的文件。搜索态不显示：搜的是已经在盘上的东西。
     private var visibleIncoming: [IncomingTransfer] {
@@ -80,9 +84,11 @@ final class DriveListViewController: UIViewController {
         return environment.stolnk.incoming(in: environment.drive.url(for: folderId))
     }
 
-    /// 占位在前、节点在后，和 `applySnapshot` 里的顺序一致。
+    /// 占位在前、隐藏匹配项次之、普通节点在后，和 `applySnapshot` 里的顺序一致。
     private var visibleItemIDs: [String] {
-        visibleIncoming.map { Self.incomingPrefix + $0.fileID } + visibleNodes.map(\.id)
+        visibleIncoming.map { Self.incomingPrefix + $0.fileID }
+            + hiddenSearchResults.map { Self.hiddenPrefix + $0.storageName }
+            + visibleNodes.map(\.id)
     }
 
     init(
@@ -542,6 +548,24 @@ final class DriveListViewController: UIViewController {
                 )
                 return cell
             }
+            if id.hasPrefix(Self.hiddenPrefix) {
+                let storageName = String(id.dropFirst(Self.hiddenPrefix.count))
+                guard let item = hiddenSearchResults.first(where: { $0.storageName == storageName }),
+                      let cell = collectionView.dequeueReusableCell(
+                        withReuseIdentifier: "node", for: indexPath
+                      ) as? DriveNodeCell else { return nil }
+                cell.configure(
+                    with: item.displayNode,
+                    menu: hiddenActions(for: item),
+                    grid: isGrid,
+                    isFirst: id == ids.first,
+                    isLast: id == ids.last,
+                    isSelecting: false,
+                    isSelected: false,
+                    isHiddenItem: true
+                )
+                return cell
+            }
             guard let node = visibleNodes.first(where: { $0.id == id }),
                   let cell = collectionView.dequeueReusableCell(
                     withReuseIdentifier: "node", for: indexPath
@@ -698,6 +722,13 @@ final class DriveListViewController: UIViewController {
         ) { [weak self] in self?.batchCompress() }
 
         configureSelectionBarButton(
+            batchHideButton,
+            title: R.Strings.driveHide.localizedString(),
+            symbol: "eye.slash",
+            tint: AppColor.ink
+        ) { [weak self] in self?.batchHide() }
+
+        configureSelectionBarButton(
             batchShareButton,
             title: R.Strings.driveShare.localizedString(),
             symbol: "square.and.arrow.up",
@@ -715,7 +746,7 @@ final class DriveListViewController: UIViewController {
         selectionBarStack.distribution = .fillEqually
         selectionBarStack.alignment = .center
         selectionBarStack.translatesAutoresizingMaskIntoConstraints = false
-        for button in [batchMoveButton, batchCompressButton, batchShareButton, batchTrashButton] {
+        for button in [batchMoveButton, batchCompressButton, batchHideButton, batchShareButton, batchTrashButton] {
             selectionBarStack.addArrangedSubview(button)
         }
         selectionBar.addSubview(selectionBarStack)
@@ -754,7 +785,8 @@ final class DriveListViewController: UIViewController {
         config.imagePlacement = .top
         config.imagePadding = 4
         config.baseForegroundColor = tint
-        config.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4)
+        config.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 2, bottom: 4, trailing: 2)
+        config.titleLineBreakMode = .byTruncatingTail
         config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
             var outgoing = incoming
             outgoing.font = UIFont.systemFont(ofSize: 11, weight: .medium)
@@ -770,6 +802,7 @@ final class DriveListViewController: UIViewController {
         guard let indexPath = collectionView.indexPathForItem(at: point),
               let id = dataSource.itemIdentifier(for: indexPath),
               !id.hasPrefix(Self.incomingPrefix),
+              !id.hasPrefix(Self.hiddenPrefix),
               let node = visibleNodes.first(where: { $0.id == id }),
               !LocalDriveStore.isReceived(node.id) else { return }
         HapticManager.impact(.medium)
@@ -841,6 +874,7 @@ final class DriveListViewController: UIViewController {
         let canShare = hasSelection && nodes.allSatisfy { !$0.isFolder }
         batchMoveButton.isEnabled = hasSelection
         batchCompressButton.isEnabled = hasSelection
+        batchHideButton.isEnabled = hasSelection
         batchShareButton.isEnabled = canShare
         batchTrashButton.isEnabled = hasSelection
     }
@@ -849,6 +883,12 @@ final class DriveListViewController: UIViewController {
         let nodes = selectedNodes
         guard !nodes.isEmpty else { return }
         pickFolder(for: nodes)
+    }
+
+    private func batchHide() {
+        let nodes = selectedNodes
+        guard !nodes.isEmpty else { return }
+        promptHide(for: nodes)
     }
 
     private func batchCompress() {
@@ -1043,6 +1083,7 @@ final class DriveListViewController: UIViewController {
         searchBar.text = nil
         searchQuery = ""
         searchResults = []
+        hiddenSearchResults = []
         isSearchLoading = false
         isSearching = false
         addFolderButton.isHidden = isReceivedFolder
@@ -1057,6 +1098,7 @@ final class DriveListViewController: UIViewController {
         let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
         searchQuery = query
         searchResults = []
+        hiddenSearchResults = []
         guard !query.isEmpty else {
             isSearchLoading = false
             applySnapshot()
@@ -1069,8 +1111,10 @@ final class DriveListViewController: UIViewController {
             do {
                 try await Task.sleep(nanoseconds: 300_000_000)
                 guard let self, !Task.isCancelled else { return }
+                let hiddenMatches = viewModel.matchingHiddenItems(forPassword: query)
                 let nodes = try await viewModel.searchRecursively(query: query)
                 guard !Task.isCancelled, searchQuery == query else { return }
+                hiddenSearchResults = hiddenMatches
                 searchResults = nodes
                 isSearchLoading = false
                 applySnapshot()
@@ -1260,7 +1304,11 @@ final class DriveListViewController: UIViewController {
                 image: UIImage(systemName: "doc.zipper")
             ) { [weak self] _ in self?.compressSingle(node) }
         }
-        var children = [rename, move, archiveAction]
+        let hideAction = UIAction(
+            title: R.Strings.driveHide.localizedString(),
+            image: UIImage(systemName: "eye.slash")
+        ) { [weak self] _ in self?.promptHide(for: [node]) }
+        var children = [rename, move, archiveAction, hideAction]
         if !node.isFolder {
             // 只给文件，不给文件夹：一条下载链接背后是一个文件，服务端也只收一个。
             children.append(UIAction(
@@ -1277,6 +1325,136 @@ final class DriveListViewController: UIViewController {
             UIMenu(options: .displayInline, children: children),
             UIMenu(options: .displayInline, children: [trash])
         ])
+    }
+
+    private func hiddenActions(for item: HiddenItem) -> UIMenu {
+        let unhide = UIAction(
+            title: R.Strings.driveUnhide.localizedString(),
+            image: UIImage(systemName: "eye")
+        ) { [weak self] _ in self?.pickFolderToUnhide(item) }
+        let deleteForever = UIAction(
+            title: R.Strings.trashDeleteForever.localizedString(),
+            image: UIImage(systemName: "trash.slash"),
+            attributes: .destructive
+        ) { [weak self] _ in self?.confirmDeleteHidden(item) }
+        return UIMenu(children: [
+            UIMenu(options: .displayInline, children: [unhide]),
+            UIMenu(options: .displayInline, children: [deleteForever])
+        ])
+    }
+
+    private func promptHide(for nodes: [DriveNode]) {
+        guard !nodes.isEmpty else { return }
+        let alert = UIAlertController(
+            title: R.Strings.driveHideTitle.localizedString(),
+            message: R.Strings.driveHideMessage.localizedString(),
+            preferredStyle: .alert
+        )
+        alert.addTextField { field in
+            field.placeholder = R.Strings.driveHidePasswordPlaceholder.localizedString()
+            field.isSecureTextEntry = true
+        }
+        alert.addTextField { field in
+            field.placeholder = R.Strings.driveHidePasswordConfirmPlaceholder.localizedString()
+            field.isSecureTextEntry = true
+        }
+        alert.addAction(UIAlertAction(
+            title: R.Strings.commonCancel.localizedString(),
+            style: .cancel
+        ))
+        alert.addAction(UIAlertAction(
+            title: R.Strings.driveHide.localizedString(),
+            style: .default
+        ) { [weak self] _ in
+            guard let self else { return }
+            let password = alert.textFields?.first?.text?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let confirm = alert.textFields?.dropFirst().first?.text?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !password.isEmpty else {
+                PaperToast.show(R.Strings.driveHidePasswordEmpty.localizedString(), in: self.view, isError: true)
+                return
+            }
+            guard password == confirm else {
+                PaperToast.show(R.Strings.driveHidePasswordMismatch.localizedString(), in: self.view, isError: true)
+                return
+            }
+            Task {
+                do {
+                    try await self.viewModel.hide(nodes, password: password)
+                    if !self.searchQuery.isEmpty {
+                        self.hiddenSearchResults = self.viewModel.matchingHiddenItems(forPassword: self.searchQuery)
+                        self.searchResults = (try? await self.viewModel.searchRecursively(query: self.searchQuery)) ?? []
+                    }
+                    HapticManager.notification(.success)
+                    if self.isSelecting {
+                        self.exitSelectionMode()
+                    } else {
+                        self.applySnapshot()
+                    }
+                    NotificationCenter.default.post(name: .stolnkDidLandFiles, object: nil)
+                    self.presentToast(R.Strings.driveHiddenSuccess.localizedString())
+                } catch {
+                    self.showError(error)
+                }
+            }
+        })
+        present(alert, animated: true)
+    }
+
+    private func pickFolderToUnhide(_ item: HiddenItem) {
+        let picker = FolderPickerNavigationController.make(
+            environment: environment,
+            rootId: rootId,
+            excludedNodeIds: [],
+            confirmTitle: R.Strings.driveUnhideHere.localizedString()
+        ) { [weak self] targetId in
+            guard let self else { return }
+            dismiss(animated: true)
+            Task {
+                do {
+                    try await self.viewModel.unhide(item, to: targetId)
+                    if !self.searchQuery.isEmpty {
+                        self.hiddenSearchResults = self.viewModel.matchingHiddenItems(forPassword: self.searchQuery)
+                        self.searchResults = (try? await self.viewModel.searchRecursively(query: self.searchQuery)) ?? []
+                    }
+                    HapticManager.notification(.success)
+                    self.applySnapshot()
+                    NotificationCenter.default.post(name: .stolnkDidLandFiles, object: nil)
+                    self.presentToast(R.Strings.driveUnhiddenSuccess.localizedString())
+                } catch {
+                    self.showError(error)
+                }
+            }
+        }
+        present(picker, animated: true)
+    }
+
+    private func confirmDeleteHidden(_ item: HiddenItem) {
+        let alert = UIAlertController(
+            title: R.Strings.trashDeleteConfirm.formatted(item.name),
+            message: nil,
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: R.Strings.commonCancel.localizedString(), style: .cancel))
+        alert.addAction(UIAlertAction(
+            title: R.Strings.trashDeleteForever.localizedString(),
+            style: .destructive
+        ) { [weak self] _ in
+            guard let self else { return }
+            Task {
+                do {
+                    try await self.viewModel.deleteHidden(item)
+                    if !self.searchQuery.isEmpty {
+                        self.hiddenSearchResults = self.viewModel.matchingHiddenItems(forPassword: self.searchQuery)
+                    }
+                    self.applySnapshot()
+                } catch {
+                    self.showError(error)
+                }
+            }
+        })
+        present(alert, animated: true)
     }
 
     /// 把这个文件变成一条公开的下载链接。校验和表单都在 `ShareLauncher` 里——
@@ -1442,8 +1620,24 @@ final class DriveListViewController: UIViewController {
 extension DriveListViewController: UICollectionViewDelegate {
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         collectionView.deselectItem(at: indexPath, animated: true)
-        guard let id = dataSource.itemIdentifier(for: indexPath),
-              let node = visibleNodes.first(where: { $0.id == id }) else { return }
+        guard let id = dataSource.itemIdentifier(for: indexPath) else { return }
+        if id.hasPrefix(Self.hiddenPrefix) {
+            let storageName = String(id.dropFirst(Self.hiddenPrefix.count))
+            guard let item = hiddenSearchResults.first(where: { $0.storageName == storageName }) else { return }
+            if item.isFolder {
+                pickFolderToUnhide(item)
+            } else {
+                let file = PreviewTemporaryFile.borrowing(viewModel.hiddenFileURL(for: item))
+                router.push(PreviewCoordinator.makeViewController(
+                    for: item.displayNode,
+                    file: file,
+                    environment: environment,
+                    allowExtract: false
+                ))
+            }
+            return
+        }
+        guard let node = visibleNodes.first(where: { $0.id == id }) else { return }
         if isSelecting {
             guard !LocalDriveStore.isReceived(node.id) else { return }
             if selectedNodeIDs.contains(node.id) {

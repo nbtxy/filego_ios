@@ -104,6 +104,35 @@ final class DriveListViewModel {
         return extracted
     }
 
+    func hide(_ nodes: [DriveNode], password: String) async throws {
+        var firstError: Error?
+        for node in nodes {
+            do { try drive.hide(node, password: password) }
+            catch { if firstError == nil { firstError = error } }
+        }
+        _ = try await reload()
+        if let firstError { throw firstError }
+    }
+
+    func matchingHiddenItems(forPassword password: String) -> [HiddenItem] {
+        drive.matchingHiddenItems(forPassword: password)
+    }
+
+    func hiddenFileURL(for item: HiddenItem) -> URL {
+        drive.hiddenFileURL(for: item)
+    }
+
+    @discardableResult
+    func unhide(_ item: HiddenItem, to parentId: String) async throws -> DriveNode {
+        let restored = try drive.unhide(item, to: parentId)
+        _ = try await reload()
+        return restored
+    }
+
+    func deleteHidden(_ item: HiddenItem) async throws {
+        try drive.deleteHidden(item)
+    }
+
     /// 本地文件的 URL，给预览用。改造前这里要先下载。
     func fileURL(for node: DriveNode) -> URL {
         drive.url(for: node.id)

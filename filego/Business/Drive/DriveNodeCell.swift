@@ -22,6 +22,8 @@ final class DriveNodeCell: UICollectionViewCell {
     private let selectionBadge = UIImageView()
     /// 宫格多选选中时的边框与浅点缀底色。
     private let gridSelectionOverlay = UIView()
+    /// 宫格隐藏项的浅紫底色与边框，用于和普通搜索结果区分。
+    private let gridHiddenOverlay = UIView()
     private let textStack = UIStackView()
     private let separator = UIView()
     /// 在途占位的进度条。平时隐藏，stack 不给它留位置。
@@ -33,6 +35,7 @@ final class DriveNodeCell: UICollectionViewCell {
     private var gridConstraints: [NSLayoutConstraint] = []
     private var isCellSelected = false
     private var isSelectionMode = false
+    private var isHiddenEntry = false
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -56,6 +59,17 @@ final class DriveNodeCell: UICollectionViewCell {
         gridSelectionOverlay.isUserInteractionEnabled = false
         gridSelectionOverlay.isHidden = true
         contentView.addSubview(gridSelectionOverlay)
+
+        gridHiddenOverlay.frame = contentView.bounds
+        gridHiddenOverlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        gridHiddenOverlay.backgroundColor = AppColor.FileTile.documentBackground.withAlphaComponent(0.35)
+        gridHiddenOverlay.layer.cornerRadius = AppRadius.card
+        gridHiddenOverlay.layer.cornerCurve = .continuous
+        gridHiddenOverlay.layer.borderWidth = 1.5
+        gridHiddenOverlay.layer.borderColor = AppColor.purple.withAlphaComponent(0.4).cgColor
+        gridHiddenOverlay.isUserInteractionEnabled = false
+        gridHiddenOverlay.isHidden = true
+        contentView.addSubview(gridHiddenOverlay)
 
         // 缩略图位是卡片上压下去的一块凹槽色。
         thumbHolder.backgroundColor = AppColor.well
@@ -231,8 +245,11 @@ final class DriveNodeCell: UICollectionViewCell {
         moreButton.isHidden = false
         selectionBadge.isHidden = true
         gridSelectionOverlay.isHidden = true
+        gridHiddenOverlay.isHidden = true
+        detailLabel.attributedText = nil
         isCellSelected = false
         isSelectionMode = false
+        isHiddenEntry = false
     }
 
     /**
@@ -291,21 +308,31 @@ final class DriveNodeCell: UICollectionViewCell {
         isFirst: Bool = false,
         isLast: Bool = false,
         isSelecting: Bool = false,
-        isSelected: Bool = false
+        isSelected: Bool = false,
+        isHiddenItem: Bool = false
     ) {
         resetIncoming()
+        isHiddenEntry = isHiddenItem
         listIcon.configure(with: node)
         gridIcon.configure(with: node)
         nameLabel.text = node.name
 
+        let baseDetail: String
         if let detailOverride {
-            detailLabel.text = detailOverride
+            baseDetail = detailOverride
         } else if node.isFolder {
-            detailLabel.text = R.Strings.driveFolder.localizedString()
+            baseDetail = R.Strings.driveFolder.localizedString()
         } else {
             let size = ByteFormatting.storage(node.size)
             let ext = URL(fileURLWithPath: node.name).pathExtension.uppercased()
-            detailLabel.text = ext.isEmpty ? size : "\(ext) · \(size)"
+            baseDetail = ext.isEmpty ? size : "\(ext) · \(size)"
+        }
+
+        if isHiddenItem {
+            detailLabel.attributedText = Self.hiddenDetailText(base: baseDetail)
+        } else {
+            detailLabel.attributedText = nil
+            detailLabel.text = baseDetail
         }
         moreButton.menu = menu
 
@@ -313,7 +340,32 @@ final class DriveNodeCell: UICollectionViewCell {
         isSelectionMode = isSelecting
         moreButton.isHidden = isSelecting
         selectionBadge.isHidden = !isSelecting
+        gridHiddenOverlay.isHidden = !grid || !isHiddenItem || (isSelecting && isSelected)
         updateSelection(isSelected: isSelecting && isSelected)
+    }
+
+    private static func hiddenDetailText(base: String) -> NSAttributedString {
+        let result = NSMutableAttributedString()
+        let attachment = NSTextAttachment()
+        let symbolConfig = UIImage.SymbolConfiguration(pointSize: 10, weight: .semibold)
+        attachment.image = UIImage(systemName: "lock.fill", withConfiguration: symbolConfig)?
+            .withTintColor(AppColor.purple, renderingMode: .alwaysOriginal)
+        result.append(NSAttributedString(attachment: attachment))
+        result.append(NSAttributedString(
+            string: " " + R.Strings.driveHiddenTag.localizedString(),
+            attributes: [
+                .font: UIFont.systemFont(ofSize: 11, weight: .semibold),
+                .foregroundColor: AppColor.purple
+            ]
+        ))
+        result.append(NSAttributedString(
+            string: " · " + base,
+            attributes: [
+                .font: AppTypography.rowMeta,
+                .foregroundColor: AppColor.textSecondary
+            ]
+        ))
+        return result
     }
 
     func updateSelection(isSelected: Bool) {
@@ -375,6 +427,10 @@ final class DriveNodeCell: UICollectionViewCell {
         guard isListRow else { return }
         if isCellSelected {
             listHighlightView.backgroundColor = AppColor.lime2.withAlphaComponent(0.45)
+        } else if isHiddenEntry {
+            listHighlightView.backgroundColor = isHighlighted
+                ? AppColor.FileTile.documentBackground
+                : AppColor.FileTile.documentBackground.withAlphaComponent(0.48)
         } else if isHighlighted {
             listHighlightView.backgroundColor = AppColor.paper2.withAlphaComponent(0.6)
         } else {
