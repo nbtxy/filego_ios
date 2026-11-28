@@ -16,7 +16,7 @@ ENGLISH
 
 6. HTML and Markdown previews are local file previews, not a general browser. Both load remote images automatically and ask before full-page external navigation. AI-generated HTML renders as a page and Markdown is typeset.
 
-7. Local file tools: long-press for multi-select, local ZIP/TAR/GZ compression & extraction, optional password-protected hidden vault (Library/Application Support/StolnkVault, revealed via Search), and Save to Photos (NSPhotoLibraryAddUsageDescription).
+7. Local file tools & clipboard: long-press for multi-select, local ZIP/TAR/GZ compression & extraction, optional password-protected hidden vault (Library/Application Support/StolnkVault, revealed via Search), Save to Photos (NSPhotoLibraryAddUsageDescription), and Shared Clipboard (Me → Shared Clipboard, synced in real time with https://yourname.stolnk.com/clip).
 
 8. No ads, ATT prompt, analytics SDK or third-party tracking. Backend: https://stolnk.com on Cloudflare.
 

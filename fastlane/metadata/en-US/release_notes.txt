@@ -1,3 +1,4 @@
+• New Shared Clipboard ({name}.stolnk.com/clip): edit text on your iPhone or any browser with real-time two-way sync and one-tap copy
 • Save previewed photos and videos directly to your Photos library
 • Long-press any item to enter multi-select mode for batch move, compress, hide, share, and delete
 • Built-in file compression (ZIP) and extraction (ZIP, TAR, TAR.GZ, GZ)
