@@ -1,4 +1,5 @@
-• Keep your receive address and device identity after uninstalling and reinstalling
-• Faster relay downloads for large files with concurrent multi-part fetching
-• Improved local network direct transfer reliability, including multi-file batches over one connection
-• Fixed an issue where the main file list did not refresh reliably
+• Save previewed photos and videos directly to your Photos library
+• Long-press any item to enter multi-select mode for batch move, compress, hide, share, and delete
+• Built-in file compression (ZIP) and extraction (ZIP, TAR, TAR.GZ, GZ)
+• Hide files and folders with a password into a private vault excluded from storage usage — enter the password in Search to reveal and unhide them to any folder
+• Markdown previews now load remote images automatically without an extra menu toggle

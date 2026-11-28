@@ -14,20 +14,21 @@ ENGLISH
 
 5. Account deletion: Me → Delete account. It deletes the name, address, links and all server-side data for the device immediately.
 
-6. HTML and Markdown previews are local file previews, not a general browser. HTML previews load remote images, styles, scripts and iframes automatically; only full-page navigation to another website is blocked and asks first. Markdown previews block remote images by default and have a menu toggle. AI-generated HTML and Markdown can be sent from a computer to the receive address and opened on the phone: HTML renders as a page and Markdown is typeset, not shown as source.
+6. HTML and Markdown previews are local file previews, not a general browser. Both load remote images automatically and ask before full-page external navigation. AI-generated HTML renders as a page and Markdown is typeset.
 
-7. No ads, ATT prompt, analytics SDK or third-party tracking. Backend: https://stolnk.com on Cloudflare.
+7. Local file tools: long-press for multi-select, local ZIP/TAR/GZ compression & extraction, optional password-protected hidden vault (Library/Application Support/StolnkVault, revealed via Search), and Save to Photos (NSPhotoLibraryAddUsageDescription).
 
-8. Encryption: only Apple CryptoKit standard algorithms (P-256, AES-GCM, HKDF) for end-to-end encryption; export exemption.
+8. No ads, ATT prompt, analytics SDK or third-party tracking. Backend: https://stolnk.com on Cloudflare.
+
+9. Encryption: only Apple CryptoKit standard algorithms (P-256, AES-GCM, HKDF, SHA-256); export exemption.
 
 中文
 
 1. 无需登录或演示账号；首次启动选一个可用名字，身份是设备生成的密钥对。
-2. 接收：每台设备一个地址 https://yourname.stolnk.com；从 Drive 左下角或「我的」进入「收到的文件」；用任意设备的 Safari 上传。
-3. 发送：文件右侧 ⋯ → 创建下载链接；下载链接不是端到端加密，表单已说明。
-4. 定价：免费下载，两个可选内购，仅通过 App 内 StoreKit（我的 → 会员）销售：Stolnk 会员年订阅 com.nbtxy.filego.member.yearly，$1.99/年；Stolnk 终身版 com.nbtxy.filego.member.lifetime，$9.99 一次性，不续费。非会员限额 2 GB/文件、3 GB/月中转、无密码；会员可建链接、永久保留子域名、20 GB/文件、300 GB/月中转、密码保护。非会员子域名 7 天后失效。旧付费下载用户赠一年会员，旧 $14.99 终身商品仍有效。会员页含条款、价格、恢复购买、管理订阅和隐私政策。仅 iPhone 版。
-   沙盒：TestFlight 或沙盒账号购买任一选项；年订阅约 1 小时续期，终身版不续费；恢复购买同步两种商品。
+2. 接收：每台设备一个地址 https://yourname.stolnk.com；从首页左下角或「我的」进入「收到的文件」，任意浏览器上传。
+3. 发送：文件右侧 ⋯ → 创建下载链接（非端到端加密，表单已说明）。
+4. 定价：免费下载，仅通过 App 内 StoreKit（我的 → 会员）提供两项可选内购：年订阅 com.nbtxy.filego.member.yearly ($1.99/年) 与终身版 com.nbtxy.filego.member.lifetime ($9.99 一次性)。非会员限额 2 GB/文件、3 GB/月中转，子域名 7 天失效；会员 20 GB/文件、300 GB/月中转、永久子域名、下载链接与密码保护。旧付费用户赠一年会员。仅 iPhone 版。沙盒支持购买与恢复购买。
 5. 删除账号：「我的 → 删除账号」。
-6. HTML/Markdown 为本地文件预览，不是通用浏览器；HTML 自动加载远程资源，整页跳转先询问;Markdown 远程图片默认关闭，可开关。AI 产物可从电脑发到接收地址后打开。
-7. 无广告、ATT 或统计 SDK。
-8. 仅使用 CryptoKit 的 P-256、AES-GCM、HKDF。
+6. HTML/Markdown 为本地预览，自动加载远程图片，外链跳转先询问。
+7. 本地功能：长按多选、ZIP/TAR/GZ 压缩解压、带密码的本地私有隐藏目录（搜索输入密码查看，选目录取消隐藏）、图片视频保存到相册（仅添加权限）。
+8. 无广告/ATT/统计 SDK；仅用 CryptoKit 标准加密（P-256/AES-GCM/HKDF/SHA-256）。

@@ -18,8 +18,10 @@ SEND (MEMBERSHIP)
 • Pause, revoke, or delete a link at any time
 
 YOUR FILES, ON YOUR PHONE
-• Browse as a list or grid, sort, rename, and move files between folders
-• Import from Photos or Files
+• Browse as a list or grid, sort, rename, and move files between folders; long-press to multi-select for batch move, compress, hide, share, or delete
+• Compress files and folders into ZIP archives, and extract ZIP, TAR, TAR.GZ, and GZ archives right on your phone
+• Hide sensitive files and folders with a password into a private vault excluded from storage usage — type the password in Search to reveal them
+• Import from Photos or Files, and save previewed photos and videos directly to Photos
 • Preview images, video, audio, PDFs, text, Markdown, and HTML — including AI-generated pages
 • Deleted items stay in Trash for 30 days, and you can see what's using storage
 

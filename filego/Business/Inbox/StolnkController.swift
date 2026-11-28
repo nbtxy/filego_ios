@@ -149,6 +149,24 @@ final class StolnkController {
         return SiteAddress.prefix(name: name, baseHost: state.baseHost)
     }
 
+    /// `https://ryan.stolnk.com/clip`，共享剪贴板网页地址。还没注册或域名失效时为 nil。
+    var clipURL: String? {
+        guard let name else { return nil }
+        if let base = inbox?.url {
+            return base.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/clip"
+        }
+        let state = store.snapshot
+        return "\(state.scheme)://\(name).\(state.baseHost)/clip"
+    }
+
+    /// 供共享剪贴板页面建立实时 WebSocket 连接（带设备鉴权 token）。
+    func clipWebSocketURL() async -> URL? {
+        guard let api else { return nil }
+        if let url = await api.clipWebSocketURL() { return url }
+        _ = try? await api.authenticate()
+        return await api.clipWebSocketURL()
+    }
+
     var origin: URL {
         let state = store.snapshot
         return URL(string: "\(state.scheme)://\(state.baseHost)")

@@ -1,1 +1,1 @@
-receive files,file inbox,upload link,html viewer,markdown,ai output,encrypted,share link,large files
+zip,unzip,archive,hide files,vault,private,transfer,upload,link,html,markdown,encrypted,share,large

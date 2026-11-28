@@ -5,6 +5,7 @@ import UIKit
 /// 不显式写 `nonisolated` 的话 Hashable conformance 会带上主线程隔离，泛型约束就对不上。
 private nonisolated enum Row: Hashable {
     case address
+    case clipboard
     case links
     case plan
     case storage
@@ -139,6 +140,17 @@ final class MeViewController: UIViewController {
             }
             cell.accessories = [.disclosureIndicator()]
 
+        case .clipboard:
+            content.image = UIImage(systemName: "doc.on.clipboard")
+            content.imageProperties.tintColor = AppColor.FileTile.photoForeground
+            content.text = R.Strings.clipTitle.localizedString()
+            if let name = stolnk.name {
+                content.secondaryText = "\(name)\(stolnk.nameSuffix)/clip"
+            } else {
+                content.secondaryText = nil
+            }
+            cell.accessories = [.disclosureIndicator()]
+
         case .links:
             // 出向链接，紧挨着入向地址：一个是别人发给你，一个是你发给别人，同一层级。
             content.image = UIImage(systemName: "link.badge.plus")
@@ -237,7 +249,7 @@ final class MeViewController: UIViewController {
         var snapshot = NSDiffableDataSourceSnapshot<Int, Row>()
         snapshot.appendSections([0])
         snapshot.appendItems(
-            [.address, .links, .plan, .storage, .trash, .deviceKey], toSection: 0)
+            [.address, .clipboard, .links, .plan, .storage, .trash, .deviceKey], toSection: 0)
         snapshot.appendSections([1])
         #if DEBUG
         snapshot.appendItems([.debugPanel, .version], toSection: 1)
@@ -277,6 +289,8 @@ extension MeViewController: UICollectionViewDelegate {
         switch row {
         case .address:
             navigate(InboxDetailViewController(environment: environment))
+        case .clipboard:
+            navigate(ClipboardViewController(environment: environment))
         case .links:
             navigate(ShareListViewController(environment: environment))
         #if DEBUG
